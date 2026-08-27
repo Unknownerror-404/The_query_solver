@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import math
 import threading
+from pathlib import Path
 
 ISSUES = [
     {"id": 1, "title": "Pothole on Outer Ring Road", "category": "Roads", "area": "Bengaluru", "lat": 12.9352, "lng": 77.6245, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
@@ -12,7 +13,11 @@ ISSUES = [
     {"id": 3, "title": "Water cut, no notice", "category": "Water", "area": "Jayanagar", "lat": 12.9250, "lng": 77.5938, "supporters": 42, "age": "36h ago", "description": "The neighbourhood has had no supply since yesterday morning."},
     {"id": 4, "title": "Streetlight outage at junction", "category": "Streetlights", "area": "Koramangala", "lat": 12.9352, "lng": 77.6245, "supporters": 12, "age": "2d ago", "description": "Three streetlights are out, making the junction difficult to cross at night."},
 ]
+PROPOSALS: list[dict] = []
 ISSUE_LOCK = threading.Lock()
+PROPOSAL_LOCK = threading.Lock()
+ISSUE_SUPPORTERS: dict[int, set[str]] = {}
+SOLUTION_VOTES: dict[int, dict[str, int]] = {}
 
 
 def distance_km(first_lat: float, first_lng: float, second_lat: float, second_lng: float) -> float:
@@ -56,13 +61,167 @@ def add_issue(issue: dict) -> dict:
         return {"result": "new", "issue": issue}
 
 
-def upvote_issue(issue_id: int) -> bool:
+def upvote_issue(issue_id: int, user: str) -> tuple[bool, int]:
     with ISSUE_LOCK:
         for issue in ISSUES:
             if issue["id"] == issue_id:
+                supporters = ISSUE_SUPPORTERS.setdefault(issue_id, set())
+                if user in supporters:
+                    return False, issue["supporters"]
+                supporters.add(user)
                 issue["supporters"] += 1
-                return True
-    return False
+                return True, issue["supporters"]
+    return False, 0
+
+
+def top_issues(limit: int = 5) -> list[dict]:
+    with ISSUE_LOCK:
+        return sorted(ISSUES, key=lambda issue: issue.get("supporters", 0), reverse=True)[:limit]
+
+
+def add_proposal(proposal: dict) -> dict:
+    with PROPOSAL_LOCK:
+        proposal["id"] = max((item["id"] for item in PROPOSALS), default=0) + 1
+        proposal["status"] = "Awaiting Approval"
+        proposal["votes"] = 0
+        PROPOSALS.append(proposal)
+        return proposal
+
+
+def proposal_status(proposal: dict) -> str:
+    status_labels = {
+        "Under review": "Under Professional Review",
+        "Approved": "Solution Approved",
+        "Non-feasible": "Marked Non-Feasible",
+        "Needs revision": "Revision Requested",
+    }
+    return status_labels.get(proposal.get("status", ""), proposal.get("status", "Awaiting Approval"))
+
+
+def issue_consideration_status(index: int) -> str:
+    return "Awaiting Solution" if index == 1 else "Awaiting Consideration"
+
+
+def vote_for_proposal(proposal_id: int, user: str) -> tuple[str, int]:
+    with PROPOSAL_LOCK:
+        proposal = next((item for item in PROPOSALS if item["id"] == proposal_id), None)
+        if proposal is None:
+            return "missing", 0
+        issue_id = proposal["issue_id"]
+    with ISSUE_LOCK:
+        if user not in ISSUE_SUPPORTERS.get(issue_id, set()):
+            return "ineligible", proposal["votes"]
+    with PROPOSAL_LOCK:
+        votes_for_issue = SOLUTION_VOTES.setdefault(issue_id, {})
+        previous_proposal_id = votes_for_issue.get(user)
+        if previous_proposal_id == proposal_id:
+            return "already_voted", proposal["votes"]
+        if previous_proposal_id is not None:
+            previous = next(item for item in PROPOSALS if item["id"] == previous_proposal_id)
+            previous["votes"] = max(0, previous["votes"] - 1)
+        votes_for_issue[user] = proposal_id
+        proposal["votes"] += 1
+        return "changed" if previous_proposal_id is not None else "voted", proposal["votes"]
+
+
+def proposal_batch(page: int, batch_size: int = 10) -> tuple[list[dict], int, int]:
+    with PROPOSAL_LOCK:
+        ordered = sorted(PROPOSALS, key=lambda item: item.get("votes", 0), reverse=True)
+    page_count = max(1, (len(ordered) + batch_size - 1) // batch_size)
+    page = max(1, min(page, page_count))
+    start = (page - 1) * batch_size
+    return ordered[start:start + batch_size], page, page_count
+
+
+def review_proposal(proposal_id: int, reviewer: str, decision: str, explanation: str) -> tuple[str, dict | None]:
+    allowed = {"Under review", "Approved", "Non-feasible", "Needs revision"}
+    if decision not in allowed or not explanation.strip() or len(explanation) > 2000:
+        return "invalid", None
+    with PROPOSAL_LOCK:
+        proposal = next((item for item in PROPOSALS if item["id"] == proposal_id), None)
+        if proposal is None:
+            return "missing", None
+        proposal["status"] = decision
+        proposal["review"] = {"reviewer": reviewer, "decision": decision, "explanation": explanation.strip()}
+        return "updated", proposal
+
+
+def professional_page(template: str, profile: dict, page: int) -> str:
+        batch, current_page, page_count = proposal_batch(page)
+        proposal_markup = "".join(professional_proposal_markup(item) for item in batch)
+        reviewed = sum(1 for item in PROPOSALS if item.get("review"))
+        return (template.replace("__USER__", html.escape(profile["name"]))
+            .replace("__AFFILIATION__", html.escape(profile["affiliation"]))
+            .replace("__ORGANIZATION__", html.escape(profile["organization"]))
+            .replace("__ORG_SHORT__", html.escape(profile["organization"][:22]))
+            .replace("__PAGE__", str(current_page)).replace("__PAGE_COUNT__", str(page_count))
+            .replace("__TOTAL__", str(len(PROPOSALS))).replace("__REVIEWED__", str(reviewed))
+            .replace("__PROPOSALS__", proposal_markup or '<p class="empty">No proposed solutions have been submitted yet.</p>')
+            .replace("__PREV__", str(max(1, current_page - 1))).replace("__NEXT__", str(min(page_count, current_page + 1)))
+            .replace("__PREV_DISABLED__", "disabled" if current_page == 1 else "")
+            .replace("__NEXT_DISABLED__", "disabled" if current_page == page_count else ""))
+
+
+def professional_proposal_markup(proposal: dict) -> str:
+    review = proposal.get("review")
+    review_markup = ""
+    if review:
+        review_markup = f'<div class="review-note"><b>{html.escape(review["decision"])}</b><br>{html.escape(review["explanation"])}<br><small>Reviewed by {html.escape(review["reviewer"])}</small></div>'
+    return (f'<article class="proposal"><p class="meta">{html.escape(proposal["issue_title"])} · {proposal.get("votes", 0)} community votes</p>'
+        f'<h2>{html.escape(proposal["title"])}</h2><p>{html.escape(proposal["description"])}</p>{proposal_visual_markup(proposal)}'
+        f'{review_markup if review else professional_review_form(proposal)}</article>')
+
+
+def professional_review_form(proposal: dict) -> str:
+    return (f'<form class="review-form review" data-id="{proposal["id"]}"><input type="hidden" name="proposal_id" value="{proposal["id"]}">'
+        '<label>Decision<select name="decision"><option>Under review</option><option>Approved</option><option>Non-feasible</option><option>Needs revision</option></select></label>'
+        '<label>Explanation<textarea name="explanation" required maxlength="2000" placeholder="Explain the feasibility, evidence, or required changes."></textarea></label>'
+        '<button type="submit">Save professional response</button></form>')
+
+
+def proposal_page(template: str, user: str, message: str = "") -> str:
+    issues = top_issues()
+    issue_markup = "".join(
+        f'<article class="issue"><span class="rank">#{index} · {issue.get("supporters", 0)} supporters</span><span class="status">{issue_consideration_status(index)}</span>'
+        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'<p class="muted">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("category", ""))}</p></article>'
+        for index, issue in enumerate(issues, 1)
+    )
+    options = "".join(
+        f'<option value="{issue["id"]}">#{index} · {html.escape(issue["title"])} ({issue.get("supporters", 0)} supporters)</option>'
+        for index, issue in enumerate(issues, 1)
+    )
+    proposal_markup = "".join(
+        f'<article class="proposal"><h2>{html.escape(item["title"])}</h2>'
+        f'<p>{html.escape(item["description"])}</p>'
+        f'{proposal_visual_markup(item)}'
+        f'<p class="proposal-votes"><b>{item["votes"]} solution votes</b> <button class="solution-vote" data-id="{item["id"]}">Vote for this solution</button></p>'
+        f'<span class="status">{html.escape(proposal_status(item))}</span></article>'
+        for item in reversed(PROPOSALS)
+    ) or '<p class="muted">No proposals yet. Be the first to add a practical idea.</p>'
+    return (template.replace("__USER__", html.escape(user)).replace("__MESSAGE__", message)
+            .replace("__ISSUES__", issue_markup).replace("__OPTIONS__", options).replace("__PROPOSALS__", proposal_markup))
+
+
+def proposal_visual_markup(proposal: dict) -> str:
+    visual_url = proposal.get("visual_url")
+    if not visual_url:
+        return ""
+    return f'<p><a href="{html.escape(visual_url)}">View proposal visual</a></p>'
+
+
+def proposed_solutions_markup() -> str:
+    with PROPOSAL_LOCK:
+        proposals = list(reversed(PROPOSALS))
+    if not proposals:
+        return '<p class="muted">No solution proposals yet. Add an idea for one of the top problems.</p>'
+    return "".join(
+        f'<article class="proposal"><p class="meta">For: {html.escape(item["issue_title"])}</p>'
+        f'<h2>{html.escape(item["title"])}</h2><p>{html.escape(item["description"])}</p>'
+        f'{proposal_visual_markup(item)}<p><b>{item["votes"]} solution votes</b> <button class="solution-vote" data-id="{item["id"]}">Vote for this solution</button></p>'
+        f'<span class="status">{html.escape(proposal_status(item))}</span></article>'
+        for item in proposals
+    )
 
 
 def proof_markup(issue: dict) -> str:
@@ -84,10 +243,9 @@ def render_page(user: str, latitude: float | None = None, longitude: float | Non
         f'<button class="upvote" data-id="{issue["id"]}">▲ Support this voice</button></div></article>'
         for issue in issues
     ) or '<p class="empty">No civic issues were found in this area yet.</p>'
-    payload = json_page(user, location_label, cards)
-    payload = payload.replace('<section class="intro">', '<section class="intro"><div class="actions"><button id="nearby">Near me</button><a class="nav-button" href="/">Map</a></div>')
-    payload = payload.replace('</script></body></html>', "document.getElementById('nearby').onclick=()=>navigator.geolocation.getCurrentPosition(position=>{window.location='/community?lat='+position.coords.latitude+'&lng='+position.coords.longitude},()=>alert('Location access was unavailable.'));</script></body></html>")
-    return payload
+    template = Path(__file__).with_name("templates").joinpath("community.html").read_text(encoding="utf-8")
+    return (template.replace("__USER__", html.escape(user)).replace("__LOCATION__", html.escape(location_label))
+            .replace("__ISSUES__", cards).replace("__PROPOSALS__", proposed_solutions_markup()))
 
 
 def json_page(user: str, location_label: str, cards: str) -> str:
