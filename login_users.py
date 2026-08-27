@@ -17,6 +17,16 @@ from pathlib import Path
 ACCOUNTS_FILE = Path(__file__).with_name("accounts.csv")
 DEMO_EMAIL = "citizen@example.com"
 DEMO_PASSWORD = "map123"
+PROFESSIONAL_DEMO_EMAIL = "engineer@example.gov"
+PROFESSIONAL_DEMO_PASSWORD = "gov12345"
+VERIFIED_PROFESSIONALS = {
+    PROFESSIONAL_DEMO_EMAIL: {
+        "name": "Arun Mehta",
+        "organization": "Bengaluru Urban Transport Authority",
+        "affiliation": "Government transport professional",
+        "verification": "Verified by organization",
+    }
+}
 CSV_FIELDS = ("email", "password_hash", "salt")
 HASH_ITERATIONS = 310_000
 
@@ -29,12 +39,20 @@ def _hash_password(password: str, salt: str | None = None) -> tuple[str, str]:
 
 def _ensure_accounts_file() -> None:
     if ACCOUNTS_FILE.exists():
+        with ACCOUNTS_FILE.open(newline="", encoding="utf-8") as file:
+            accounts = list(csv.DictReader(file))
+        if not any(account.get("email", "").lower() == PROFESSIONAL_DEMO_EMAIL for account in accounts):
+            professional_hash, professional_salt = _hash_password(PROFESSIONAL_DEMO_PASSWORD)
+            with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
+                csv.DictWriter(file, fieldnames=CSV_FIELDS).writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
         return
     password_hash, salt = _hash_password(DEMO_PASSWORD)
+    professional_hash, professional_salt = _hash_password(PROFESSIONAL_DEMO_PASSWORD)
     with ACCOUNTS_FILE.open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
         writer.writeheader()
         writer.writerow({"email": DEMO_EMAIL, "password_hash": password_hash, "salt": salt})
+        writer.writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
 
 
 def authenticate(email: str, password: str) -> bool:
@@ -64,6 +82,10 @@ def create_account(email: str, password: str) -> tuple[bool, str]:
     with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
         csv.DictWriter(file, fieldnames=CSV_FIELDS).writerow({"email": email, "password_hash": password_hash, "salt": salt})
     return True, "Account created."
+
+
+def professional_profile(email: str) -> dict | None:
+    return VERIFIED_PROFESSIONALS.get(email.strip().lower())
 
 
 _ensure_accounts_file()
