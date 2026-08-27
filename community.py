@@ -7,6 +7,13 @@ import math
 import threading
 from pathlib import Path
 
+try:
+    from .tagging import tag_issue
+    from .ranking import rank_issues
+except ImportError:
+    from tagging import tag_issue
+    from ranking import rank_issues
+
 ISSUES = [
     {"id": 1, "title": "Pothole on Outer Ring Road", "category": "Roads", "area": "Bengaluru", "lat": 12.9352, "lng": 77.6245, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
     {"id": 2, "title": "Garbage uncollected for four days", "category": "Waste", "area": "Indiranagar", "lat": 12.9784, "lng": 77.6408, "supporters": 18, "age": "4d ago", "description": "Household waste has accumulated beside the community park."},
@@ -38,6 +45,7 @@ def nearby_issues(latitude: float | None = None, longitude: float | None = None,
 
 
 def add_issue(issue: dict) -> dict:
+    issue = tag_issue(issue)
     try:
         from .AI_model import find_duplicate
     except ImportError:
@@ -57,6 +65,7 @@ def add_issue(issue: dict) -> dict:
         issue["id"] = max((item["id"] for item in ISSUES), default=0) + 1
         issue["supporters"] = 1
         issue["age"] = "just now"
+        issue["moderation_status"] = "Pending"
         ISSUES.append(issue)
         return {"result": "new", "issue": issue}
 
@@ -76,13 +85,14 @@ def upvote_issue(issue_id: int, user: str) -> tuple[bool, int]:
 
 def top_issues(limit: int = 5) -> list[dict]:
     with ISSUE_LOCK:
-        return sorted(ISSUES, key=lambda issue: issue.get("supporters", 0), reverse=True)[:limit]
+        return rank_issues(ISSUES)[:limit]
 
 
 def add_proposal(proposal: dict) -> dict:
     with PROPOSAL_LOCK:
         proposal["id"] = max((item["id"] for item in PROPOSALS), default=0) + 1
         proposal["status"] = "Awaiting Approval"
+        proposal["moderation_status"] = "Pending"
         proposal["votes"] = 0
         PROPOSALS.append(proposal)
         return proposal
@@ -157,6 +167,7 @@ def professional_page(template: str, profile: dict, page: int) -> str:
             .replace("__PAGE__", str(current_page)).replace("__PAGE_COUNT__", str(page_count))
             .replace("__TOTAL__", str(len(PROPOSALS))).replace("__REVIEWED__", str(reviewed))
             .replace("__PROPOSALS__", proposal_markup or '<p class="empty">No proposed solutions have been submitted yet.</p>')
+            .replace("__EVIDENCE__", professional_evidence_markup())
             .replace("__PREV__", str(max(1, current_page - 1))).replace("__NEXT__", str(min(page_count, current_page + 1)))
             .replace("__PREV_DISABLED__", "disabled" if current_page == 1 else "")
             .replace("__NEXT_DISABLED__", "disabled" if current_page == page_count else ""))
@@ -177,6 +188,16 @@ def professional_review_form(proposal: dict) -> str:
         '<label>Decision<select name="decision"><option>Under review</option><option>Approved</option><option>Non-feasible</option><option>Needs revision</option></select></label>'
         '<label>Explanation<textarea name="explanation" required maxlength="2000" placeholder="Explain the feasibility, evidence, or required changes."></textarea></label>'
         '<button type="submit">Save professional response</button></form>')
+
+
+def professional_evidence_markup() -> str:
+    return "".join(
+        f'<article class="evidence"><p class="meta">{html.escape(issue.get("problem_type", issue.get("category", "Other Civic Issue")))} · {html.escape(issue["area"])}</p>'
+        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'<p>Evidence: {"GPS verified" if issue.get("proof_status") == "verified" else "Needs review or additional evidence"}</p>'
+        f'<form class="evidence-form" data-id="{issue["id"]}"><input type="hidden" name="issue_id" value="{issue["id"]}"><select name="decision"><option>Verified</option><option>Needs evidence</option><option>Rejected</option></select><textarea name="explanation" required maxlength="1000" placeholder="Explain the evidence decision."></textarea><button type="submit">Save evidence review</button></form></article>'
+        for issue in ISSUES if issue.get("proof_id") or issue.get("evidence_review")
+    ) or '<p class="empty">No issue evidence is awaiting review.</p>'
 
 
 def proposal_page(template: str, user: str, message: str = "") -> str:
@@ -233,10 +254,10 @@ def proof_markup(issue: dict) -> str:
 
 
 def render_page(user: str, latitude: float | None = None, longitude: float | None = None) -> str:
-    issues = nearby_issues(latitude, longitude)
+    issues = rank_issues(nearby_issues(latitude, longitude))
     location_label = "Showing all civic voices" if latitude is None or longitude is None else "Showing voices within 2 km of your location"
     cards = "".join(
-        f'<article class="issue"><div class="meta">{html.escape(issue["category"])} · {html.escape(issue["area"])}</div>'
+        f'<article class="issue"><div class="meta">{html.escape(issue.get("problem_type", issue["category"]))} · {html.escape(issue["area"])}</div>'
         f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
         f'{proof_markup(issue)}'
         f'<div class="issue-footer"><span>{issue["supporters"]} supporters · {html.escape(issue["age"])}</span>'
