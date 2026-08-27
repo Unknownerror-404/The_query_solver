@@ -9,15 +9,28 @@ A small civic-issue reporting application with:
 - Category-aware geographic matching
 - Optional image proof with EXIF GPS verification
 
-This is currently a local Python demo. Issues, sessions, and uploaded proof images are kept in memory and are lost when the server stops. Accounts are stored in `accounts.csv`.
+This is currently a local Python demo. Issues, account records, and uploaded issue proof images are persisted in MySQL. Sessions are kept in memory and are lost when the server stops. Existing records in `accounts.csv` are imported into MySQL on first startup.
 
 ## Quick Start
 
-From the repository root:
+From the repository root, create a MySQL database and application user:
 
 ```powershell
-cd SIH26043
-python -m pip install Pillow sentence-transformers
+mysql -u root -p
+CREATE DATABASE civic_map;
+CREATE USER 'civic_app'@'localhost' IDENTIFIED BY 'change-this-password';
+GRANT ALL PRIVILEGES ON civic_map.* TO 'civic_app'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+Set the connection variables in PowerShell:
+
+```powershell
+$env:CIVIC_MAP_DB_USER = "civic_app"
+$env:CIVIC_MAP_DB_PASSWORD = "change-this-password"
+$env:CIVIC_MAP_DB_NAME = "civic_map"
+python -m pip install -r requirements.txt
 python map.py
 ```
 
@@ -52,6 +65,8 @@ For real use, create a new account instead of using the demo credentials.
 
 Verified professionals can open `/professionals` after signing in. The local demo account is `engineer@example.gov` with password `gov12345`. Its profile is associated with the Bengaluru Urban Transport Authority and is marked as verified by the organization.
 
+The administrator can open `/admin` to review pending issues. Register or import the account `admin@jharkhand.gov.in` to use the local administrator allowlist, then approve, reject, or archive reports with a reason.
+
 ## Solution Proposals
 
 The Community page links to `/proposals`. This page ranks the existing `ISSUES` collection by supporter count and presents the highest-supported problems as proposal targets. Signed-in users can submit a proposal with:
@@ -61,7 +76,7 @@ The Community page links to `/proposals`. This page ranks the existing `ISSUES` 
 - A description
 - An optional JPEG, PNG, or WebP visual up to 8 MB
 
-Proposal records currently live in the in-memory `PROPOSALS` collection and start in the `Submitted` state. Optional visuals are served from memory during the current server session. Production storage should move proposals and visuals to a database and object storage.
+Proposal records, optional visuals, votes, and professional reviews are persisted in the MySQL `proposals` table. Visuals are stored as `LONGBLOB` values and served through stable proposal-visual URLs after restart.
 
 Issue support is tracked per authenticated user in `ISSUE_SUPPORTERS`, so each user can support an issue only once. This creates the eligibility record needed for the next phase: allowing supporters of an issue to vote on its proposed solutions. Existing demonstration supporter totals are displayed, but only recorded user supports can establish voting eligibility.
 
@@ -84,7 +99,7 @@ Reviews are attached to proposals in memory and display the reviewer name, decis
 
 The report form accepts images up to 8 MB.
 
-When Pillow is installed, `AI_model.py` reads EXIF GPS metadata from the image and compares it with the selected map pin:
+When Pillow is installed, `AI_model.py` reads EXIF GPS metadata from the image and compares it with the selected map pin. Accepted proof images are stored as MySQL `LONGBLOB` values and remain available after a server restart:
 
 - GPS within 100 metres: proof is marked as location verified.
 - GPS more than 100 metres away: the report is rejected.
@@ -131,7 +146,9 @@ SIH26043/
   community.py      Shared issues, matching integration, community page, upvotes
   login_users.py    CSV-backed accounts and password hashing
   map.py            HTTP server, map page, API routes, image proof serving
-  accounts.csv      Local account data, created automatically if absent
+  storage.py        MySQL connection, schema initialization, and persistence operations
+  accounts.csv      Legacy account source, imported into MySQL if present
+  .env.example      MySQL configuration template
   README.md         This guide
 ```
 
@@ -142,13 +159,13 @@ SIH26043/
 Run the Python syntax check from the repository root:
 
 ```powershell
-python -m py_compile SIH26043\AI_model.py SIH26043\community.py SIH26043\map.py
+python -m py_compile AI_model.py community.py login_users.py map.py storage.py
 ```
 
 Check that the required packages are available:
 
 ```powershell
-python -c "import PIL, sentence_transformers; print('Dependencies available')"
+python -c "import PIL, sentence_transformers, mysql.connector; print('Dependencies available')"
 ```
 
 If the embedding model has not been downloaded before, the first duplicate check downloads the model from Hugging Face and may take several minutes. Later runs use the local cache.
@@ -176,7 +193,7 @@ Check that the original image still contains EXIF GPS metadata. Screenshots, edi
 
 ## Recommended Next Files for a Real Deployment
 
-The demo does not yet persist civic issues or proof files. The following files and services should be added before production:
+The demo does not yet persist proposals, sessions, proof files, or workflow records. The following files and services should be added before production:
 
 ```text
 SIH26043/
