@@ -17,13 +17,18 @@ LOGIN_PAGE_FILE = BASE_DIR / "templates" / "login.html"
 REGISTER_PAGE_FILE = BASE_DIR / "templates" / "register.html"
 PROPOSALS_PAGE_FILE = BASE_DIR / "templates" / "proposals.html"
 PROFESSIONALS_PAGE_FILE = BASE_DIR / "templates" / "professionals.html"
+MODERATION_PAGE_FILE = BASE_DIR / "templates" / "moderation.html"
 try:
-    from .login_users import authenticate, create_account, professional_profile
+    from .login_users import authenticate, create_account, is_moderator, professional_profile
     from .community import ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+    from .moderation import moderate_item, moderation_queue
+    from .evidence_review import review_issue_evidence
     from .AI_model import inspect_image_proof
 except ImportError:
-    from login_users import authenticate, create_account, professional_profile
+    from login_users import authenticate, create_account, is_moderator, professional_profile
     from community import ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+    from moderation import moderate_item, moderation_queue
+    from evidence_review import review_issue_evidence
     from AI_model import inspect_image_proof
 HOST = "127.0.0.1"
 PORT = 8000
@@ -191,7 +196,33 @@ class MapHandler(BaseHTTPRequestHandler):
             if user is None:
                 self.redirect("/login")
                 return
+            profile = professional_profile(user)
+            if profile is None:
+                self.send_error(403, "Verified professional access required")
+                return
             self.send_html(build_professionals_page(user))
+            return
+        if path == "/moderation":
+            user = self.session_user()
+            if user is None:
+                self.redirect("/login")
+                return
+            if not is_moderator(user):
+                self.send_error(403, "Moderator access required")
+                return
+            queue = "".join(
+                f'<article class="item"><p class="meta">{item["kind"].title()} · {item["reason"]}</p>'
+                f'<h2>{html.escape(item["title"])}</h2>'
+                f'<form class="moderation-form"><input type="hidden" name="kind" value="{item["kind"]}">'
+                f'<input type="hidden" name="item_id" value="{item["id"]}">'
+                f'<select name="decision"><option>Approved</option><option>Rejected</option><option>Archived</option></select>'
+                f'<textarea name="explanation" required placeholder="Explain this moderation decision."></textarea>'
+                f'<button type="submit">Save decision</button></form></article>'
+                for item in moderation_queue(ISSUES, PROPOSALS)
+            ) or '<p class="empty">The moderation queue is clear.</p>'
+            page = MODERATION_PAGE_FILE.read_text(encoding="utf-8")
+            page = page.replace("__USER__", html.escape(user)).replace("__QUEUE__", queue)
+            self.send_html(page)
             return
         if path not in ("/","/index.html"):
             self.send_error(404)
@@ -253,6 +284,58 @@ class MapHandler(BaseHTTPRequestHandler):
                 PROOF_IMAGES[proof_id] = (proof_type,proof_bytes)
                 created["issue"]["proof_id"] = proof_id
             self.send_json(created,status=201 if created["result"] == "new" else 200)
+            return
+        if path.startswith("/api/issues/") and path.endswith("/evidence-review"):
+            user = self.session_user()
+            if user is None:
+                self.send_error(401)
+                return
+            profile = professional_profile(user)
+            if profile is None:
+                self.send_error(403, "Verified professional access required")
+                return
+            try:
+                issue_id = int(path.split("/")[3])
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                result, issue = review_issue_evidence(
+                    ISSUES, issue_id, profile["name"],
+                    str(payload["decision"]), str(payload["explanation"])
+                )
+            except (ValueError, KeyError, json.JSONDecodeError):
+                self.send_json({"message": "Provide a valid evidence decision and explanation."}, status=400)
+                return
+            if result == "missing":
+                self.send_json({"message": "That issue no longer exists."}, status=404)
+            elif result == "invalid":
+                self.send_json({"message": "Choose a valid evidence decision and explanation."}, status=400)
+            else:
+                self.send_json({"result": result, "issue": issue})
+            return
+        if path == "/api/moderation":
+            user = self.session_user()
+            if user is None:
+                self.send_error(401)
+                return
+            if not is_moderator(user):
+                self.send_error(403, "Moderator access required")
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                result, item = moderate_item(
+                    ISSUES, PROPOSALS, str(payload["kind"]), int(payload["item_id"]),
+                    str(payload["decision"]), user, str(payload["explanation"])
+                )
+            except (ValueError, KeyError, json.JSONDecodeError):
+                self.send_json({"message": "Provide a valid moderation decision and explanation."}, status=400)
+                return
+            if result == "missing":
+                self.send_json({"message": "That item no longer exists."}, status=404)
+            elif result == "invalid":
+                self.send_json({"message": "Choose a valid moderation decision and explanation."}, status=400)
+            else:
+                self.send_json({"result": result, "item": item})
             return
         if path == "/api/proposals":
             user = self.session_user()
