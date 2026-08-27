@@ -27,6 +27,7 @@ VERIFIED_PROFESSIONALS = {
         "verification": "Verified by organization",
     }
 }
+MODERATOR_EMAILS = {PROFESSIONAL_DEMO_EMAIL}
 CSV_FIELDS = ("email", "password_hash", "salt")
 HASH_ITERATIONS = 310_000
 
@@ -86,6 +87,10 @@ def create_account(email: str, password: str) -> tuple[bool, str]:
 
 def professional_profile(email: str) -> dict | None:
     return VERIFIED_PROFESSIONALS.get(email.strip().lower())
+
+
+def is_moderator(email: str) -> bool:
+    return email.strip().lower() in MODERATOR_EMAILS
 
 
 _ensure_accounts_file()
