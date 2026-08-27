@@ -13,10 +13,10 @@ except ImportError:
     from storage import add_issue_support, initialise, insert_issue, load_issues, update_issue
 
 DEFAULT_ISSUES = [
-    {"id": 1, "title": "Pothole on Outer Ring Road", "category": "Roads", "area": "Bengaluru", "lat": 12.9352, "lng": 77.6245, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
-    {"id": 2, "title": "Garbage uncollected for four days", "category": "Waste", "area": "Indiranagar", "lat": 12.9784, "lng": 77.6408, "supporters": 18, "age": "4d ago", "description": "Household waste has accumulated beside the community park."},
-    {"id": 3, "title": "Water cut, no notice", "category": "Water", "area": "Jayanagar", "lat": 12.9250, "lng": 77.5938, "supporters": 42, "age": "36h ago", "description": "The neighbourhood has had no supply since yesterday morning."},
-    {"id": 4, "title": "Streetlight outage at junction", "category": "Streetlights", "area": "Koramangala", "lat": 12.9352, "lng": 77.6245, "supporters": 12, "age": "2d ago", "description": "Three streetlights are out, making the junction difficult to cross at night."},
+    {"id": 1, "title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
+    {"id": 2, "title": "Garbage uncollected for four days", "category": "Waste", "area": "Bank More, Dhanbad", "lat": 23.7957, "lng": 86.4304, "supporters": 18, "age": "4d ago", "description": "Household waste has accumulated beside the community park."},
+    {"id": 3, "title": "Water cut, no notice", "category": "Water", "area": "Sakchi, Jamshedpur", "lat": 22.8046, "lng": 86.2029, "supporters": 42, "age": "36h ago", "description": "The neighbourhood has had no supply since yesterday morning."},
+    {"id": 4, "title": "Streetlight outage at junction", "category": "Streetlights", "area": "Tower Chowk, Deoghar", "lat": 24.4857, "lng": 86.6947, "supporters": 12, "age": "2d ago", "description": "Three streetlights are out, making the junction difficult to cross at night."},
 ]
 JHARKHAND_DISTRICTS = (
     "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum",

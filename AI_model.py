@@ -179,3 +179,30 @@ def _exif_coordinate(gps: Any, value_key: int, reference_key: int) -> float | No
 def find_duplicate(report: dict[str, Any], existing_issues: Iterable[dict[str, Any]]) -> DuplicateMatch | None:
     """Return the strongest match, or None when no nearby candidate exists."""
     return DETECTOR.find_match(report, existing_issues)
+
+
+def sanitize_and_reencode_image(image_bytes: bytes, default_type: str = "image/jpeg") -> tuple[bytes, str]:
+    """Validate, strip EXIF privacy metadata, and re-encode uploaded image data."""
+    if not image_bytes:
+        return b"", default_type
+
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return image_bytes, default_type
+
+    try:
+        with Image.open(BytesIO(image_bytes)) as img:
+            img = ImageOps.exif_transpose(img)
+            target_format = img.format if img.format in {"JPEG", "PNG", "WEBP"} else "JPEG"
+            content_type = f"image/{target_format.lower()}"
+            
+            output = BytesIO()
+            if target_format == "JPEG" and img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            
+            img.save(output, format=target_format, optimize=True)
+            return output.getvalue(), content_type
+    except Exception:
+        return image_bytes, default_type
+
