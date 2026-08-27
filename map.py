@@ -19,20 +19,25 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGIN_PAGE_FILE = BASE_DIR / "templates" / "login.html"
+PROPOSAL_PAGE_FILE = BASE_DIR / "templates" / "solution_proposals.html"
+PROFESSIONAL_PAGE_FILE = BASE_DIR / "templates" / "professional_portal.html"
 
 try:
-	from .login_users import authenticate, create_account
-	from .community import ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+	from .login_users import authenticate, create_account, professional_profile
+	from .community import ISSUES, PROPOSALS, add_issue, add_proposal, nearby_issues, proposal_page, professional_page, render_page, review_proposal, upvote_issue, vote_for_proposal
 	from .AI_model import inspect_image_proof
+	from .spam import SPAM_GUARD
 except ImportError:
-	from login_users import authenticate, create_account
-	from community import ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+	from login_users import authenticate, create_account, professional_profile
+	from community import ISSUES, PROPOSALS, add_issue, add_proposal, nearby_issues, proposal_page, professional_page, render_page, review_proposal, upvote_issue, vote_for_proposal
 from AI_model import inspect_image_proof
+from spam import SPAM_GUARD
 
 HOST = "127.0.0.1"
 PORT = 8000
 SESSIONS: dict[str, str] = {}
 PROOF_IMAGES: dict[str, tuple[str, bytes]] = {}
+PROPOSAL_IMAGES: dict[str, tuple[str, bytes]] = {}
 
 
 def load_login_page(error=""):
@@ -111,6 +116,32 @@ class MapHandler(BaseHTTPRequestHandler):
 				return
 			self.send_payload(proof[1], content_type=proof[0])
 			return
+		if path.startswith("/proposal-visual/"):
+			visual = PROPOSAL_IMAGES.get(path.split("/", 2)[2])
+			if visual is None:
+				self.send_error(404)
+				return
+			self.send_payload(visual[1], content_type=visual[0])
+			return
+		if path == "/professionals":
+			profile = professional_profile(self.session_user() or "")
+			if profile is None:
+				self.send_error(403, "Verified professional access required")
+				return
+			try:
+				page_number = int(parse_qs(urlsplit(self.path).query).get("page", ["1"])[0])
+			except ValueError:
+				page_number = 1
+			page = PROFESSIONAL_PAGE_FILE.read_text(encoding="utf-8")
+			self.send_html(professional_page(page, profile, page_number))
+			return
+		if path == "/proposals":
+			if self.session_user() is None:
+				self.redirect("/login")
+				return
+			page = PROPOSAL_PAGE_FILE.read_text(encoding="utf-8")
+			self.send_html(proposal_page(page, self.session_user() or ""))
+			return
 		if path == "/community":
 			if self.session_user() is None:
 				self.redirect("/login")
@@ -135,18 +166,103 @@ class MapHandler(BaseHTTPRequestHandler):
 
 	def do_POST(self) -> None:
 		path = urlsplit(self.path).path
+		if path.startswith("/api/proposals/") and path.endswith("/vote"):
+			if self.session_user() is None:
+				self.send_error(401)
+				return
+			spam = SPAM_GUARD.check_action(self.session_user() or "", self.client_address[0], "solution_vote")
+			if not spam.allowed:
+				self.send_json({"message": spam.message}, status=429)
+				return
+			try:
+				proposal_id = int(path.split("/")[3])
+			except (IndexError, ValueError):
+				self.send_error(400)
+				return
+			result, votes = vote_for_proposal(proposal_id, self.session_user() or "")
+			if result == "missing":
+				self.send_json({"message": "That solution proposal no longer exists."}, status=404)
+			elif result == "ineligible":
+				self.send_json({"message": "Support this issue before voting on its solutions."}, status=403)
+			else:
+				self.send_json({"result": result, "votes": votes})
+			return
+		if path.startswith("/api/proposals/") and path.endswith("/review"):
+			profile = professional_profile(self.session_user() or "")
+			if profile is None:
+				self.send_error(403, "Verified professional access required")
+				return
+			spam = SPAM_GUARD.check_action(self.session_user() or "", self.client_address[0], "professional_review")
+			if not spam.allowed:
+				self.send_json({"message": spam.message}, status=429)
+				return
+			try:
+				proposal_id = int(path.split("/")[3])
+				length = int(self.headers.get("Content-Length", "0"))
+				payload = json.loads(self.rfile.read(length).decode("utf-8"))
+				result, proposal = review_proposal(proposal_id, profile["name"], str(payload["decision"]), str(payload["explanation"]))
+			except (ValueError, KeyError, json.JSONDecodeError):
+				self.send_json({"message": "Provide a valid review decision and explanation."}, status=400)
+				return
+			if result == "missing":
+				self.send_json({"message": "That solution proposal no longer exists."}, status=404)
+			elif result == "invalid":
+				self.send_json({"message": "Choose a valid decision and provide an explanation."}, status=400)
+			else:
+				self.send_json({"result": result, "proposal": proposal})
+			return
+		if path == "/api/proposals":
+			if self.session_user() is None:
+				self.send_error(401)
+				return
+			length = int(self.headers.get("Content-Length", "0"))
+			try:
+				payload = json.loads(self.rfile.read(length).decode("utf-8"))
+				spam = SPAM_GUARD.check_submission(self.session_user() or "", self.client_address[0], payload, "proposal")
+				if not spam.allowed:
+					self.send_json({"message": spam.message}, status=429)
+					return
+				issue_id = int(payload["issue_id"])
+				title = str(payload["title"]).strip()
+				description = str(payload["description"]).strip()
+				issue = next(item for item in ISSUES if item["id"] == issue_id)
+				if not title or not description or len(title) > 120 or len(description) > 3000:
+					raise ValueError
+				visual = base64.b64decode(payload.get("visual", ""), validate=True) if payload.get("visual") else b""
+				visual_type = payload.get("visual_type", "")
+				if visual and visual_type not in {"image/jpeg", "image/png", "image/webp"}:
+					raise ValueError
+				if len(visual) > 8 * 1024 * 1024:
+					raise ValueError
+				proposal = add_proposal({"issue_id": issue_id, "issue_title": issue["title"], "title": title, "description": description, "author": self.session_user() or ""})
+				if visual:
+					visual_id = secrets.token_urlsafe(12)
+					PROPOSAL_IMAGES[visual_id] = (visual_type, visual)
+					proposal["visual_url"] = f"/proposal-visual/{visual_id}"
+				self.send_json(proposal, status=201)
+			except (ValueError, KeyError, StopIteration, json.JSONDecodeError):
+				self.send_json({"message": "Please choose a valid issue and provide a title and description."}, status=400)
+			return
 		if path == "/api/issues" or path == "/api/issues/" or path.startswith("/api/issues/") and path.endswith("/upvote"):
 			if self.session_user() is None:
 				self.send_error(401)
 				return
 			if path.endswith("/upvote"):
+				spam = SPAM_GUARD.check_action(self.session_user() or "", self.client_address[0], "issue_support")
+				if not spam.allowed:
+					self.send_json({"message": spam.message}, status=429)
+					return
 				try:
 					issue_id = int(path.split("/")[3])
 				except (IndexError, ValueError):
 					self.send_error(400)
 					return
-				if not upvote_issue(issue_id):
-					self.send_error(404)
+				supported, supporters = upvote_issue(issue_id, self.session_user() or "")
+				if not supported:
+					if supporters:
+						self.send_json({"message": "You have already supported this issue.", "supporters": supporters}, status=409)
+					else:
+						self.send_error(404)
 					return
 				issue = next(item for item in ISSUES if item["id"] == issue_id)
 				self.send_json({"supporters": issue["supporters"]})
@@ -154,6 +270,10 @@ class MapHandler(BaseHTTPRequestHandler):
 			length = int(self.headers.get("Content-Length", "0"))
 			try:
 				issue = json.loads(self.rfile.read(length).decode("utf-8"))
+				spam = SPAM_GUARD.check_submission(self.session_user() or "", self.client_address[0], issue, "issue")
+				if not spam.allowed:
+					self.send_json({"message": spam.message}, status=429)
+					return
 				issue["lat"] = float(issue["lat"])
 				issue["lng"] = float(issue["lng"])
 				encoded_proof = issue.pop("proof_image", "")
