@@ -1,690 +1,208 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Civic Map · Sign in</title>
-
-    <style>
-        :root {
-            --ink: #172b28;
-            --muted: #667773;
-            --paper: #f5f1e8;
-            --card: #fffdf8;
-            --accent: #e65f38;
-            --mustard: #c48622;
-            --teal: #317c91;
-            --line: #d9d7cd;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            color: var(--ink);
-            background: var(--paper);
-            font-family: Arial, sans-serif;
-        }
-
-        .page {
-            min-height: 100vh;
-            display: grid;
-            grid-template-columns: 1.15fr .85fr;
-            overflow: hidden;
-        }
-
-        .hero {
-            position: relative;
-            min-height: 100vh;
-            padding: 42px 54px;
-            overflow: hidden;
-            background:
-                radial-gradient(
-                    circle at 72% 25%,
-                    rgba(49, 124, 145, .1),
-                    transparent 26%
-                ),
-                radial-gradient(
-                    circle at 28% 70%,
-                    rgba(230, 95, 56, .08),
-                    transparent 30%
-                ),
-                var(--paper);
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 13px;
-            position: relative;
-            z-index: 5;
-        }
-
-        .brand-mark {
-            width: 50px;
-            height: 50px;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            background: var(--ink);
-            color: white;
-            font: 700 24px Georgia, serif;
-        }
-
-        .brand-name {
-            font: 700 22px Georgia, serif;
-            letter-spacing: -.4px;
-        }
-
-        .brand-subtitle {
-            margin-top: 3px;
-            color: var(--accent);
-            font: 700 9px Arial, sans-serif;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 4;
-            max-width: 620px;
-            margin-top: 92px;
-        }
-
-        .eyebrow {
-            margin: 0 0 12px;
-            color: var(--accent);
-            font: 700 11px Arial, sans-serif;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .hero h1 {
-            margin: 0;
-            max-width: 590px;
-            font: 500 clamp(54px, 6vw, 82px)/.94 Georgia, serif;
-            letter-spacing: -3px;
-        }
-
-        .hero h1 span {
-            color: var(--accent);
-        }
-
-        .hero-description {
-            max-width: 480px;
-            margin: 28px 0 0;
-            color: var(--muted);
-            font: 16px/1.7 Arial, sans-serif;
-        }
-
-        .map-art {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            opacity: .72;
-        }
-
-        .map-line {
-            position: absolute;
-            height: 2px;
-            background: #dedbd1;
-            transform-origin: left center;
-        }
-
-        .line-1 {
-            width: 540px;
-            top: 26%;
-            left: 43%;
-            transform: rotate(25deg);
-        }
-
-        .line-2 {
-            width: 500px;
-            top: 39%;
-            left: 38%;
-            transform: rotate(-18deg);
-        }
-
-        .line-3 {
-            width: 620px;
-            top: 55%;
-            left: 40%;
-            transform: rotate(12deg);
-        }
-
-        .line-4 {
-            width: 440px;
-            top: 67%;
-            left: 45%;
-            transform: rotate(-28deg);
-        }
-
-        .line-5 {
-            width: 430px;
-            top: 79%;
-            left: 35%;
-            transform: rotate(17deg);
-        }
-
-        .map-road {
-            position: absolute;
-            width: 4px;
-            background: #e6e1d6;
-            transform-origin: top center;
-        }
-
-        .road-1 {
-            height: 620px;
-            left: 64%;
-            top: 7%;
-            transform: rotate(31deg);
-        }
-
-        .road-2 {
-            height: 540px;
-            left: 76%;
-            top: 19%;
-            transform: rotate(-25deg);
-        }
-
-        .road-3 {
-            height: 500px;
-            left: 52%;
-            top: 36%;
-            transform: rotate(66deg);
-        }
-
-        .marker {
-            position: absolute;
-            z-index: 3;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .marker-pin {
-            width: 40px;
-            height: 40px;
-            display: grid;
-            place-items: center;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            box-shadow: 0 8px 18px rgba(23, 43, 40, .14);
-        }
-
-        .marker-pin span {
-            transform: rotate(45deg);
-            color: white;
-            font: 700 13px Arial, sans-serif;
-        }
-
-        .marker-label {
-            padding: 8px 12px;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            background: rgba(255, 253, 248, .9);
-            box-shadow: 0 5px 15px rgba(23, 43, 40, .06);
-            font: 600 11px Arial, sans-serif;
-            white-space: nowrap;
-        }
-
-        .marker-road {
-            top: 19%;
-            left: 72%;
-        }
-
-        .marker-road .marker-pin {
-            background: var(--accent);
-        }
-
-        .marker-water {
-            top: 36%;
-            left: 76%;
-        }
-
-        .marker-water .marker-pin {
-            background: var(--teal);
-        }
-
-        .marker-waste {
-            top: 51%;
-            left: 60%;
-        }
-
-        .marker-waste .marker-pin {
-            background: var(--mustard);
-        }
-
-        .marker-light {
-            top: 68%;
-            left: 73%;
-        }
-
-        .marker-light .marker-pin {
-            background: var(--accent);
-        }
-
-        .explore {
-            display: inline-flex;
-            align-items: center;
-            gap: 18px;
-            margin-top: 36px;
-            padding: 13px 17px;
-            border: 1px solid var(--ink);
-            border-radius: 7px;
-            color: var(--ink);
-            background: transparent;
-            text-decoration: none;
-            font: 700 13px Arial, sans-serif;
-            transition: .2s ease;
-            position: relative;
-            z-index: 5;
-        }
-
-        .explore:hover {
-            background: var(--ink);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .explore-arrow {
-            font-size: 20px;
-            line-height: 1;
-        }
-
-        .login-area {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 42px;
-            background: rgba(255, 253, 248, .68);
-            border-left: 1px solid var(--line);
-        }
-
-        .login {
-            width: min(500px, 100%);
-            padding: 46px;
-            background: rgba(255, 253, 248, .97);
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            box-shadow:
-                0 24px 60px rgba(23, 43, 40, .1),
-                0 5px 15px rgba(23, 43, 40, .05);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(
-                90deg,
-                var(--accent),
-                var(--mustard),
-                var(--teal)
-            );
-        }
-
-        .login-eyebrow {
-            margin: 22px 0 10px;
-            color: var(--accent);
-            font: 700 11px Arial, sans-serif;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-        .login h2 {
-            margin: 0;
-            font: 500 clamp(42px, 4vw, 58px)/1 Georgia, serif;
-            letter-spacing: -2px;
-        }
-        .login-intro {
-            margin: 18px 0 32px;
-            color: var(--muted);
-            font: 14px/1.65 Arial, sans-serif;
-        }
-        .error {
-            margin: 0 0 18px;
-            padding: 12px 14px;
-            border: 1px solid #efb9aa;
-            border-radius: 9px;
-            background: #fff0eb;
-            color: #8b2e1c;
-            font: 13px Arial, sans-serif;
-        }
-        label {
-            display: block;
-            margin-top: 18px;
-            color: var(--ink);
-            font: 700 12px Arial, sans-serif;
-        }
-        input {
-            display: block;
-            width: 100%;
-            margin-top: 8px;
-            padding: 14px;
-            border: 1px solid var(--line);
-            border-radius: 9px;
-            outline: none;
-            background: white;
-            color: var(--ink);
-            font: 14px Arial, sans-serif;
-            transition:
-                border-color .2s,
-                box-shadow .2s,
-                background .2s;
-        }
-        input::placeholder {
-            color: #9a9f9c;
-        }
-        input:hover {
-            border-color: #c5c9c4;
-        }
-        input:focus {
-            border-color: var(--accent);
-            background: #fffefa;
-            box-shadow: 0 0 0 4px rgba(230, 95, 56, .1);
-        }
-        .submit {
-            width: 100%;
-            margin-top: 27px;
-            padding: 15px 18px;
-            border: 0;
-            border-radius: 9px;
-            background: var(--ink);
-            color: white;
-            font: 700 13px Arial, sans-serif;
-            letter-spacing: .3px;
-            cursor: pointer;
-            transition: .2s ease;
-        }
-        .submit:hover {
-            background: #24413c;
-            transform: translateY(-1px);
-            box-shadow: 0 8px 18px rgba(23, 43, 40, .16);
-        }
-        .divider {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 28px 0 22px;
-            color: #9a9f9c;
-            font: 11px Arial, sans-serif;
-        }
-        .divider::before,
-        .divider::after {
-            content: "";
-            height: 1px;
-            flex: 1;
-            background: var(--line);
-        }
-        .divider span {
-            width: 30px;
-            height: 30px;
-            display: grid;
-            place-items: center;
-            border: 1px solid var(--line);
-            border-radius: 50%;
-            background: var(--card);
-        }
-        .register {
-            text-align: center;
-            color: var(--muted);
-            font: 13px Arial, sans-serif;
-        }
-        .register a {
-            margin-left: 5px;
-            color: var(--accent);
-            font-weight: 700;
-            text-decoration: none;
-        }
-        .register a:hover {
-            text-decoration: underline;}
-        .privacy {
-            display: flex;
-            align-items: center;
-            gap: 13px;
-            margin-top: 30px;
-            padding: 15px;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            background: #f1ece2;}
-        .privacy-icon {
-            width: 38px;
-            height: 38px;
-            flex-shrink: 0;
-            display: grid;
-            place-items: center;
-            border-radius: 50%;
-            background: #dfe9df;
-            color: var(--ink);
-            font-size: 18px;}
-        .privacy strong {
-            display: block;
-            margin-bottom: 3px;
-            font: 700 12px Arial, sans-serif;
-        }
-        .privacy p {
-            margin: 0;
-            color: var(--muted);
-            font: 11px/1.45 Arial, sans-serif;
-        }
-        .login-footer {
-            margin-top: 28px;
-            text-align: center;
-            color: #8a918d;
-            font: 11px Arial, sans-serif;
-        }
-        @media (max-width: 1050px) {
-            .page {
-                grid-template-columns: 1fr;
-            }
-            .hero {
-                min-height: 650px;
-            }
-            .login-area {
-                min-height: 650px;
-                border-left: 0;
-                border-top: 1px solid var(--line);
-            }}
-        @media (max-width: 650px) {
-            .hero {
-                padding: 30px 24px;
-                min-height: 620px;
-            }
-            .hero-content {
-                margin-top: 65px;
-            }
-            .hero h1 {
-                font-size: 55px;
-                letter-spacing: -2px;
-            }
-            .hero-description {
-                font-size: 14px;
-            }
-            .marker {
-                transform: scale(.8);
-            }
-            .marker-road {
-                left: 63%;
-            }
-            .marker-water {
-                left: 67%;
-            }
-            .marker-waste {
-                left: 54%;
-            }
-            .marker-light {
-                left: 64%;
-            }
-            .login-area {
-                padding: 24px 16px;
-                min-height: auto;
-            }
-            .login {
-                padding: 34px 25px;
-            }
-            .login h2 {
-                font-size: 43px;
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · Civic Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Georgia,serif}
+body{min-height:100vh;background:var(--paper);color:var(--ink);overflow:hidden}
+.page{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(420px,.75fr)}
+.map-side{position:relative;min-height:100vh;overflow:hidden;background:#dfe8df;border-right:1px solid var(--line)}
+#login-map{position:absolute;inset:0;z-index:0}
+.map-side:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(245,241,232,.70) 0%,rgba(245,241,232,.30) 40%,rgba(245,241,232,.04) 72%,rgba(245,241,232,0) 100%)}
+.brand{position:absolute;top:28px;left:34px;z-index:5;display:flex;align-items:center;gap:12px}
+.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
+.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
+.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.hero{position:absolute;left:8%;top:33%;z-index:5;width:min(510px,72%)}
+.eyebrow{margin:0 0 9px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:2px;text-transform:uppercase}
+.hero h1{margin:0;font-size:clamp(48px,6vw,78px);line-height:.91;letter-spacing:-3px;font-weight:500}
+.hero h1 span{display:block;color:var(--accent)}
+.hero-text{max-width:480px;margin:25px 0 27px;color:var(--muted);font:14px/1.65 Arial,sans-serif}
+.explore{display:inline-flex;align-items:center;gap:18px;padding:12px 15px;border:1px solid var(--ink);border-radius:8px;background:rgba(255,253,248,.82);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
+.explore:hover{background:var(--ink);color:white;transform:translateY(-2px)}
+.explore span{font-size:16px}
+.issue-pin{position:absolute;z-index:6;display:flex;align-items:center;gap:7px;pointer-events:none}
+.issue-marker{width:36px;height:42px;display:grid;place-items:center;color:white;font:700 12px Arial,sans-serif;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 5px 14px rgba(23,43,40,.22);border:2px solid rgba(255,255,255,.9)}
+.issue-marker span{transform:rotate(45deg)}
+.issue-label{padding:7px 10px;border:1px solid rgba(23,43,40,.1);border-radius:7px;background:rgba(255,253,248,.94);box-shadow:0 4px 12px rgba(23,43,40,.08);color:var(--ink);font:600 10px Arial,sans-serif;white-space:nowrap}
+.road{top:24%;right:11%}
+.road .issue-marker{background:var(--accent)}
+.water{top:42%;right:8%}
+.water .issue-marker{background:var(--blue)}
+.waste{top:57%;right:22%}
+.waste .issue-marker{background:var(--gold)}
+.light{top:73%;right:11%}
+.light .issue-marker{background:#d75b47}
+.map-caption{position:absolute;bottom:25px;left:34px;z-index:5;color:var(--muted);font:10px Arial,sans-serif}
+.map-caption span{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--accent)}
+.login-side{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:34px;overflow:hidden;background:#dfe8df}
+#login-panel-map{position:absolute;inset:0;z-index:0}
+.login-side:before{content:"";position:absolute;inset:0;z-index:1;background:rgba(245,241,232,.25);pointer-events:none}
+.login{position:relative;z-index:3;width:min(470px,100%);padding:43px;background:rgba(255,253,248,.82);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);border:1px solid rgba(217,215,205,.95);border-radius:18px;box-shadow:0 24px 60px rgba(23,43,40,.18),0 4px 12px rgba(23,43,40,.08);overflow:hidden}
+.login:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
+.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:27px}
+.login-brand-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:var(--ink);color:white;font:700 14px Arial,sans-serif}
+.login-brand-name{font:700 13px Arial,sans-serif}
+.login-eyebrow{margin:0 0 8px;color:var(--accent);font:700 10px Arial,sans-serif;letter-spacing:2px;text-transform:uppercase}
+.login h2{margin:0;font-size:clamp(38px,4vw,52px);line-height:1;letter-spacing:-2px;font-weight:500}
+.intro{margin:16px 0 27px;color:var(--muted);font:13px/1.65 Arial,sans-serif}
+.error{margin:0 0 18px;padding:12px 14px;border:1px solid #efb9aa;border-radius:9px;background:#fff0eb;color:#8b2e1c;font:12px Arial,sans-serif}
+label{display:block;margin-top:17px;color:var(--ink);font:600 11px Arial,sans-serif}
+input{display:block;width:100%;margin-top:7px;padding:13px 14px;border:1px solid rgba(217,215,205,.95);border-radius:9px;outline:none;background:rgba(255,255,255,.88);color:var(--ink);font:13px Arial,sans-serif;transition:border-color .2s,box-shadow .2s,background .2s}
+input::placeholder{color:#9a9f9c}
+input:hover{border-color:#c5c9c4}
+input:focus{border-color:var(--accent);background:#fffefa;box-shadow:0 0 0 4px rgba(230,95,56,.11)}
+button{width:100%;margin-top:25px;padding:14px 16px;border:0;border-radius:9px;background:var(--ink);color:white;font:700 12px Arial,sans-serif;letter-spacing:.3px;cursor:pointer;transition:transform .15s,background .2s,box-shadow .2s}
+button:hover{background:#24413c;transform:translateY(-1px);box-shadow:0 8px 18px rgba(23,43,40,.18)}
+button:active{transform:translateY(0)}
+.account-link{display:block;margin-top:10px;color:var(--ink);font:12px Arial,sans-serif;text-decoration:underline}
+.account-link:hover{color:var(--accent)}
+.divider{display:flex;align-items:center;gap:12px;margin:25px 0;color:#929996;font:10px Arial,sans-serif}
+.divider:before,.divider:after{content:"";flex:1;height:1px;background:var(--line)}
+.create{text-align:center;color:var(--muted);font:11px Arial,sans-serif}
+.create a{color:var(--accent);font-weight:700;text-decoration:none}
+.create a:hover{text-decoration:underline}
+.safe{display:flex;align-items:center;gap:11px;margin-top:24px;padding:13px;border:1px solid rgba(217,215,205,.95);border-radius:9px;background:rgba(241,236,226,.82)}
+.safe-icon{width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:50%;background:#e3eadf;color:#657a39;font:700 13px Arial,sans-serif}
+.safe strong{display:block;color:var(--ink);font:700 10px Arial,sans-serif}
+.safe span{display:block;margin-top:2px;color:var(--muted);font:9px Arial,sans-serif}
+.footer{margin-top:21px;text-align:center;color:#68736f;font:10px Arial,sans-serif}
+.leaflet-control-attribution{background:rgba(255,253,248,.78)!important}
+@media(max-width:900px){
+body{overflow:auto}
+.page{grid-template-columns:1fr}
+.map-side{min-height:520px;height:58vh}
+.login-side{min-height:620px;padding:30px 20px}
+}
+@media(max-width:600px){
+.map-side{min-height:470px;height:55vh}
+.brand{left:20px;top:20px}
+.hero{left:20px;top:29%;width:70%}
+.hero h1{font-size:48px;letter-spacing:-2px}
+.hero-text{font-size:12px;margin:18px 0}
+.issue-pin{transform:scale(.8)}
+.road{right:4%}
+.water{right:2%}
+.waste{right:13%}
+.light{right:3%}
+.login{padding:31px 24px}
+}
+</style>
 </head>
 <body>
-    <div class="page">
-        <section class="hero">
-            <div class="brand">
-                <div class="brand-mark">
-                    C
-                </div>
-                <div>
-                    <div class="brand-name">
-                        Civic Map
-                    </div>
-                    <div class="brand-subtitle">
-                        Live civic record
-                    </div>
-                </div>
-            </div>
-            <div class="map-art">
-                <div class="map-line line-1"></div>
-                <div class="map-line line-2"></div>
-                <div class="map-line line-3"></div>
-                <div class="map-line line-4"></div>
-                <div class="map-line line-5"></div>
-                <div class="map-road road-1"></div>
-                <div class="map-road road-2"></div>
-                <div class="map-road road-3"></div>
-            </div>
-            <div class="marker marker-road">
-                <div class="marker-pin">
-                    <span>R</span>
-                </div>
-                <div class="marker-label">
-                    Road issue
-                </div>
-            </div>
-            <div class="marker marker-water">
-                <div class="marker-pin">
-                    <span>W</span>
-                </div>
-                <div class="marker-label">
-                    Water problem
-                </div>
-            </div>
-            <div class="marker marker-waste">
-                <div class="marker-pin">
-                    <span>W</span>
-                </div>
-                <div class="marker-label">
-                    Waste
-                </div>
-            </div>
-            <div class="marker marker-light">
-                <div class="marker-pin">
-                    <span>L</span>
-                </div>
-                <div class="marker-label">
-                    Streetlight outage
-                </div>
-            </div>
-            <div class="hero-content">
-                <p class="eyebrow">
-                    Community platform
-                </p>
-                <h1>
-                    See it.<br>
-                    Pin it.<br>
-                    <span>Improve it.</span>
-                </h1>
-                <p class="hero-description">
-                    Report local issues, discover community challenges,
-                    and help turn problems into action together.
-                </p>
-                <a href="/" class="explore">
-                    <span>
-                        Explore Civic Map
-                    </span>
-                    <span class="explore-arrow">
-                        →
-                    </span>
-                </a>
-            </div>
-        </section>
-        <section class="login-area">
-            <main class="login">
-                <p class="login-eyebrow">
-                    Civic platform
-                </p>
-                <h2>
-                    Welcome back.
-                </h2>
-                <p class="login-intro">
-                    Sign in to report local issues, discover community
-                    challenges, and help turn problems into action.
-                </p>
-                __ERROR__
-                <form method="post" action="/login">
-                    <label>
-                        Email
-                        <input
-                            name="email"
-                            type="email"
-                            autocomplete="username"
-                            placeholder="you@example.com"
-                            required>
-                    </label>
-                    <label>
-                        Password
-                        <input
-                            name="password"
-                            type="password"
-                            autocomplete="current-password"
-                            placeholder="Enter your password"
-                            required>
-                    </label>
-                    <button
-                        class="submit"
-                        type="submit">
-                        Sign in to Civic Map
-                    </button>
-                </form>
-                <div class="divider">
-                    <span>
-                        or
-                    </span>
-                </div>
-                <div class="register">
-                    New here?
-                    <a href="/register">
-                        Create an account →
-                    </a>
-                </div>
-                <div class="privacy">
-                    <div class="privacy-icon">
-                        ✓
-                    </div>
-                    <div>
-                        <strong>
-                            Your data is safe with us
-                        </strong>
-                        <p>
-                            We're committed to transparency and
-                            protecting your privacy.
-                        </p>
-                    </div>
-                </div>
-                <div class="login-footer">
-                    Community issues · Local voices · Collective action
-                </div>
-            </main>
-        </section>
-    </div>
+<div class="page">
+<section class="map-side">
+<div id="login-map"></div>
+<div class="brand">
+<div class="brand-mark">C</div>
+<div>
+<div class="brand-name">Civic Map</div>
+<div class="brand-sub">Live civic record</div>
+</div>
+</div>
+<div class="hero">
+<p class="eyebrow">Community platform</p>
+<h1>See it.<br>Pin it.<br><span>Improve it.</span></h1>
+<p class="hero-text">Report local issues, discover community challenges, and help turn problems into action together.</p>
+<a class="explore" href="/">Explore Civic Map <span>→</span></a>
+</div>
+<div class="issue-pin road">
+<div class="issue-marker"><span>R</span></div>
+<div class="issue-label">Road issue</div>
+</div>
+<div class="issue-pin water">
+<div class="issue-marker"><span>W</span></div>
+<div class="issue-label">Water problem</div>
+</div>
+<div class="issue-pin waste">
+<div class="issue-marker"><span>W</span></div>
+<div class="issue-label">Waste</div>
+</div>
+<div class="issue-pin light">
+<div class="issue-marker"><span>L</span></div>
+<div class="issue-label">Streetlight outage</div>
+</div>
+<div class="map-caption"><span></span>Live civic map · Community issues</div>
+</section>
+<section class="login-side">
+<div id="login-panel-map"></div>
+<main class="login">
+<div class="login-brand">
+<div class="login-brand-mark">C</div>
+<div class="login-brand-name">Civic Map</div>
+</div>
+<p class="login-eyebrow">Civic platform</p>
+<h2>Welcome back.</h2>
+<p class="intro">Sign in to report local issues, discover community challenges, and help turn problems into action.</p>
+__ERROR__
+<form method="post" action="/login">
+<label>Email<input name="email" type="email" autocomplete="username" placeholder="you@example.com" required></label>
+<label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
+<button type="submit">Sign in to Civic Map</button>
+</form>
+<div class="create">New here? <a href="/register">Create an account →</a></div>
+<div class="safe">
+<div class="safe-icon">✓</div>
+<div>
+<strong>Your data is safe with us</strong>
+<span>We're committed to transparency and protecting your privacy.</span>
+</div>
+</div>
+<div class="footer">Community issues · Local voices · Collective action</div>
+</main>
+</section>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const mapOptions={zoomControl:false,attributionControl:true,dragging:true,scrollWheelZoom:true,doubleClickZoom:true,boxZoom:false,keyboard:true,touchZoom:true};
+const loginMap=L.map('login-map',mapOptions).setView([12.9716,77.5946],12);
+const panelMap=L.map('login-panel-map',{...mapOptions,attributionControl:false}).setView([12.9716,77.5946],12);
+const tileOptions={maxZoom:19,attribution:'&copy; OpenStreetMap contributors'};
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',tileOptions).addTo(loginMap);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',tileOptions).addTo(panelMap);
+const mapIssues=[
+{lat:12.982,lng:77.622,color:'#e65f38',letter:'R'},
+{lat:12.956,lng:77.642,color:'#317c91',letter:'W'},
+{lat:12.938,lng:77.601,color:'#c48622',letter:'W'},
+{lat:12.925,lng:77.635,color:'#d75b47',letter:'L'}
+];
+function createMarker(issue){
+return L.divIcon({
+className:'',
+html:`<div style="width:36px;height:36px;display:grid;place-items:center;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${issue.color};color:white;border:2px solid white;box-shadow:0 5px 14px rgba(23,43,40,.25);font:700 12px Arial,sans-serif"><span style="transform:rotate(45deg)">${issue.letter}</span></div>`,
+iconSize:[36,36],
+iconAnchor:[18,36]
+});
+}
+mapIssues.forEach(issue=>{
+L.marker([issue.lat,issue.lng],{icon:createMarker(issue)}).addTo(loginMap);
+});
+let syncing=false;
+function syncMaps(source,target){
+if(syncing)return;
+syncing=true;
+target.setView(source.getCenter(),source.getZoom(),{animate:false});
+syncing=false;
+}
+loginMap.on('move',()=>syncMaps(loginMap,panelMap));
+panelMap.on('move',()=>syncMaps(panelMap,loginMap));
+loginMap.on('zoom',()=>syncMaps(loginMap,panelMap));
+panelMap.on('zoom',()=>syncMaps(panelMap,loginMap));
+setTimeout(()=>{
+loginMap.invalidateSize();
+panelMap.invalidateSize();
+syncMaps(loginMap,panelMap);
+},300);
+window.addEventListener('resize',()=>{
+loginMap.invalidateSize();
+panelMap.invalidateSize();
+syncMaps(loginMap,panelMap);
+});
+</script>
 </body>
 </html>
