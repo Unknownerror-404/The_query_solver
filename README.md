@@ -47,7 +47,38 @@ For real use, create a new account instead of using the demo credentials.
 5. Optionally select a JPEG, PNG, or WebP image as proof.
 6. Submit the report.
 7. Open the Community page to browse nearby issues and support existing reports.
-8. Stop the server with `Ctrl+C`.
+8. Use the `Propose` link on the Community page to choose one of the top-voted problems and submit a solution title, description, and optional visual.
+9. Stop the server with `Ctrl+C`.
+
+Verified professionals can open `/professionals` after signing in. The local demo account is `engineer@example.gov` with password `gov12345`. Its profile is associated with the Bengaluru Urban Transport Authority and is marked as verified by the organization.
+
+## Solution Proposals
+
+The Community page links to `/proposals`. This page ranks the existing `ISSUES` collection by supporter count and presents the highest-supported problems as proposal targets. Signed-in users can submit a proposal with:
+
+- A selected civic issue
+- A title
+- A description
+- An optional JPEG, PNG, or WebP visual up to 8 MB
+
+Proposal records currently live in the in-memory `PROPOSALS` collection and start in the `Submitted` state. Optional visuals are served from memory during the current server session. Production storage should move proposals and visuals to a database and object storage.
+
+Issue support is tracked per authenticated user in `ISSUE_SUPPORTERS`, so each user can support an issue only once. This creates the eligibility record needed for the next phase: allowing supporters of an issue to vote on its proposed solutions. Existing demonstration supporter totals are displayed, but only recorded user supports can establish voting eligibility.
+
+Solution voting is now enabled on `/community` and `/proposals`. A user must have supported the related issue before voting. Each eligible user has one active solution choice per issue; voting for a different proposal moves their vote. Solution votes are held in the in-memory `SOLUTION_VOTES` collection for this prototype.
+
+Public status labels make the workflow transparent: ranked problems show `Awaiting Consideration`, the leading problem shows `Awaiting Solution`, new user proposals show `Awaiting Approval`, approved proposals show `Solution Approved`, non-feasible proposals show `Marked Non-Feasible`, and proposals needing changes show `Revision Requested`.
+
+## Professional Portal
+
+`/professionals` is restricted by the explicit `VERIFIED_PROFESSIONALS` registry in `login_users.py`; ordinary users receive a forbidden response. Verified users see proposals ranked by solution votes in batches of ten and can submit one of these decisions with an explanation:
+
+- Under review
+- Approved
+- Non-feasible
+- Needs revision
+
+Reviews are attached to proposals in memory and display the reviewer name, decision, and explanation. A production version should replace the registry with administrator-approved organization records and persistent role-based permissions.
 
 ## Image Proof
 
@@ -78,6 +109,19 @@ The matcher returns:
 - `possible_duplicate`: do not create an issue automatically; ask the reporter to support the existing issue.
 
 The distance radius varies by category. For example, roads use a tighter radius while water outages use a wider radius because one outage can affect a neighbourhood.
+
+## Anti-Spam Protection
+
+`spam.py` provides prototype protections at the API boundary:
+
+- Per-user and per-IP rate limits for issue reports, solution proposals, issue support, solution votes, and professional reviews
+- Rejection of repeated submissions within a short period
+- Minimum title and description lengths
+- Control-character and excessive-link checks
+- Repeated-filler-text detection
+- Existing one-vote-per-user rules for issue support and solution voting
+
+For production, move the guard state to Redis or the database, add CAPTCHA or device-risk checks for suspicious traffic, moderate comments and uploaded media, scan images for malware, and keep an audit log for moderation actions. Rate limiting is also needed on login, registration, password reset, comments, notifications, and professional verification requests.
 
 ## Project Files
 
