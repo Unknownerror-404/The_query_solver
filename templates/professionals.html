@@ -1,625 +1,148 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Civic Map · Professional Portal</title>
-    <style>
-        :root {
-            --ink:#172b28;
-            --ink-soft:#29443f;
-            --muted:#667773;
-            --paper:#f5f1e8;
-            --card:#fffdf8;
-            --card-soft:#faf7ef;
-            --accent:#e65f38;
-            --accent-dark:#c94e2c;
-            --teal:#317c91;
-            --mustard:#c48622;
-            --green:#657a39;
-            --line:#d9d7cd;
-            --shadow:rgba(23,43,40,.09);
-        }
-        * {
-            box-sizing:border-box;
-        }
-        html {
-            scroll-behavior:smooth;
-        }
-        body {
-            margin:0;
-            min-height:100vh;
-            color:var(--ink);
-            background:
-                radial-gradient(circle at 7% 12%,rgba(49,124,145,.10) 0 7%,transparent 24%),
-                radial-gradient(circle at 94% 13%,rgba(230,95,56,.10) 0 8%,transparent 25%),
-                radial-gradient(circle at 83% 88%,rgba(196,134,34,.08) 0 8%,transparent 23%),
-                linear-gradient(135deg,#f7f3ea 0%,#eee9dc 100%);
-            font-family:Georgia,serif;
-        }
-        body:before {
-            content:"";
-            position:fixed;
-            inset:0;
-            pointer-events:none;
-            opacity:.28;
-            background-image:
-                linear-gradient(28deg,transparent 48%,rgba(23,43,40,.035) 49%,transparent 50%),
-                linear-gradient(152deg,transparent 48%,rgba(23,43,40,.025) 49%,transparent 50%);
-            background-size:210px 165px,250px 200px;
-        }
-        header {
-            position:relative;
-            z-index:3;
-            padding:23px 34px 18px;
-            border-bottom:1px solid rgba(217,215,205,.9);
-            background:rgba(245,241,232,.80);
-            backdrop-filter:blur(13px);
-            -webkit-backdrop-filter:blur(13px);
-            display:flex;
-            justify-content:space-between;
-            align-items:flex-end;
-            gap:28px;
-        }
-        h1 {
-            margin:0;
-            font-size:clamp(2.25rem,5vw,3.8rem);
-            font-weight:500;
-            letter-spacing:-2px;
-            line-height:.98;
-        }
-        h2 {
-            margin:0;
-            font-size:22px;
-            font-weight:500;
-            line-height:1.25;
-        }
-        p {
-            font:13px/1.55 Arial,sans-serif;
-        }
-        .eyebrow,
-        .meta {
-            margin:0 0 7px;
-            color:var(--accent);
-            font:700 10px Arial,sans-serif;
-            letter-spacing:2px;
-            text-transform:uppercase;
-        }
-        .tagline {
-            color:var(--muted);
-            font:12px/1.55 Arial,sans-serif;
-            text-align:right;
-        }
-        .tagline a,
-        a {
-            color:var(--muted);
-            transition:color .2s ease;
-        }
-        .tagline a {
-            text-decoration:none;
-        }
-        .tagline a:hover,
-        a:hover {
-            color:var(--accent);
-        }
-        .nav {
-            display:flex;
-            gap:7px;
-            margin-top:11px;
-            justify-content:flex-end;
-            flex-wrap:wrap;
-        }
-        .nav a,
-        button {
-            border:1px solid var(--ink);
-            border-radius:8px;
-            background:rgba(255,253,248,.72);
-            color:var(--ink);
-            padding:9px 13px;
-            text-decoration:none;
-            font:700 11px Arial,sans-serif;
-            cursor:pointer;
-            transition:
-                background .2s ease,
-                color .2s ease,
-                transform .15s ease,
-                box-shadow .2s ease,
-                border-color .2s ease;
-        }
-        .nav a:hover,
-        button:hover {
-            background:var(--ink);
-            color:white;
-            transform:translateY(-2px);
-            box-shadow:0 7px 16px rgba(23,43,40,.13);
-        }
-        .nav a:active,
-        button:active {
-            transform:translateY(0);
-            box-shadow:none;
-        }
-        main {
-            position:relative;
-            z-index:1;
-            max-width:1200px;
-            margin:0 auto;
-            padding:38px 26px 60px;
-        }
-        .intro {
-            display:flex;
-            justify-content:space-between;
-            align-items:flex-end;
-            gap:25px;
-            padding-bottom:26px;
-            border-bottom:1px solid var(--line);
-        }
-        .intro h2 {
-            max-width:760px;
-            font-size:clamp(28px,4vw,39px);
-            letter-spacing:-1px;
-        }
-        .intro p:last-child {
-            max-width:700px;
-            margin:12px 0 0;
-            color:var(--muted);
-            font:13px/1.65 Arial,sans-serif;
-        }
-        .verified {
-            display:inline-flex;
-            align-items:center;
-            gap:6px;
-            color:var(--teal);
-            font:700 10px Arial,sans-serif;
-            letter-spacing:1.2px;
-            text-transform:uppercase;
-        }
-        .verified:before {
-            content:"✓";
-            width:17px;
-            height:17px;
-            display:grid;
-            place-items:center;
-            border-radius:50%;
-            background:rgba(49,124,145,.11);
-            font-size:9px;
-        }
-        .metrics {
-            display:grid;
-            grid-template-columns:repeat(4,1fr);
-            gap:12px;
-            margin:24px 0;
-        }
-        .metric {
-            position:relative;
-            overflow:hidden;
-            padding:19px;
-            min-height:105px;
-            background:rgba(255,253,248,.86);
-            backdrop-filter:blur(7px);
-            -webkit-backdrop-filter:blur(7px);
-            border:1px solid var(--line);
-            border-radius:12px;
-            box-shadow:0 9px 25px rgba(23,43,40,.045);
-            transition:
-                transform .2s ease,
-                box-shadow .2s ease,
-                border-color .2s ease;
-        }
-        .metric:after {
-            content:"";
-            position:absolute;
-            right:-28px;
-            bottom:-28px;
-            width:85px;
-            height:85px;
-            border:1px solid rgba(49,124,145,.10);
-            border-radius:50%;
-        }
-        .metric:hover {
-            transform:translateY(-3px);
-            border-color:#c2c7c3;
-            box-shadow:0 13px 30px rgba(23,43,40,.08);
-        }
-        .metric strong {
-            display:block;
-            position:relative;
-            z-index:1;
-            margin-top:8px;
-            font-size:27px;
-            line-height:1.05;
-            font-weight:500;
-            letter-spacing:-.5px;
-        }
-        .metric:nth-child(1) strong {
-            color:var(--teal);
-        }
-        .metric:nth-child(2) strong {
-            color:var(--ink);
-        }
-        .metric:nth-child(3) strong {
-            color:var(--green);
-        }
-        .metric:nth-child(4) strong {
-            font-size:20px;
-            color:var(--mustard);
-        }
-        .workspace {
-            display:grid;
-            grid-template-columns:minmax(0,1fr) 335px;
-            gap:20px;
-            align-items:start;
-        }
-        .panel {
-            background:rgba(255,253,248,.88);
-            backdrop-filter:blur(9px);
-            -webkit-backdrop-filter:blur(9px);
-            border:1px solid rgba(217,215,205,.95);
-            border-radius:15px;
-            padding:24px;
-            box-shadow:
-                0 14px 35px rgba(23,43,40,.055),
-                0 3px 10px rgba(23,43,40,.035);
-        }
-        .panel-head {
-            display:flex;
-            justify-content:space-between;
-            align-items:flex-end;
-            gap:15px;
-            margin-bottom:13px;
-            padding-bottom:16px;
-            border-bottom:1px solid var(--line);
-        }
-        .panel-head h2 {
-            font-size:28px;
-            letter-spacing:-.6px;
-        }
-        .proposal {
-            position:relative;
-            border-top:1px solid var(--line);
-            padding:20px 4px;
-            transition:
-                background .2s ease,
-                padding-left .2s ease,
-                padding-right .2s ease;
-        }
-        .proposal:first-of-type {
-            border-top:0;
-            padding-top:7px;
-        }
-        .proposal:hover {
-            background:rgba(250,247,239,.65);
-            padding-left:10px;
-            padding-right:10px;
-        }
-        .proposal h2,
-        .proposal h3 {
-            margin:4px 0 7px;
-            font-size:21px;
-            letter-spacing:-.3px;
-        }
-        .proposal p {
-            color:var(--muted);
-            margin:7px 0;
-        }
-        .votes {
-            display:inline-flex;
-            align-items:center;
-            gap:6px;
-            color:var(--teal);
-            font-weight:700;
-        }
-        .votes:before {
-            content:"↑";
-            width:21px;
-            height:21px;
-            display:grid;
-            place-items:center;
-            border-radius:50%;
-            background:rgba(49,124,145,.10);
-            font-size:11px;
-        }
-        .status {
-            display:inline-flex;
-            align-items:center;
-            gap:7px;
-            margin-top:6px;
-            color:var(--mustard);
-            font:700 10px Arial,sans-serif;
-            letter-spacing:1.2px;
-            text-transform:uppercase;
-        }
-        .status:before {
-            content:"";
-            width:7px;
-            height:7px;
-            border-radius:50%;
-            background:var(--mustard);
-            box-shadow:0 0 0 4px rgba(196,134,34,.10);
-        }
-        .review {
-            margin-top:15px;
-            padding:16px;
-            border:1px solid var(--line);
-            border-radius:10px;
-            background:rgba(250,247,239,.72);
-        }
-        .review-form {
-            display:block;
-        }
-        label {
-            display:block;
-            margin-top:12px;
-            color:var(--muted);
-            font:700 10px Arial,sans-serif;
-            letter-spacing:.3px;
-            text-transform:uppercase;
-        }
-        select,
-        textarea {
-            width:100%;
-            margin-top:7px;
-            padding:11px 12px;
-            border:1px solid var(--line);
-            border-radius:8px;
-            outline:none;
-            background:rgba(255,255,255,.92);
-            color:var(--ink);
-            font:13px Arial,sans-serif;
-            transition:
-                border-color .2s ease,
-                box-shadow .2s ease,
-                transform .15s ease;
-        }
-        select {
-            cursor:pointer;
-        }
-        select:hover,
-        textarea:hover {
-            border-color:#bfc5c1;
-        }
-        select:focus,
-        textarea:focus {
-            border-color:var(--accent);
-            box-shadow:0 0 0 4px rgba(230,95,56,.10);
-            transform:translateY(-1px);
-        }
-        textarea {
-            min-height:92px;
-            resize:vertical;
-            line-height:1.5;
-        }
-        .review button {
-            width:100%;
-            margin-top:11px;
-            background:var(--accent);
-            border-color:var(--accent);
-            color:white;
-            text-align:center;
-        }
-        .review button:hover {
-            background:var(--accent-dark);
-            border-color:var(--accent-dark);
-        }
-        .review-note {
-            margin-top:12px;
-            padding:12px 13px;
-            border:1px solid #c9d9d0;
-            border-radius:9px;
-            background:#edf5ef;
-            color:#315144;
-            font:12px/1.5 Arial,sans-serif;
-        }
-        .pagination {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:12px;
-            border-top:1px solid var(--line);
-            padding-top:18px;
-            margin-top:10px;
-        }
-        .pagination form {
-            margin:0;
-        }
-        .pagination span {
-            text-align:center;
-            color:var(--muted);
-            font:11px Arial,sans-serif;
-        }
-        .pagination button {
-            white-space:nowrap;
-        }
-        .pagination button:disabled {
-            opacity:.35;
-            cursor:not-allowed;
-            transform:none;
-            box-shadow:none;
-        }
-        .workspace > aside.panel {
-            position:sticky;
-            top:20px;
-        }
-        .workspace > aside.panel h2 {
-            font-size:28px;
-            letter-spacing:-.6px;
-            margin-bottom:10px;
-        }
-        .workspace > aside.panel p {
-            color:var(--muted);
-            font:13px/1.65 Arial,sans-serif;
-        }
-        .workspace > aside.panel:before {
-            content:"";
-            display:block;
-            width:48px;
-            height:4px;
-            margin-bottom:18px;
-            border-radius:4px;
-            background:linear-gradient(90deg,var(--teal),var(--accent));
-        }
-        .empty {
-            padding:25px 0;
-            color:var(--muted);
-            font:13px Arial,sans-serif;
-        }
-        @media(max-width:900px) {
-            header {
-                padding:21px 23px 17px;
-                align-items:flex-start;
-                flex-direction:column;
-            }
-            .tagline {
-                text-align:left;
-            }
-            .nav {
-                justify-content:flex-start;
-            }
-            main {
-                padding:30px 20px 50px;
-            }
-            .metrics {
-                grid-template-columns:repeat(2,1fr);
-            }
-            .workspace {
-                grid-template-columns:1fr;
-            }
-            .workspace > aside.panel {
-                position:relative;
-                top:auto;
-            }
-        }
-        @media(max-width:560px) {
-            h1 {
-                font-size:2.35rem;
-            }
-            .intro h2 {
-                font-size:28px;
-            }
-            .metrics {
-                grid-template-columns:1fr;
-            }
-            .panel {
-                padding:19px;
-                border-radius:12px;
-            }
-            .panel-head {
-                align-items:flex-start;
-                flex-direction:column;
-            }
-            .pagination {
-                align-items:stretch;
-                flex-direction:column;
-            }
-            .pagination form,
-            .pagination button {
-                width:100%;
-            }
-            .pagination span {
-                order:-1;
-            }
-        }
-        @media(prefers-reduced-motion:reduce) {
-            *,
-            *:before,
-            *:after {
-                animation-duration:.01ms!important;
-                animation-iteration-count:1!important;
-                transition-duration:.01ms!important;
-                scroll-behavior:auto!important;
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Civic Map · Professional Review Portal</title>
+<style>
+:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
+header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
+.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
+.brand-sub{margin-top:2px;color:var(--blue);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.eyebrow{margin:0 0 6px;color:var(--blue);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
+.tagline{color:var(--muted);font:14px Arial,sans-serif}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
+.nav-button:hover,.nav-button.active{background:var(--ink);color:white}
+main{max-width:1150px;margin:0 auto;padding:34px 24px 50px}
+.banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
+.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--blue),var(--accent),var(--gold))}
+.banner h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}
+.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:750px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px}
+.metric-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 6px 18px rgba(23,43,40,.06);overflow:hidden}
+.metric-card:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold))}
+.metric-card span{display:block;font:700 10px Arial,sans-serif;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase}
+.metric-card strong{display:block;font-size:26px;font-weight:500;margin-top:6px;color:var(--ink)}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:24px}
+.section-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:0 6px 18px rgba(23,43,40,.06);overflow:hidden}
+.section-card:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--accent))}
+.section-card h2{margin:6px 0 16px;font-size:24px;font-weight:500;letter-spacing:-0.5px}
+.proposal-item{position:relative;border-top:1px solid var(--line);padding:20px 0}
+.proposal-item:first-of-type{border-top:0;padding-top:4px}
+.proposal-item h2{margin:6px 0 6px;font-size:20px;font-weight:500}
+.proposal-item p{color:var(--muted);font:14px/1.5 Arial,sans-serif;margin:6px 0}
+label{display:block;margin-top:14px;color:var(--ink);font:700 11px Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase}
+input,select,textarea{display:block;width:100%;font:13px Arial,sans-serif;padding:11px 13px;margin-top:6px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.9);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(49,124,145,.12)}
+textarea{min-height:90px;resize:vertical}
+button[type="submit"]{background:var(--ink);color:white;border:0;border-radius:8px;padding:10px 14px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s,background .2s;margin-top:12px}
+button[type="submit"]:hover{background:#24413c;transform:translateY(-1px)}
+.pagination{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+@media(max-width:850px){header,.workspace{align-items:start;flex-direction:column} .workspace{display:flex}}
+</style>
 </head>
 <body>
-    <header>
-        <div>
-            <p class="eyebrow">Civic map · Verified portal</p>
-            <h1>From ideas to action.</h1>
-        </div>
-        <div class="tagline">
-            Signed in as __USER__ · <a href="/logout">Log out</a><br>
-            <span class="verified">__AFFILIATION__ · __ORGANIZATION__</span>
-            <nav class="nav">
-                <a href="/community">Community</a>
-                <a href="/">Map</a>
-            </nav>
-        </div>
-    </header>
-    <main>
-        <section class="intro">
-            <div>
-                <p class="eyebrow">Professional review workspace</p>
-                <h2>Top proposed solutions, ready for a considered response.</h2>
-                <p class="muted">Review community ideas, explain feasibility, and help the strongest proposals move forward.</p>
-            </div>
-        </section>
-        <section class="metrics">
-            <div class="metric">
-                <span class="meta">Batch</span>
-                <strong>__PAGE__ / __PAGE_COUNT__</strong>
-            </div>
-            <div class="metric">
-                <span class="meta">Open proposals</span>
-                <strong>__TOTAL__</strong>
-            </div>
-            <div class="metric">
-                <span class="meta">Reviewed</span>
-                <strong>__REVIEWED__</strong>
-            </div>
-            <div class="metric">
-                <span class="meta">Organization</span>
-                <strong>__ORG_SHORT__</strong>
-            </div>
-        </section>
-        <div class="workspace">
-            <section class="panel">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">Ranked by solution votes</p>
-                        <h2>Community proposals</h2>
-                    </div>
-                    <span class="verified">Verified reviewer</span>
-                </div>
-                __PROPOSALS__
-                <div class="pagination">
-                    <form method="get" action="/professionals">
-                        <input type="hidden" name="page" value="__PREV__">
-                        <button type="submit" __PREV_DISABLED__>← Previous</button>
-                    </form>
-                    <span class="muted">Batch __PAGE__ of __PAGE_COUNT__</span>
-                    <form method="get" action="/professionals">
-                        <input type="hidden" name="page" value="__NEXT__">
-                        <button type="submit" __NEXT_DISABLED__>Next →</button>
-                    </form>
-                </div>
-            </section>
-            <aside class="panel">
-                <p class="eyebrow">Review guidance</p>
-                <h2>Make the reasoning useful.</h2>
-                <p class="muted">Explain what makes a proposal practical, what evidence is missing, or what would need to change before adoption.</p>
-                <p class="muted">Your organization and verification status are shown with every response.</p>
-            </aside>
-        </div>
-    </main>
-    <script>
-        document.querySelectorAll('.review-form').forEach(form => form.onsubmit = async event => {
-            event.preventDefault();
-            const data = new FormData(form);
-            const response = await fetch('/api/proposals/' + data.get('proposal_id') + '/review', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({
-                    decision:data.get('decision'),
-                    explanation:data.get('explanation')
-                })
-            });
-            const result = await response.json();
-            if (!response.ok) {
-                alert(result.message || 'The review could not be saved.');
-                return;
-            }
-            window.location.reload();
-        });
-    </script>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">P</div>
+    <div>
+      <div class="brand-name">Civic Map</div>
+      <div class="brand-sub">Professional Review Portal</div>
+    </div>
+  </div>
+  <div class="tagline">
+    Signed in as __USER__ (__AFFILIATION__) · <a href="/logout" style="color:var(--muted)">Log out</a>
+  </div>
+  <nav class="nav">
+    <a class="nav-button" href="/">Live Map</a>
+    <a class="nav-button" href="/community">Community</a>
+    <a class="nav-button" href="/proposals">Solutions</a>
+    <a class="nav-button active" href="/professionals">Professional Portal</a>
+    <a class="nav-button" href="/citizen-dashboard">My Dashboard</a>
+    <a class="nav-button" href="/university-dashboard">University</a>
+    <a class="nav-button" href="/industry-dashboard">Industry</a>
+    <a class="nav-button" href="/government-dashboard">Government</a>
+  </nav>
+</header>
+
+<main>
+  <div class="banner">
+    <p class="eyebrow">Professional review workspace</p>
+    <h1>Expert evaluation for civic solutions.</h1>
+    <p>Review community ideas, evaluate feasibility, suggest technical revisions, and help turn practical proposals into deployable societal solutions.</p>
+  </div>
+
+  <section class="metrics">
+    <div class="metric-card">
+      <span>Batch</span>
+      <strong>__PAGE__ / __PAGE_COUNT__</strong>
+    </div>
+    <div class="metric-card">
+      <span>Open proposals</span>
+      <strong>__TOTAL__</strong>
+    </div>
+    <div class="metric-card">
+      <span>Reviewed</span>
+      <strong>__REVIEWED__</strong>
+    </div>
+    <div class="metric-card">
+      <span>Organization</span>
+      <strong>__ORG_SHORT__</strong>
+    </div>
+  </section>
+
+  <div class="workspace">
+    <section class="section-card">
+      <p class="eyebrow">Ranked by community votes</p>
+      <h2>Community proposals</h2>
+      __PROPOSALS__
+      <div class="pagination">
+        <form method="get" action="/professionals">
+          <input type="hidden" name="page" value="__PREV__">
+          <button type="submit" __PREV_DISABLED__>← Previous</button>
+        </form>
+        <span style="font:13px Arial,sans-serif;color:var(--muted);">Batch __PAGE__ of __PAGE_COUNT__</span>
+        <form method="get" action="/professionals">
+          <input type="hidden" name="page" value="__NEXT__">
+          <button type="submit" __NEXT_DISABLED__>Next →</button>
+        </form>
+      </div>
+    </section>
+
+    <aside class="section-card">
+      <p class="eyebrow">Review guidance</p>
+      <h2>Constructive evaluation</h2>
+      <p style="color:var(--muted);font:14px/1.6 Arial,sans-serif;">Explain what makes a proposal practical, what evidence is missing, or what would need to change before adoption.</p>
+      <p style="color:var(--muted);font:14px/1.6 Arial,sans-serif;margin-top:12px;">Your official organization and verification status are recorded with every response.</p>
+    </aside>
+  </div>
+</main>
+
+<script>
+document.querySelectorAll('.review-form').forEach(form => form.onsubmit = async event => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const response = await fetch('/api/proposals/' + data.get('proposal_id') + '/review', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            decision:data.get('decision'),
+            explanation:data.get('explanation')
+        })
+    });
+    const result = await response.json();
+    if (!response.ok) {
+        alert(result.message || 'The review could not be saved.');
+        return;
+    }
+    window.location.reload();
+});
+</script>
 </body>
 </html>
