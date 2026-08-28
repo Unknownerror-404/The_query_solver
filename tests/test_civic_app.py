@@ -89,5 +89,30 @@ class TestDashboardTemplates(unittest.TestCase):
             self.assertIn("<!doctype html>", content.lower())
 
 
+class TestUniversityAndIndustryDashboards(unittest.TestCase):
+    def test_university_dashboard_render(self):
+        from map import render_university_dashboard
+        html_out = render_university_dashboard("innovation@bitmesra.ac.in")
+        self.assertIn("Birla Institute of Technology, Mesra", html_out)
+        self.assertIn("Assigned Challenges", html_out)
+        self.assertIn("Student Project Teams", html_out)
+        self.assertIn("Milestones &amp; Testing", html_out.replace("&", "&amp;"))
+
+    def test_industry_dashboard_render(self):
+        from map import render_industry_dashboard
+        html_out = render_industry_dashboard("partner@jin.example")
+        self.assertIn("Jharkhand Innovation Network", html_out)
+        self.assertIn("Explore Challenges", html_out)
+        self.assertIn("Submit Support Offer", html_out)
+        self.assertIn("University Innovations &amp; Prototypes", html_out.replace("&", "&amp;"))
+
+    def test_unregistered_account_render(self):
+        from map import render_university_dashboard, render_industry_dashboard
+        uni_out = render_university_dashboard("unregistered@example.com")
+        self.assertIn("University Account Required", uni_out)
+        ind_out = render_industry_dashboard("unregistered@example.com")
+        self.assertIn("Industry Partner Account Required", ind_out)
+
+
 if __name__ == "__main__":
     unittest.main()

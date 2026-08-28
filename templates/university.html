@@ -3,99 +3,600 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>University Dashboard · Civic Map</title>
+<title>University Project Dashboard · Civic Map Jharkhand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
-*{box-sizing:border-box}
-html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
-header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
-.brand{display:flex;align-items:center;gap:12px}
-.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
-.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
-.brand-sub{margin-top:2px;color:var(--blue);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
-.eyebrow{margin:0 0 6px;color:var(--blue);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
-.tagline{color:var(--muted);font:14px Arial,sans-serif}
-.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
-.nav-button:hover,.nav-button.active{background:var(--ink);color:white}
-main{max-width:1150px;margin:0 auto;padding:34px 24px 50px}
-.banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
-.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}
-.banner h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}
-.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:750px}
-.assignments-list{display:grid;gap:22px}
-article{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:0 6px 18px rgba(23,43,40,.06);margin-bottom:20px;overflow:hidden}
-article:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold))}
-article h2{margin:6px 0 8px;font-size:22px;font-weight:500}
-article p{color:var(--muted);font:14px/1.5 Arial,sans-serif}
-label{display:block;margin-top:12px;color:var(--ink);font:700 11px Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase}
-input,select,textarea{font:13px Arial,sans-serif;padding:11px 13px;margin:6px 6px 6px 0;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.9);outline:none}
-input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(49,124,145,.12)}
-textarea{width:98%;min-height:75px;resize:vertical}
-button{background:var(--ink);color:white;border:0;border-radius:8px;padding:10px 14px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s,background .2s}
-button:hover{background:#24413c;transform:translateY(-1px)}
-@media(max-width:760px){header{align-items:start;flex-direction:column;gap:12px}}
+:root {
+  --primary: #1d6a7f;
+  --primary-dark: #134e5e;
+  --primary-light: #e6f3f7;
+  --accent: #e65f38;
+  --accent-light: #fff0eb;
+  --gold: #c48622;
+  --gold-light: #fef8ee;
+  --green: #1b804e;
+  --green-light: #e8f7ee;
+  --ink: #0f1f1d;
+  --ink-secondary: #4a5c59;
+  --muted: #6f807d;
+  --surface: #ffffff;
+  --paper: #f5f2ea;
+  --line: #dedad0;
+  --line-light: #eae6dd;
+  --shadow-sm: 0 2px 6px rgba(15,31,29,0.04);
+  --shadow-md: 0 8px 24px rgba(15,31,29,0.08);
+  --shadow-lg: 0 16px 40px rgba(15,31,29,0.12);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.5; }
+
+/* Top Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(245, 242, 234, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--ink); }
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(29,106,127,0.3);
+}
+.brand-name { font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
+.brand-sub { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); margin-top: 1px; }
+
+.header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.user-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+.logout-link { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 12px; transition: color .2s; }
+.logout-link:hover { color: var(--accent); }
+
+.nav { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.nav-button {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all .2s ease;
+  border: 1px solid transparent;
+}
+.nav-button:hover { background: rgba(29,106,127,0.08); color: var(--primary); }
+.nav-button.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(29,106,127,0.25);
+}
+
+/* Main Container */
+main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
+
+/* Banner / Institution Profile Card */
+.hero-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+.hero-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 6px;
+  background: linear-gradient(90deg, var(--primary), var(--gold), var(--accent));
+}
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.hero-title { font-family: 'Outfit', sans-serif; font-size: clamp(26px, 3.5vw, 36px); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 10px; }
+.hero-desc { color: var(--ink-secondary); font-size: 14px; line-height: 1.6; max-width: 780px; }
+
+.inst-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.inst-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform .2s, box-shadow .2s;
+}
+.metric-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.metric-icon.blue { background: var(--primary-light); color: var(--primary); }
+.metric-icon.gold { background: var(--gold-light); color: var(--gold); }
+.metric-icon.green { background: var(--green-light); color: var(--green); }
+.metric-icon.coral { background: var(--accent-light); color: var(--accent); }
+.metric-info h4 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 4px; }
+.metric-info .val { font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
+
+/* Section Tabs */
+.tabs-bar {
+  display: flex;
+  gap: 10px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 28px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.tab-btn {
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--primary); }
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Cards & Articles */
+.challenge-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s;
+}
+.challenge-card:hover { box-shadow: var(--shadow-md); }
+
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.challenge-title { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 600; color: var(--ink); }
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.status-pill.accepted { background: var(--green-light); color: var(--green); border: 1px solid rgba(27,128,78,0.2); }
+.status-pill.pending { background: var(--gold-light); color: var(--gold); border: 1px solid rgba(196,134,34,0.2); }
+.status-pill.assigned { background: var(--primary-light); color: var(--primary); border: 1px solid rgba(29,106,127,0.2); }
+.status-pill.rejected { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(230,95,56,0.2); }
+.status-pill.clarification { background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
+
+.meta-row { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+.meta-item { display: inline-flex; align-items: center; gap: 6px; }
+.meta-item strong { color: var(--ink-secondary); }
+
+.challenge-desc { color: var(--ink-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
+
+/* Subsections inside challenge card */
+.card-subblock {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  margin-top: 18px;
+}
+.card-subblock h3, .card-subblock h4 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Lifecycle Stepper */
+.stage-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 20px;
+  position: relative;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.stage-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  min-width: 90px;
+  position: relative;
+}
+.step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  transition: all .2s;
+}
+.stage-step.active .step-circle {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 0 0 4px var(--primary-light);
+}
+.stage-step.completed .step-circle {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.stage-step.active span { color: var(--primary); font-weight: 700; }
+.stage-step.completed span { color: var(--green); }
+
+/* Form Controls */
+label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink); margin-bottom: 6px; }
+input, select, textarea {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  margin-bottom: 12px;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(29,106,127,0.15);
+}
+textarea { min-height: 80px; resize: vertical; }
+
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.form-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--ink);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  text-decoration: none;
+}
+button:hover, .btn:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+button:active, .btn:active { transform: translateY(0); }
+
+.btn-primary { background: var(--primary); }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-accent { background: var(--accent); }
+.btn-accent:hover { background: #d44d27; }
+.btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn-outline:hover { background: var(--surface); border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* Milestones and Outcomes list */
+.milestone-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.milestone-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--ink); }
+.milestone-sub { font-size: 12px; color: var(--muted); }
+
+/* Offers Grid */
+.offers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 14px; }
+.offer-box {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.offer-type-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--gold-light);
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+}
+.empty-state h3 { font-family: 'Outfit', sans-serif; font-size: 20px; color: var(--ink); margin-bottom: 6px; }
+.empty-state p { font-size: 14px; max-width: 500px; margin: 0 auto 18px; }
+
+/* Toast Notifications */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 1000;
+  padding: 14px 22px;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@media (max-width: 860px) {
+  header { padding: 16px 20px; }
+  main { padding: 20px 16px 60px; }
+  .hero-card { padding: 24px 20px; }
+}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand">
+  <a class="brand" href="/university-dashboard">
     <div class="brand-mark">U</div>
     <div>
-      <div class="brand-name">Civic Map</div>
-      <div class="brand-sub">University Collaboration</div>
+      <div class="brand-name">Civic Map Jharkhand</div>
+      <div class="brand-sub">University Innovation Portal</div>
     </div>
+  </a>
+
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-dot"></span>
+      <span>__USER__</span>
+      <a class="logout-link" href="/logout">Log out</a>
+    </div>
+    <nav class="nav">
+      <a class="nav-button" href="/">Live Map</a>
+      <a class="nav-button" href="/community">Community</a>
+      <a class="nav-button" href="/proposals">Solutions</a>
+      <a class="nav-button active" href="/university-dashboard">University</a>
+      <a class="nav-button" href="/industry-dashboard">Industry</a>
+      <a class="nav-button" href="/government-dashboard">Government</a>
+    </nav>
   </div>
-  <div class="tagline">
-    University Portal · <a href="/logout" style="color:var(--muted)">Log out</a>
-  </div>
-  <nav class="nav">
-    <a class="nav-button" href="/">Live Map</a>
-    <a class="nav-button" href="/community">Community</a>
-    <a class="nav-button" href="/proposals">Solutions</a>
-    <a class="nav-button" href="/citizen-dashboard">My Dashboard</a>
-    <a class="nav-button active" href="/university-dashboard">University Dashboard</a>
-    <a class="nav-button" href="/industry-dashboard">Industry</a>
-    <a class="nav-button" href="/government-dashboard">Government</a>
-  </nav>
 </header>
 
 <main>
-  <div class="banner">
-    <p class="eyebrow">Academic collaboration</p>
-    <h1>University project dashboard.</h1>
-    <p>Review assigned societal challenges, formalize institutional acceptance, assemble student project teams, manage pilot milestones, and submit solution proposals.</p>
+  __UNIVERSITY_HERO__
+
+  __METRICS_BAR__
+
+  <div class="tabs-bar">
+    <button class="tab-btn active" onclick="showTab('challenges')">Assigned Challenges</button>
+    <button class="tab-btn" onclick="showTab('teams')">Student Project Teams</button>
+    <button class="tab-btn" onclick="showTab('milestones')">Milestones & Testing</button>
+    <button class="tab-btn" onclick="showTab('offers')">Industry Support Offers</button>
+    <button class="tab-btn" onclick="showTab('messages')">Project Messaging</button>
+    <button class="tab-btn" onclick="showTab('profile')">Institutional Profile</button>
   </div>
 
-  <div class="assignments-list">
-    __ASSIGNMENTS__
+  <!-- Tab 1: Assigned Challenges -->
+  <div id="tab-challenges" class="tab-pane active">
+    __CHALLENGES_CONTENT__
+  </div>
+
+  <!-- Tab 2: Teams & Lifecycle -->
+  <div id="tab-teams" class="tab-pane">
+    __TEAMS_CONTENT__
+  </div>
+
+  <!-- Tab 3: Milestones & Testing -->
+  <div id="tab-milestones" class="tab-pane">
+    __MILESTONES_CONTENT__
+  </div>
+
+  <!-- Tab 4: Industry Support Offers -->
+  <div id="tab-offers" class="tab-pane">
+    __OFFERS_CONTENT__
+  </div>
+
+  <!-- Tab 5: Messages -->
+  <div id="tab-messages" class="tab-pane">
+    __MESSAGES_CONTENT__
+  </div>
+
+  <!-- Tab 6: Profile -->
+  <div id="tab-profile" class="tab-pane">
+    __PROFILE_CONTENT__
   </div>
 </main>
 
+<div id="toast"></div>
+
 <script>
+function showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+  
+  const selectedBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(name));
+  if (selectedBtn) selectedBtn.classList.add('active');
+  
+  const pane = document.getElementById('tab-' + name);
+  if (pane) pane.classList.add('active');
+}
+
+function showToast(msg, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.background = isError ? '#e65f38' : '#0f1f1d';
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 3500);
+}
+
+// Handle all AJAX forms
 document.querySelectorAll('form').forEach(form => {
-  if (!form.dataset.endpoint) return;
   form.onsubmit = async event => {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(form));
-    if (form.className === 'team') {
-      data.members = data.members ? data.members.split(',').map(m => m.trim()).filter(Boolean) : [];
+    const endpoint = form.dataset.endpoint || form.action;
+    if (!endpoint) return;
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    // Parse submitter value if clicked button had name & value
+    if (event.submitter && event.submitter.name) {
+      data[event.submitter.name] = event.submitter.value;
     }
+    
+    if (form.classList.contains('team') || form.dataset.type === 'team') {
+      if (typeof data.members === 'string') {
+        data.members = data.members.split(',').map(m => m.trim()).filter(Boolean);
+      }
+    }
+    
     try {
-      const response = await fetch(form.dataset.endpoint, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
+      
+      const result = await response.json();
       if (response.ok) {
-        location.reload();
+        showToast(result.message || 'Action saved successfully!');
+        setTimeout(() => location.reload(), 800);
       } else {
-        const err = await response.json();
-        alert(err.message || 'Action failed.');
+        showToast(result.message || 'Operation failed. Please try again.', true);
       }
-    } catch(e) {
-      alert('Request error.');
+    } catch(err) {
+      showToast('Network error while processing request.', true);
     }
   };
 });

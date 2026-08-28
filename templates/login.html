@@ -57,6 +57,7 @@ input{display:block;width:100%;margin-top:7px;padding:13px 14px;border:1px solid
 input::placeholder{color:#9a9f9c}
 input:hover{border-color:#c5c9c4}
 input:focus{border-color:var(--accent);background:#fffefa;box-shadow:0 0 0 4px rgba(230,95,56,.11)}
+select{display:block;width:100%;margin-top:7px;padding:13px 14px;border:1px solid rgba(217,215,205,.95);border-radius:9px;outline:none;background:rgba(255,255,255,.88);color:var(--ink);font:13px Arial,sans-serif}
 button{width:100%;margin-top:25px;padding:14px 16px;border:0;border-radius:9px;background:var(--ink);color:white;font:700 12px Arial,sans-serif;letter-spacing:.3px;cursor:pointer;transition:transform .15s,background .2s,box-shadow .2s}
 button:hover{background:#24413c;transform:translateY(-1px);box-shadow:0 8px 18px rgba(23,43,40,.18)}
 button:active{transform:translateY(0)}
@@ -141,11 +142,18 @@ body{overflow:auto}
 <p class="intro">Sign in to report local issues, discover community challenges, and help turn problems into action.</p>
 __ERROR__
 <form method="post" action="/login">
-<label>Email<input name="email" type="email" autocomplete="username" placeholder="you@example.com" required></label>
-<label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
+<label>Portal access<select id="portal-role" name="portal_role">
+<option value="citizen" selected>Citizen</option>
+<option value="government">Government</option>
+<option value="university">University</option>
+<option value="industry">Industry</option>
+</select></label>
+<label>Email<input id="login-email" name="email" type="email" autocomplete="username" placeholder="you@example.com" required></label>
+<label>Password<input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
 <button type="submit">Sign in to Civic Map</button>
 </form>
-<div class="create">New here? <a href="/register">Create an account →</a></div>
+
+<div class="create" style="margin-top:16px;">New here? <a href="/register">Create an account →</a></div>
 <div class="safe">
 <div class="safe-icon">✓</div>
 <div>

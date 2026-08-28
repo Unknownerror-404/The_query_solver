@@ -96,10 +96,14 @@ class IssueDeduplicator:
         if self._model_loaded:
             return
         self._model_loaded = True
+        import os
+        if os.getenv("CIVIC_MAP_LOAD_TRANSFORMERS", "0") != "1":
+            self._model = None
+            return
         try:
             from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer(self.model_name)
-        except (ImportError, OSError, RuntimeError):
+        except (ImportError, OSError, RuntimeError, Exception):
             self._model = None
 
     @staticmethod

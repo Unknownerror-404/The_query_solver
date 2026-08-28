@@ -20,11 +20,8 @@ except ImportError:
     from storage import create_account_record, get_account, import_account, initialise
 
 ACCOUNTS_FILE = Path(__file__).with_name("accounts.csv")
-DEMO_EMAIL = "citizen@example.com"
-DEMO_PASSWORD = "map123"
-PROFESSIONAL_DEMO_EMAIL = "engineer@example.gov"
-PROFESSIONAL_DEMO_PASSWORD = "gov12345"
 ADMIN_EMAILS = {"admin@jharkhand.gov.in"}
+PROFESSIONAL_DEMO_EMAIL = "engineer@example.gov"
 VERIFIED_PROFESSIONALS = {
     PROFESSIONAL_DEMO_EMAIL: {
         "name": "Arun Mehta",
@@ -32,6 +29,17 @@ VERIFIED_PROFESSIONALS = {
         "affiliation": "Government transport professional",
         "verification": "Verified by organization",
     }
+}
+DEFAULT_ACCOUNTS = {
+    "citizen@example.com": "map123",
+    "engineer@example.gov": "gov12345",
+    "admin@jharkhand.gov.in": "gov12345",
+    "innovation@bitmesra.ac.in": "map12345",
+    "innovation@cuj.ac.in": "map12345",
+    "innovation@nitjsr.ac.in": "map12345",
+    "partner@jin.example": "partner123",
+    "connect@alf.example": "partner123",
+    "innovation@etm.example": "partner123",
 }
 CSV_FIELDS = ("email", "password_hash", "salt")
 HASH_ITERATIONS = 310_000
@@ -44,25 +52,29 @@ def _hash_password(password: str, salt: str | None = None) -> tuple[str, str]:
 
 
 def _ensure_accounts_file() -> None:
+    existing_emails = set()
     if ACCOUNTS_FILE.exists():
         with ACCOUNTS_FILE.open(newline="", encoding="utf-8") as file:
-            accounts = list(csv.DictReader(file))
-        if not any(account.get("email", "").lower() == PROFESSIONAL_DEMO_EMAIL for account in accounts):
-            professional_hash, professional_salt = _hash_password(PROFESSIONAL_DEMO_PASSWORD)
-            with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
-                csv.DictWriter(file, fieldnames=CSV_FIELDS).writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
-        return
-    password_hash, salt = _hash_password(DEMO_PASSWORD)
-    professional_hash, professional_salt = _hash_password(PROFESSIONAL_DEMO_PASSWORD)
-    with ACCOUNTS_FILE.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
-        writer.writeheader()
-        writer.writerow({"email": DEMO_EMAIL, "password_hash": password_hash, "salt": salt})
-        writer.writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
+            existing_emails = {account.get("email", "").strip().lower() for account in csv.DictReader(file)}
+    else:
+        with ACCOUNTS_FILE.open("w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
+            writer.writeheader()
+
+    missing = {email: pwd for email, pwd in DEFAULT_ACCOUNTS.items() if email.lower() not in existing_emails}
+    if missing:
+        with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
+            for email, pwd in missing.items():
+                p_hash, p_salt = _hash_password(pwd)
+                writer.writerow({"email": email, "password_hash": p_hash, "salt": p_salt})
 
 
 def _ensure_accounts() -> None:
-    initialise()
+    try:
+        initialise()
+    except Exception:
+        pass
     _ensure_accounts_file()
     with ACCOUNTS_FILE.open(newline="", encoding="utf-8") as file:
         for account in csv.DictReader(file):
