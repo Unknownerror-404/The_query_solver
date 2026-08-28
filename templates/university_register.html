@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>University Registration · Civic Map</title>
+<style>
+:root {
+  --ink: #172b28;
+  --muted: #5e706b;
+  --paper: #f4efe6;
+  --card: #ffffff;
+  --accent: #317c91;
+  --line: #d8d4c9;
+  --gold: #c48622;
+  --error: #bc2c1a;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Arial, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login-card {
+  width: 100%;
+  max-width: 760px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 36px 32px;
+  box-shadow: 0 16px 36px rgba(23, 43, 40, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font: 700 20px Georgia, serif;
+  box-shadow: 0 6px 16px rgba(49, 124, 145, 0.25);
+}
+.brand-title {
+  font: 700 18px Georgia, serif;
+}
+.brand-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+p.subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 24px;
+  max-width: 620px;
+}
+form {
+  display: grid;
+  gap: 16px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.wide { grid-column: 1 / -1; }
+input, select, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: rgba(244, 239, 230, 0.25);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(49, 124, 145, 0.15);
+}
+small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+button.submit-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 6px;
+}
+button.submit-btn:hover {
+  background: #256374;
+  transform: translateY(-1px);
+}
+.error, .success {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 4px;
+}
+.error {
+  background: #fde8e8;
+  color: var(--error);
+  border: 1px solid #f8b4b4;
+}
+.success {
+  background: #e7f6ee;
+  color: #23613d;
+  border: 1px solid #afdcc2;
+}
+.footer-links {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.footer-links a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.footer-links a:hover {
+  text-decoration: underline;
+}
+@media (max-width: 720px) {
+  html, body {
+    display: block;
+    padding: 18px 12px;
+  }
+  .login-card {
+    padding: 32px 22px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="brand">
+    <div class="brand-mark">U</div>
+    <div>
+      <div class="brand-title">Civic Map</div>
+      <div class="brand-sub">University Portal</div>
+    </div>
+  </div>
+
+  <h1>University Registration</h1>
+  <p class="subtitle">Create an institution profile with domains, departments, laboratories, and expertise so approved civic challenges can be assigned to the right academic team.</p>
+
+  <form action="/university/register" method="POST">
+    __MESSAGE__
+
+    <div class="form-grid">
+      <label>
+        University Name
+        <input name="name" required maxlength="255" placeholder="Birla Institute of Technology, Mesra">
+      </label>
+
+      <label>
+        District
+        <select name="district" required>
+          __DISTRICTS__
+        </select>
+      </label>
+
+      <label class="wide">
+        Primary Domains
+        <input name="domains" required maxlength="1000" placeholder="Water Resources, Energy, Agriculture, Urban Infrastructure">
+        <small>Use comma-separated domains for task matching.</small>
+      </label>
+
+      <label class="wide">
+        Expertise Keywords
+        <textarea name="expertise" required maxlength="1500" placeholder="IoT water quality monitoring, civil engineering, sanitation systems, renewable energy, rural livelihoods"></textarea>
+        <small>Mention technical strengths, research areas, field experience, and social impact capabilities.</small>
+      </label>
+
+      <label>
+        Departments
+        <textarea name="departments" maxlength="1000" placeholder="Civil Engineering, Computer Science, Environmental Science"></textarea>
+      </label>
+
+      <label>
+        Laboratories
+        <textarea name="laboratories" maxlength="1000" placeholder="Water testing lab, IoT lab, prototyping workshop"></textarea>
+      </label>
+
+      <label>
+        Incubation Facilities
+        <textarea name="incubation_facilities" maxlength="1000" placeholder="Startup cell, rural innovation centre, fabrication lab"></textarea>
+      </label>
+
+      <label>
+        Official Email
+        <input type="email" name="email" required maxlength="255" placeholder="innovation@university.ac.in">
+      </label>
+
+      <label>
+        Password
+        <input type="password" name="password" required minlength="8" placeholder="Minimum 8 characters">
+      </label>
+
+      <label>
+        Confirm Password
+        <input type="password" name="confirm_password" required minlength="8" placeholder="Re-enter password">
+      </label>
+    </div>
+
+    <button type="submit" class="submit-btn">Create University Profile</button>
+  </form>
+
+  <div class="footer-links">
+    <a href="/login">← Standard Citizen Login</a>
+    <a href="/university/login">Already registered? Sign in</a>
+  </div>
+</div>
+
+</body>
+</html>

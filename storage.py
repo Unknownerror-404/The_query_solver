@@ -143,6 +143,7 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 name VARCHAR(255) NOT NULL,
                 district VARCHAR(100) NOT NULL,
                 domains TEXT NOT NULL,
+                expertise TEXT,
                 departments TEXT,
                 laboratories TEXT,
                 incubation_facilities TEXT,
@@ -152,6 +153,7 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             """
         )
         for statement in (
+            "ALTER TABLE universities ADD COLUMN expertise TEXT",
             "ALTER TABLE universities ADD COLUMN departments TEXT",
             "ALTER TABLE universities ADD COLUMN laboratories TEXT",
             "ALTER TABLE universities ADD COLUMN incubation_facilities TEXT",
@@ -306,6 +308,9 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 partner_id INT NOT NULL,
                 support_type VARCHAR(50) NOT NULL,
                 details TEXT NOT NULL,
+                funding_amount BIGINT NOT NULL DEFAULT 0,
+                resources TEXT,
+                timeline VARCHAR(100),
                 status VARCHAR(30) NOT NULL DEFAULT 'Offered',
                 commitment_note TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -314,11 +319,17 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             )
             """
         )
-        try:
-            cursor.execute("ALTER TABLE support_offers ADD COLUMN commitment_note TEXT")
-        except Error as error:
-            if error.errno != 1060:
-                raise
+        for statement in (
+            "ALTER TABLE support_offers ADD COLUMN commitment_note TEXT",
+            "ALTER TABLE support_offers ADD COLUMN funding_amount BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE support_offers ADD COLUMN resources TEXT",
+            "ALTER TABLE support_offers ADD COLUMN timeline VARCHAR(100)",
+        ):
+            try:
+                cursor.execute(statement)
+            except Error as error:
+                if error.errno != 1060:
+                    raise
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS notifications (
@@ -554,20 +565,20 @@ def load_universities() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT id, name, district, domains, departments, laboratories, incubation_facilities, contact_email FROM universities ORDER BY name")
+        cursor.execute("SELECT id, name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email FROM universities ORDER BY name")
         return cursor.fetchall()
     finally:
         cursor.close()
         connection.close()
 
 
-def update_university(university_id: int, name: str, district: str, domains: str, departments: str, laboratories: str, incubation_facilities: str, contact_email: str) -> bool:
+def update_university(university_id: int, name: str, district: str, domains: str, departments: str, laboratories: str, incubation_facilities: str, contact_email: str, expertise: str = "") -> bool:
     connection = connect()
     try:
         cursor = connection.cursor()
         cursor.execute(
-            "UPDATE universities SET name = %s, district = %s, domains = %s, departments = %s, laboratories = %s, incubation_facilities = %s, contact_email = %s WHERE id = %s",
-            (name, district, domains, departments, laboratories, incubation_facilities, contact_email, university_id),
+            "UPDATE universities SET name = %s, district = %s, domains = %s, expertise = %s, departments = %s, laboratories = %s, incubation_facilities = %s, contact_email = %s WHERE id = %s",
+            (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email, university_id),
         )
         connection.commit()
         return cursor.rowcount > 0
@@ -576,13 +587,13 @@ def update_university(university_id: int, name: str, district: str, domains: str
         connection.close()
 
 
-def create_university(name: str, district: str, domains: str, departments: str, laboratories: str, incubation_facilities: str, contact_email: str) -> dict[str, Any]:
+def create_university(name: str, district: str, domains: str, departments: str, laboratories: str, incubation_facilities: str, contact_email: str, expertise: str = "") -> dict[str, Any]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("INSERT INTO universities (name, district, domains, departments, laboratories, incubation_facilities, contact_email) VALUES (%s, %s, %s, %s, %s, %s, %s)", (name, district, domains, departments, laboratories, incubation_facilities, contact_email))
+        cursor.execute("INSERT INTO universities (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email))
         connection.commit()
-        return {"id": cursor.lastrowid, "name": name, "district": district, "domains": domains, "departments": departments, "laboratories": laboratories, "incubation_facilities": incubation_facilities, "contact_email": contact_email}
+        return {"id": cursor.lastrowid, "name": name, "district": district, "domains": domains, "expertise": expertise, "departments": departments, "laboratories": laboratories, "incubation_facilities": incubation_facilities, "contact_email": contact_email}
     finally:
         cursor.close()
         connection.close()
@@ -802,7 +813,20 @@ def load_partner_offers(contact_email: str) -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT o.id, o.issue_id, o.partner_id, o.support_type, o.details, o.status, o.commitment_note, i.title, i.district, i.block, p.name AS partner_name FROM support_offers o JOIN industry_partners p ON p.id = o.partner_id JOIN issues i ON i.id = o.issue_id WHERE LOWER(p.contact_email) = LOWER(%s) ORDER BY o.id DESC", (contact_email,))
+        cursor.execute(
+            """
+            SELECT o.id, o.issue_id, o.partner_id, o.support_type, o.details, 
+                   o.funding_amount, o.resources, o.timeline, o.status, o.commitment_note, o.created_at,
+                   i.title, i.district, i.block, i.category, i.description AS issue_description,
+                   p.name AS partner_name
+            FROM support_offers o
+            JOIN industry_partners p ON p.id = o.partner_id
+            JOIN issues i ON i.id = o.issue_id
+            WHERE LOWER(p.contact_email) = LOWER(%s)
+            ORDER BY o.id DESC
+            """,
+            (contact_email,),
+        )
         return cursor.fetchall()
     finally:
         cursor.close()
@@ -813,20 +837,54 @@ def load_all_partner_offers() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT o.id, o.issue_id, o.partner_id, o.support_type, o.details, o.status, o.commitment_note, i.title, p.name AS partner_name FROM support_offers o JOIN industry_partners p ON p.id = o.partner_id JOIN issues i ON i.id = o.issue_id ORDER BY o.id DESC")
+        cursor.execute(
+            """
+            SELECT o.id, o.issue_id, o.partner_id, o.support_type, o.details,
+                   o.funding_amount, o.resources, o.timeline, o.status, o.commitment_note, o.created_at,
+                   i.title, i.district, i.category, p.name AS partner_name
+            FROM support_offers o
+            JOIN industry_partners p ON p.id = o.partner_id
+            JOIN issues i ON i.id = o.issue_id
+            ORDER BY o.id DESC
+            """
+        )
         return cursor.fetchall()
     finally:
         cursor.close()
         connection.close()
 
 
-def create_support_offer(issue_id: int, partner_id: int, support_type: str, details: str) -> dict[str, Any]:
+def create_support_offer(
+    issue_id: int,
+    partner_id: int,
+    support_type: str,
+    details: str,
+    funding_amount: int = 0,
+    resources: str = "",
+    timeline: str = "",
+) -> dict[str, Any]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("INSERT INTO support_offers (issue_id, partner_id, support_type, details) VALUES (%s, %s, %s, %s)", (issue_id, partner_id, support_type, details))
+        cursor.execute(
+            """
+            INSERT INTO support_offers (issue_id, partner_id, support_type, details, funding_amount, resources, timeline)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (issue_id, partner_id, support_type, details, funding_amount, resources, timeline),
+        )
         connection.commit()
-        return {"id": cursor.lastrowid, "issue_id": issue_id, "partner_id": partner_id, "support_type": support_type, "details": details, "status": "Offered"}
+        return {
+            "id": cursor.lastrowid,
+            "issue_id": issue_id,
+            "partner_id": partner_id,
+            "support_type": support_type,
+            "details": details,
+            "funding_amount": funding_amount,
+            "resources": resources,
+            "timeline": timeline,
+            "status": "Offered",
+        }
     finally:
         cursor.close()
         connection.close()

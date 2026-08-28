@@ -20,17 +20,18 @@ PROFESSIONALS_PAGE_FILE = BASE_DIR / "templates" / "professionals.html"
 CITIZEN_PAGE_FILE = BASE_DIR / "templates" / "citizen.html"
 UNIVERSITY_DASHBOARD_FILE = BASE_DIR / "templates" / "university.html"
 UNIVERSITY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "university_login.html"
+UNIVERSITY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "university_register.html"
 INDUSTRY_DASHBOARD_FILE = BASE_DIR / "templates" / "industry.html"
 GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
-    from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+    from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
     from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
-    from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+    from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
     from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
@@ -53,6 +54,10 @@ def load_login_page(error=""):
 def load_university_login_page(error=""):
     page = UNIVERSITY_LOGIN_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
+def load_university_register_page(message=""):
+    page = UNIVERSITY_REGISTER_PAGE_FILE.read_text(encoding="utf-8")
+    district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
+    return page.replace("__MESSAGE__", message).replace("__DISTRICTS__", district_options)
 def load_register_page(error=""):
     page = REGISTER_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
@@ -62,6 +67,107 @@ def load_professionals_page():
     return PROFESSIONALS_PAGE_FILE.read_text(encoding="utf-8")
 def university_for_user(user):
     return next((university for university in load_universities() if str(university.get("contact_email", "")).casefold() == user.casefold()), None)
+DISTRICT_COORDS = {
+    "Bokaro": (23.6693, 85.9563),
+    "Chatra": (24.2120, 84.8715),
+    "Deoghar": (24.4826, 86.6966),
+    "Dhanbad": (23.7957, 86.4304),
+    "Dumka": (24.2676, 87.2497),
+    "East Singhbhum": (22.8046, 86.2029),
+    "Garhwa": (24.1624, 83.8073),
+    "Giridih": (24.1868, 86.3050),
+    "Godda": (24.8267, 87.2132),
+    "Gumla": (23.0448, 84.5422),
+    "Hazaribagh": (23.9925, 85.3637),
+    "Jamtara": (23.9629, 86.8000),
+    "Khunti": (23.0763, 85.2787),
+    "Koderma": (24.4678, 85.5938),
+    "Latehar": (23.7454, 84.4632),
+    "Lohardaga": (23.4377, 84.6806),
+    "Pakur": (24.6341, 87.8488),
+    "Palamu": (24.0326, 84.0722),
+    "Ramgarh": (23.6288, 85.5173),
+    "Ranchi": (23.3441, 85.3096),
+    "Sahibganj": (25.2425, 87.6419),
+    "Seraikela Kharsawan": (22.7001, 85.9298),
+    "Simdega": (22.6148, 84.5074),
+    "West Singhbhum": (22.5694, 85.8115),
+}
+def _keywords(value):
+    return {word for word in "".join(ch.casefold() if ch.isalnum() else " " for ch in str(value)).split() if len(word) > 2}
+def _issue_coords(issue):
+    try:
+        return float(issue["lat"]), float(issue["lng"])
+    except (KeyError, TypeError, ValueError):
+        return DISTRICT_COORDS.get(str(issue.get("district", "")))
+def _university_coords(university):
+    return DISTRICT_COORDS.get(str(university.get("district", "")))
+def university_expertise_score(university, issue):
+    category = str(issue.get("category", "")).casefold()
+    issue_words = _keywords(" ".join(str(issue.get(field, "")) for field in ("title", "description", "category", "block", "area")))
+    domain_words = _keywords(university.get("domains", ""))
+    expertise_words = _keywords(university.get("expertise", ""))
+    capability_words = _keywords(" ".join(str(university.get(field, "")) for field in ("departments", "laboratories", "incubation_facilities")))
+    category_words = _keywords(category)
+    score = len(issue_words & (domain_words | expertise_words | capability_words)) * 8
+    score += len(category_words & domain_words) * 35
+    score += len(category_words & expertise_words) * 35
+    score += len(issue_words & expertise_words) * 12
+    score += len(issue_words & capability_words) * 6
+    return score
+def university_location_score(university, issue):
+    if str(issue.get("district", "")).casefold() == str(university.get("district", "")).casefold():
+        return 45
+    issue_coords = _issue_coords(issue)
+    university_coords = _university_coords(university)
+    if not issue_coords or not university_coords:
+        return 0
+    distance = distance_km(issue_coords[0], issue_coords[1], university_coords[0], university_coords[1])
+    return max(1, int(35 - min(distance, 350) / 10))
+def university_issue_score(university, issue):
+    return university_expertise_score(university, issue) + university_location_score(university, issue)
+def best_university_for_issue(issue, universities):
+    ranked = sorted(
+        universities,
+        key=lambda university: (
+            university_expertise_score(university, issue),
+            university_location_score(university, issue),
+            university_issue_score(university, issue),
+        ),
+        reverse=True,
+    )
+    if not ranked:
+        return None, 0
+    score = university_issue_score(ranked[0], issue)
+    return (ranked[0], score) if score > 0 else (None, 0)
+def auto_assign_tasks_to_university(university, assigned_by="ai-assignment"):
+    assignments = load_assignments()
+    universities = load_universities()
+    assigned = []
+    for issue in ISSUES:
+        if issue.get("moderation_status", "Pending") != "Approved" or issue.get("id") in assignments:
+            continue
+        recommended, score = best_university_for_issue(issue, universities)
+        if recommended and recommended["id"] == university["id"]:
+            if assign_issue(issue["id"], university["id"], assigned_by):
+                assigned.append({"issue": issue, "score": score})
+    return assigned
+def auto_assign_issue_to_best_university(issue, assigned_by="ai-assignment"):
+    if issue.get("id") in load_assignments():
+        return None
+    recommended, score = best_university_for_issue(issue, load_universities())
+    if not recommended:
+        return None
+    if not assign_issue(issue["id"], recommended["id"], assigned_by):
+        return None
+    if recommended.get("contact_email"):
+        create_notification(
+            recommended["contact_email"],
+            f"AI assigned a matching challenge to {recommended['name']}: {issue.get('title', 'Civic issue')}.",
+            "assignment",
+            issue["id"],
+        )
+    return {"university": recommended, "score": score}
 def render_dashboard_team(team):
     milestones = load_milestones(team["id"])
     history = load_status_history(team["id"])
@@ -150,12 +256,163 @@ def industry_for_user(user):
 def render_industry_dashboard(user):
     partner = industry_for_user(user)
     if partner is None:
-        return "<h1>Industry account required</h1><p>This account is not linked to an industry partner profile.</p>"
-    issues = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"]
+        return "<div class='section-card'><h1>Industry Account Required</h1><p>This account is not linked to a registered industry partner profile.</p></div>"
+    
     offers = load_partner_offers(user)
-    offer_markup = "".join(f"<p>Offer for {html.escape(offer['title'])}: {html.escape(offer['support_type'])} ({html.escape(offer['status'])})</p>" for offer in offers)
-    options = "".join(f"<option value='{issue['id']}'>{html.escape(issue['title'])} ({html.escape(issue.get('district', ''))})</option>" for issue in issues)
-    return f"<h1>{html.escape(partner['name'])}</h1><p>{html.escape(partner['partner_type'])} · {html.escape(partner['district'])}</p>{offer_markup}<article><h2>Offer support</h2><form data-endpoint='/api/industry/offers'><select name='issue_id' required>{options}</select><select name='support_type'><option>Mentorship</option><option>Funding</option><option>Prototyping</option><option>Testing</option><option>Deployment</option></select><textarea name='details' placeholder='Describe the support you can provide' required></textarea><button>Submit offer</button></form></article>"
+    assignments = load_assignments()
+    universities = load_universities()
+    teams = load_teams()
+    reports = load_university_reports()
+    approved_issues = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"]
+    
+    total_offers = len(offers)
+    total_funding = sum(int(offer.get("funding_amount") or 0) for offer in offers)
+    accepted_offers = sum(1 for offer in offers if offer.get("status") in {"Accepted", "Delivered"})
+    
+    # 1. Partner Profile & Metric Overview
+    profile_html = (
+        f"<div class='section-card' style='background:linear-gradient(135deg, #172b28 0%, #203f3a 100%);color:white;border-radius:16px;padding:26px;margin-bottom:26px;'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;'>"
+        f"<div>"
+        f"<span style='background:rgba(230,95,56,0.25);color:#ff9e80;border:1px solid #e65f38;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;'>{html.escape(partner['partner_type'])}</span>"
+        f"<h2 style='margin:10px 0 4px;font-size:28px;color:#fff;'>{html.escape(partner['name'])}</h2>"
+        f"<p style='color:#a3c2bc;font-size:13px;margin:0;'>District: <strong>{html.escape(partner['district'])}</strong> · Focus Domains: <strong>{html.escape(partner['domains'])}</strong> · Contact: <strong>{html.escape(partner['contact_email'])}</strong></p>"
+        f"</div>"
+        f"<div style='display:flex;gap:12px;flex-wrap:wrap;'>"
+        f"<div style='background:rgba(255,255,255,0.08);padding:12px 18px;border-radius:12px;text-align:center;min-width:110px;'>"
+        f"<div style='font-size:22px;font-weight:bold;color:#ff9e80;'>{total_offers}</div><div style='font-size:11px;color:#a3c2bc;text-transform:uppercase;'>Support Offers</div>"
+        f"</div>"
+        f"<div style='background:rgba(255,255,255,0.08);padding:12px 18px;border-radius:12px;text-align:center;min-width:110px;'>"
+        f"<div style='font-size:22px;font-weight:bold;color:#64d8cb;'>₹ {total_funding:,}</div><div style='font-size:11px;color:#a3c2bc;text-transform:uppercase;'>Funding Pledged</div>"
+        f"</div>"
+        f"<div style='background:rgba(255,255,255,0.08);padding:12px 18px;border-radius:12px;text-align:center;min-width:110px;'>"
+        f"<div style='font-size:22px;font-weight:bold;color:#ffd54f;'>{accepted_offers}</div><div style='font-size:11px;color:#a3c2bc;text-transform:uppercase;'>Active Pledges</div>"
+        f"</div>"
+        f"</div>"
+        f"</div>"
+        f"</div>"
+    )
+    
+    # 2. Active Pledges & Collaboration Feed
+    offer_cards = []
+    for offer in offers:
+        issue_id = offer["issue_id"]
+        issue_team = next((t for t in teams if t["issue_id"] == issue_id), None)
+        team_markup = ""
+        if issue_team:
+            milestones = load_milestones(issue_team["id"])
+            m_items = []
+            for m in milestones:
+                t_res = f"<br><em>Testing: {html.escape(m['testing_result'])}</em>" if m.get('testing_result') else ""
+                m_items.append(f"<li style='margin:4px 0;'><span style='font-weight:bold;'>{html.escape(m['title'])}</span> [{html.escape(m['status'])}] &mdash; <small>{html.escape(str(m['due_date'] or 'No deadline'))}</small>{t_res}</li>")
+            m_markup = "".join(m_items)
+            team_markup = (
+                f"<div style='background:#f4f8f7;border-left:4px solid #317c91;padding:12px 16px;border-radius:6px;margin-top:12px;'>"
+                f"<p style='margin:0 0 6px;font-size:13px;'><strong>University Team:</strong> {html.escape(issue_team['name'])} (Mentor: <em>{html.escape(issue_team['faculty_mentor'])}</em>) &middot; Stage: <span style='font-weight:bold;color:#317c91;'>{html.escape(issue_team['status'])}</span></p>"
+                f"<details><summary style='cursor:pointer;font-size:12px;color:#667773;'>View Active Milestones ({len(milestones)})</summary><ul style='font-size:12px;margin:6px 0 0 16px;padding:0;'>{m_markup or '<li>No milestones defined</li>'}</ul></details>"
+                f"</div>"
+            )
+            
+        status_color = "#2b7a4b" if offer["status"] == "Accepted" else "#317c91" if offer["status"] == "Delivered" else "#b83226" if offer["status"] == "Declined" else "#c48622"
+        funding_badge = f"<span style='background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:12px;margin-left:8px;'>₹ {int(offer.get('funding_amount') or 0):,}</span>" if offer.get('funding_amount') else ""
+        resources_line = f"<p style='font-size:12px;color:#667773;margin:4px 0;'><strong>Committed Resources:</strong> {html.escape(str(offer.get('resources') or ''))}</p>" if offer.get('resources') else ""
+        timeline_line = f"<p style='font-size:12px;color:#667773;margin:4px 0;'><strong>Target Timeline:</strong> {html.escape(str(offer.get('timeline') or ''))}</p>" if offer.get('timeline') else ""
+        commitment_line = f"<p style='font-size:12px;color:#2e7d32;margin:6px 0;background:#f1f8e9;padding:6px 10px;border-radius:6px;'><strong>Nodal / University Response:</strong> {html.escape(str(offer.get('commitment_note') or ''))}</p>" if offer.get('commitment_note') else ""
+        
+        offer_cards.append(
+            f"<article style='background:#fffdf8;border:1px solid #dedbd1;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 4px 12px rgba(23,43,40,0.04);'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px;'>"
+            f"<div>"
+            f"<h3 style='margin:0 0 4px;font-size:18px;'>{html.escape(offer['title'])} <small style='color:#667773;font-size:13px;'>({html.escape(str(offer.get('district', '')))} &middot; {html.escape(str(offer.get('category', 'Civic')))})</small></h3>"
+            f"<p style='margin:4px 0 8px;font-size:13px;'>Support Type: <strong>{html.escape(offer['support_type'])}</strong> {funding_badge}</p>"
+            f"</div>"
+            f"<span style='background:{status_color}18;color:{status_color};border:1px solid {status_color}40;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:bold;'>{html.escape(offer['status'])}</span>"
+            f"</div>"
+            f"<p style='color:#444;font-size:13px;line-height:1.5;background:#faf8f2;padding:10px 14px;border-radius:8px;margin:8px 0;'><strong>Details:</strong> {html.escape(offer['details'])}</p>"
+            f"{resources_line}"
+            f"{timeline_line}"
+            f"{commitment_line}"
+            f"{team_markup}"
+            f"</article>"
+        )
+    offers_feed = "".join(offer_cards) if offer_cards else "<p style='color:#667773;'>No support offers submitted yet. Browse the societal challenges below to pledge mentorship, funding, or testing support.</p>"
+    
+    # 3. Societal Challenge & University R&D Explorer
+    challenge_cards = []
+    for issue in approved_issues:
+        issue_id = issue["id"]
+        assignment = assignments.get(issue_id)
+        issue_team = next((t for t in teams if t["issue_id"] == issue_id), None)
+        issue_reports = [r for r in reports if r["issue_id"] == issue_id]
+        
+        academic_info = ""
+        if assignment:
+            assigned_university = next((u for u in universities if u["id"] == assignment["university_id"]), None)
+            uni_name = html.escape((assigned_university or {}).get("name") or "Assigned University")
+            team_info = f"<br><strong>Faculty Mentor / Team:</strong> {html.escape(issue_team['faculty_mentor'])} &middot; Stage: <span style='color:#317c91;font-weight:bold;'>{html.escape(issue_team['status'])}</span>" if issue_team else "<br><em style='color:#667773;'>Team forming in progress</em>"
+            academic_info = (
+                f"<div style='background:#edf7f6;border-radius:8px;padding:12px;margin:10px 0;font-size:13px;'>"
+                f"<strong>Assigned Institution:</strong> {uni_name} &middot; Status: <strong>{html.escape(assignment['status'])}</strong>"
+                f"{team_info}"
+                f"</div>"
+            )
+            
+        reports_markup = ""
+        if issue_reports:
+            r_list = "".join(f"<div style='margin-bottom:6px;'><strong>{html.escape(r['title'])}</strong>: {html.escape(r['summary'][:180])}...</div>" for r in issue_reports)
+            reports_markup = f"<details style='font-size:12px;color:#333;margin:8px 0;'><summary style='cursor:pointer;color:#317c91;font-weight:bold;'>View Academic Pilot Reports ({len(issue_reports)})</summary><div style='padding:8px;background:#f9f9f9;border-radius:6px;margin-top:4px;'>{r_list}</div></details>"
+            
+        challenge_cards.append(
+            f"<article style='background:#fffdf8;border:1px solid #dedbd1;border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 4px 14px rgba(23,43,40,0.05);'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;'>"
+            f"<div>"
+            f"<span style='background:#fbe9e7;color:#d84315;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;text-transform:uppercase;'>{html.escape(issue.get('category', 'Civic Issue'))}</span>"
+            f"<h3 style='margin:8px 0 4px;font-size:20px;'>{html.escape(issue['title'])}</h3>"
+            f"<p style='color:#667773;font-size:13px;margin:0 0 8px;'>Location: <strong>{html.escape(issue.get('district', 'Jharkhand'))}</strong> &middot; {html.escape(str(issue.get('block', '')))} &middot; <strong style='color:#e65f38;'>{issue.get('supporters', 0)} citizen supporters</strong></p>"
+            f"</div>"
+            f"</div>"
+            f"<p style='color:#333;font-size:14px;line-height:1.5;margin:8px 0 12px;'>{html.escape(issue.get('description', ''))}</p>"
+            f"{academic_info}"
+            f"{reports_markup}"
+            f"<details style='margin-top:14px;background:#fff;border:1px solid #e0ded6;border-radius:10px;padding:14px;'>"
+            f"<summary style='cursor:pointer;font-weight:bold;color:#172b28;font-size:14px;'>+ Pledge Support & Co-Development for this Challenge</summary>"
+            f"<form data-endpoint='/api/industry/offers' style='margin-top:14px;display:grid;gap:10px;'>"
+            f"<input type='hidden' name='issue_id' value='{issue_id}'>"
+            f"<div style='display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;'>"
+            f"<div><label>Support Category</label><select name='support_type' required><option>Mentorship</option><option>Funding</option><option>Prototyping</option><option>Testing</option><option>Deployment</option><option>Co-development</option><option>Technology Transfer</option><option>Pilot Implementation</option></select></div>"
+            f"<div><label>CSR / Seed Funding (₹ Optional)</label><input type='number' name='funding_amount' placeholder='e.g. 150000' min='0'></div>"
+            f"<div><label>Committed Resources / Equipment</label><input name='resources' placeholder='e.g. Maker lab access, hardware components'></div>"
+            f"<div><label>Target Timeline</label><input name='timeline' placeholder='e.g. 3-month prototype, 6-month pilot'></div>"
+            f"</div>"
+            f"<div><label>Support & Implementation Scope</label><textarea name='details' placeholder='Describe how your organization will support the student/faculty team with technical expertise, testing, funding, or deployment...' required style='min-height:75px;'></textarea></div>"
+            f"<button type='submit' style='width:fit-content;'>Submit Support Pledge</button>"
+            f"</form>"
+            f"</details>"
+            f"</article>"
+        )
+    challenges_feed = "".join(challenge_cards) if challenge_cards else "<p style='color:#667773;'>No approved challenges are currently awaiting industry partnership.</p>"
+
+    # 4. Direct Institutional Communication
+    messages_feed = render_messages(user)
+    
+    return (
+        f"{profile_html}"
+        f"<section class='section-card'>"
+        f"<h2>1. Active Support Pledges & Co-Development Feed</h2>"
+        f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Track the real-time status of your contributions, university team milestones, and government commitment acknowledgments.</p>"
+        f"{offers_feed}"
+        f"</section>"
+        f"<section class='section-card'>"
+        f"<h2>2. Societal Challenges & University R&D Explorer</h2>"
+        f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Browse citizen challenges validated by government moderation and paired with university student/faculty teams ready for industry partnership.</p>"
+        f"{challenges_feed}"
+        f"</section>"
+        f"<section class='section-card'>"
+        f"<h2>3. Institutional Communications & Direct Messaging</h2>"
+        f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Communicate directly with University Faculty Mentors and Government Nodal Officers.</p>"
+        f"{messages_feed}"
+        f"</section>"
+    )
 def render_government_dashboard():
     metrics = load_dashboard_metrics()
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])
@@ -234,8 +491,8 @@ def render_industry_admin():
 def render_university_issues():
     universities = load_universities()
     assignments = load_assignments()
-    directory = "<h2>University registration</h2><form class='university-create'><input name='name' placeholder='University name' required><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='departments' placeholder='Departments'><input name='laboratories' placeholder='Laboratories'><input name='incubation_facilities' placeholder='Incubation facilities'><input name='contact_email' placeholder='Contact email' required><button type='submit'>Register university</button></form><h2>University profiles</h2>" + "".join(
-        f"<form class='university-profile'><input type='hidden' name='university_id' value='{university['id']}'><input name='name' value='{html.escape(university['name'])}' required><input name='district' value='{html.escape(university['district'])}' required><input name='domains' value='{html.escape(university['domains'])}' required><input name='departments' value='{html.escape(university.get('departments') or '')}' placeholder='Departments'><input name='laboratories' value='{html.escape(university.get('laboratories') or '')}' placeholder='Laboratories'><input name='incubation_facilities' value='{html.escape(university.get('incubation_facilities') or '')}' placeholder='Incubation facilities'><input name='contact_email' value='{html.escape(university.get('contact_email') or '')}'><button type='submit'>Save profile</button></form>"
+    directory = "<h2>University registration</h2><form class='university-create'><input name='name' placeholder='University name' required><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='expertise' placeholder='Expertise keywords' required><input name='departments' placeholder='Departments'><input name='laboratories' placeholder='Laboratories'><input name='incubation_facilities' placeholder='Incubation facilities'><input name='contact_email' placeholder='Contact email' required><button type='submit'>Register university</button></form><h2>University profiles</h2>" + "".join(
+        f"<form class='university-profile'><input type='hidden' name='university_id' value='{university['id']}'><input name='name' value='{html.escape(university['name'])}' required><input name='district' value='{html.escape(university['district'])}' required><input name='domains' value='{html.escape(university['domains'])}' required><input name='expertise' value='{html.escape(university.get('expertise') or '')}' placeholder='Expertise keywords'><input name='departments' value='{html.escape(university.get('departments') or '')}' placeholder='Departments'><input name='laboratories' value='{html.escape(university.get('laboratories') or '')}' placeholder='Laboratories'><input name='incubation_facilities' value='{html.escape(university.get('incubation_facilities') or '')}' placeholder='Incubation facilities'><input name='contact_email' value='{html.escape(university.get('contact_email') or '')}'><button type='submit'>Save profile</button></form>"
         for university in universities
     )
     approved = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"]
@@ -248,16 +505,9 @@ def render_university_issues():
         assignment = assignments.get(issue["id"])
         issue_district = str(issue.get("district", "")).casefold()
         issue_domain = str(issue.get("category", "")).casefold()
-        ranked_universities = sorted(
-            universities,
-            key=lambda university: (
-                issue_domain in str(university.get("domains", "")).casefold(),
-                issue_district == str(university.get("district", "")).casefold(),
-            ),
-            reverse=True,
-        )
-        recommended = ranked_universities[0] if ranked_universities else None
-        recommendation = f"<p><strong>Recommended:</strong> {html.escape(recommended['name'])} based on district and domain expertise.</p>" if recommended else ""
+        ranked_universities = sorted(universities, key=lambda university: university_issue_score(university, issue), reverse=True)
+        recommended = ranked_universities[0] if ranked_universities and university_issue_score(ranked_universities[0], issue) > 0 else None
+        recommendation = f"<p><strong>AI recommended:</strong> {html.escape(recommended['name'])} based on district, domain, and expertise match.</p>" if recommended else ""
         current = f"<p>Assigned to university ID {assignment['university_id']} ({html.escape(assignment['status'])}).</p><p>{html.escape(str(assignment.get('response_reason') or ''))}</p><form class='response'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='status'><option>Accepted</option><option>Rejected</option><option>Needs clarification</option></select><input name='reason' placeholder='University response' required><button type='submit'>Save response</button></form>" if assignment else "<p>Not assigned.</p>"
         issue_teams = [team for team in teams if team["issue_id"] == issue["id"]]
         team_markup = "".join(render_dashboard_team(team) for team in issue_teams)
@@ -282,6 +532,9 @@ PAGE = PAGE.replace(
 ).replace(
     "description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
     "description:form.get('description'),area:form.get('block')||form.get('district'),district:form.get('district'),block:form.get('block'),lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
+).replace(
+    "alert('Your issue was added to the map.')",
+    "alert(result.assignment?`Your issue was added and matched with ${result.assignment.university_name}.`:'Your issue was added to the map. AI will match it when a suitable university is available.')",
 )
 MAP_PAGE = PAGE
 def proposal_issue(issue_id: int):
@@ -388,6 +641,9 @@ class MapHandler(BaseHTTPRequestHandler):
             return
         if path == "/university/login" or path == "/university-login":
             self.send_html(load_university_login_page(""))
+            return
+        if path == "/university/register" or path == "/university-register":
+            self.send_html(load_university_register_page(""))
             return
         if path == "/register":
             self.send_html(load_register_page(""))
@@ -549,6 +805,40 @@ class MapHandler(BaseHTTPRequestHandler):
             SESSIONS[session_id] = email
             self.redirect("/university-dashboard", f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
             return
+        if path == "/university/register" or path == "/university-register":
+            length = int(self.headers.get("Content-Length", "0"))
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            email = form.get("email", [""])[0].strip().lower()
+            password = form.get("password", [""])[0]
+            confirm_password = form.get("confirm_password", [""])[0]
+            values = {
+                "name": form.get("name", [""])[0].strip()[:255],
+                "district": form.get("district", [""])[0].strip()[:100],
+                "domains": form.get("domains", [""])[0].strip()[:1000],
+                "departments": form.get("departments", [""])[0].strip()[:1000],
+                "laboratories": form.get("laboratories", [""])[0].strip()[:1000],
+                "incubation_facilities": form.get("incubation_facilities", [""])[0].strip()[:1000],
+                "contact_email": email,
+                "expertise": form.get("expertise", [""])[0].strip()[:1500],
+            }
+            if password != confirm_password:
+                self.send_html(load_university_register_page('<p class="error">Passwords do not match.</p>'), status=400)
+                return
+            if not values["name"] or not values["district"] or not values["domains"] or not values["expertise"] or "@" not in email:
+                self.send_html(load_university_register_page('<p class="error">University name, district, domains, expertise, and valid email are required.</p>'), status=400)
+                return
+            if university_for_user(email) is not None:
+                self.send_html(load_university_register_page('<p class="error">A university profile already uses this email.</p>'), status=400)
+                return
+            created, message = create_account(email, password)
+            if not created:
+                self.send_html(load_university_register_page(f'<p class="error">{html.escape(message)}</p>'), status=400)
+                return
+            university = create_university(**values)
+            assigned = auto_assign_tasks_to_university(university)
+            assignment_text = f" AI assigned {len(assigned)} approved task(s) to your dashboard." if assigned else " No approved matching tasks are available yet."
+            self.send_html(load_university_register_page(f'<p class="success">University registered successfully.{assignment_text} You can sign in now.</p>'))
+            return
         if path == "/api/admin/issues":
             user = self.session_user()
             if user is None or not is_admin(user):
@@ -573,6 +863,8 @@ class MapHandler(BaseHTTPRequestHandler):
             if issue is not None:
                 issue.update({"moderation_status": status, "moderation_reason": reason, "moderated_by": user})
                 create_notification(issue.get("reporter", ""), f"Your issue '{issue.get('title', 'issue')}' was {status.lower()}.", "issue", issue_id) if issue.get("reporter") else None
+                if status == "Approved":
+                    auto_assign_issue_to_best_university(issue)
             self.send_json({"status": status, "issue_id": issue_id})
             return
         if path == "/api/admin/assignments":
@@ -760,19 +1052,28 @@ class MapHandler(BaseHTTPRequestHandler):
                 issue_id = int(data["issue_id"])
                 support_type = str(data["support_type"]).strip()
                 details = str(data["details"]).strip()[:3000]
+                funding_amount = int(data.get("funding_amount") or 0)
+                resources = str(data.get("resources", "")).strip()[:1000]
+                timeline = str(data.get("timeline", "")).strip()[:100]
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 self.send_json({"message": "Invalid support offer."}, status=400)
                 return
-            if support_type not in {"Mentorship", "Funding", "Prototyping", "Testing", "Deployment"} or not details:
-                self.send_json({"message": "Choose a support type and provide details."}, status=400)
+            allowed_types = {
+                "Mentorship", "Funding", "Prototyping", "Testing", "Deployment",
+                "Co-development", "Technology Transfer", "Pilot Implementation",
+                "CSR / Seed Funding", "Prototyping Facility", "Testing & Validation", "Deployment & Scaling"
+            }
+            if support_type not in allowed_types or not details:
+                self.send_json({"message": "Choose a valid support type and provide details."}, status=400)
                 return
             if not any(issue.get("id") == issue_id and issue.get("moderation_status", "Pending") == "Approved" for issue in ISSUES):
                 self.send_json({"message": "Only approved issues can receive offers."}, status=400)
                 return
-            offer = create_support_offer(issue_id, partner["id"], support_type, details)
+            offer = create_support_offer(issue_id, partner["id"], support_type, details, funding_amount, resources, timeline)
             issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
             if issue and issue.get("reporter"):
-                create_notification(issue["reporter"], f"An industry partner offered {support_type.lower()} support for your issue.", "offer", offer["id"])
+                create_notification(issue["reporter"], f"Industry partner '{partner['name']}' pledged {support_type} support for your issue.", "offer", offer["id"])
+            create_notification("admin@jharkhand.gov.in", f"Industry partner '{partner['name']}' pledged {support_type} for Issue #{issue_id}.", "offer", offer["id"])
             self.send_json({"message": "Support offer submitted.", "offer": offer}, status=201)
             return
         if path == "/api/messages":
@@ -808,6 +1109,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 name = str(data["name"]).strip()[:255]
                 district = str(data["district"]).strip()[:100]
                 domains = str(data["domains"]).strip()[:1000]
+                expertise = str(data.get("expertise", "")).strip()[:1500]
                 departments = str(data.get("departments", "")).strip()[:1000]
                 laboratories = str(data.get("laboratories", "")).strip()[:1000]
                 incubation_facilities = str(data.get("incubation_facilities", "")).strip()[:1000]
@@ -818,7 +1120,7 @@ class MapHandler(BaseHTTPRequestHandler):
             if not name or not district or not domains:
                 self.send_json({"message": "Name, district, and domains are required."}, status=400)
                 return
-            if not update_university(university_id, name, district, domains, departments, laboratories, incubation_facilities, contact_email):
+            if not update_university(university_id, name, district, domains, departments, laboratories, incubation_facilities, contact_email, expertise):
                 self.send_json({"message": "University not found."}, status=404)
                 return
             self.send_json({"message": "University profile updated.", "university_id": university_id})
@@ -831,12 +1133,12 @@ class MapHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             try:
                 data = json.loads(self.rfile.read(length).decode("utf-8"))
-                values = {field: str(data.get(field, "")).strip()[:limit] for field, limit in {"name": 255, "district": 100, "domains": 1000, "departments": 1000, "laboratories": 1000, "incubation_facilities": 1000, "contact_email": 255}.items()}
+                values = {field: str(data.get(field, "")).strip()[:limit] for field, limit in {"name": 255, "district": 100, "domains": 1000, "expertise": 1500, "departments": 1000, "laboratories": 1000, "incubation_facilities": 1000, "contact_email": 255}.items()}
             except (TypeError, ValueError, json.JSONDecodeError):
                 self.send_json({"message": "Invalid university profile."}, status=400)
                 return
-            if not values["name"] or not values["district"] or not values["domains"] or "@" not in values["contact_email"]:
-                self.send_json({"message": "Name, district, domains, and a valid contact email are required."}, status=400)
+            if not values["name"] or not values["district"] or not values["domains"] or not values["expertise"] or "@" not in values["contact_email"]:
+                self.send_json({"message": "Name, district, domains, expertise, and a valid contact email are required."}, status=400)
                 return
             try:
                 university = create_university(**values)
@@ -967,6 +1269,14 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             if proof_bytes and created.get("issue") and created["result"] != "possible_duplicate":
                 created["issue"]["proof_id"] = proof_id
+            if created.get("result") == "new" and created.get("issue"):
+                assignment = auto_assign_issue_to_best_university(created["issue"])
+                if assignment:
+                    created["assignment"] = {
+                        "university_id": assignment["university"]["id"],
+                        "university_name": assignment["university"]["name"],
+                        "score": assignment["score"],
+                    }
             self.send_json(created,status=201 if created["result"] == "new" else 200)
             return
         if path == "/api/proposals":
