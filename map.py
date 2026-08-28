@@ -19,18 +19,19 @@ PROPOSALS_PAGE_FILE = BASE_DIR / "templates" / "proposals.html"
 PROFESSIONALS_PAGE_FILE = BASE_DIR / "templates" / "professionals.html"
 CITIZEN_PAGE_FILE = BASE_DIR / "templates" / "citizen.html"
 UNIVERSITY_DASHBOARD_FILE = BASE_DIR / "templates" / "university.html"
+UNIVERSITY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "university_login.html"
 INDUSTRY_DASHBOARD_FILE = BASE_DIR / "templates" / "industry.html"
 GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
 HOST = "127.0.0.1"
@@ -49,6 +50,9 @@ GOVERNMENT_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta
 def load_login_page(error=""):
     page = LOGIN_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
+def load_university_login_page(error=""):
+    page = UNIVERSITY_LOGIN_PAGE_FILE.read_text(encoding="utf-8")
+    return page.replace("__ERROR__", error)
 def load_register_page(error=""):
     page = REGISTER_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
@@ -63,21 +67,84 @@ def render_dashboard_team(team):
     history = load_status_history(team["id"])
     milestone_markup = "".join(f"<p>Milestone: {html.escape(milestone['title'])} · {html.escape(str(milestone['status']))} · {html.escape(str(milestone['due_date'] or 'No due date'))}</p><form data-endpoint='/api/university/milestone-status'><input type='hidden' name='milestone_id' value='{milestone['id']}'><select name='status'><option>Pending</option><option>In Progress</option><option>Completed</option></select><input name='testing_result' placeholder='Testing result'><button>Save milestone</button></form>" for milestone in milestones)
     history_markup = "".join(f"<p>History: {html.escape(item['status'])} · {html.escape(item['changed_by'])} · {html.escape(str(item['changed_at']))}</p>" for item in history)
-    return f"<p><strong>{html.escape(team['name'])}</strong> · {html.escape(team['faculty_mentor'])} · {html.escape(team['status'])} · {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
+    return f"<p><strong>{html.escape(team['name'])}</strong> · Mentor: <em>{html.escape(team['faculty_mentor'])}</em> · Stage: {html.escape(team['status'])} · Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
 def render_university_dashboard(user):
     university = university_for_user(user)
     if university is None:
         return "<h1>University account required</h1><p>This account is not linked to a university profile.</p>"
     assignments = load_university_assignments(user)
     teams = load_teams()
+    reports = load_university_reports()
     if not assignments:
         return f"<h1>{html.escape(university['name'])}</h1><p>No issues have been assigned to this university yet.</p>"
     cards = []
     for assignment in assignments:
-        issue_teams = [team for team in teams if team["issue_id"] == assignment["issue_id"] and team["university_id"] == assignment["university_id"]]
-        team_markup = "".join(f"<p><strong>{html.escape(team['name'])}</strong> · {html.escape(team['faculty_mentor'])} · {html.escape(team['status'])} · {html.escape(', '.join(team['members']))}</p>" for team in issue_teams)
-        cards.append(f"<article><h2>{html.escape(assignment['title'])}</h2><p>{html.escape(assignment['description'])}</p><p>{html.escape(assignment['district'])} · {html.escape(assignment['block'])} · {html.escape(assignment['category'])}</p><p>Status: <strong>{html.escape(assignment['status'])}</strong></p><form data-endpoint='/api/university/assignment-response'><input type='hidden' name='issue_id' value='{assignment['issue_id']}'><select name='status'><option>Accepted</option><option>Rejected</option><option>Needs clarification</option></select><input name='reason' placeholder='Decision reason' required><button>Save decision</button></form><h3>Project team</h3>{team_markup}<form class='team' data-endpoint='/api/university/teams'><input type='hidden' name='issue_id' value='{assignment['issue_id']}'><input type='hidden' name='university_id' value='{assignment['university_id']}'><input name='name' placeholder='Team name' required><input name='faculty_mentor' placeholder='Faculty mentor email' required><input name='members' placeholder='Student emails, comma separated' required><button>Create team</button></form><h3>Submit solution proposal</h3><form data-endpoint='/api/proposals'><input type='hidden' name='issue_id' value='{assignment['issue_id']}'><input name='title' placeholder='Solution title' required><textarea name='description' placeholder='Describe the proposed solution' required></textarea><button>Submit proposal</button></form></article>")
-    return f"<h1>{html.escape(university['name'])}</h1>" + "".join(cards)
+        issue_id = assignment["issue_id"]
+        issue_teams = [team for team in teams if team["issue_id"] == issue_id and team["university_id"] == assignment["university_id"]]
+        issue_reports = [r for r in reports if r["issue_id"] == issue_id and r["university_id"] == assignment["university_id"]]
+        team_markup = "".join(render_dashboard_team(team) for team in issue_teams)
+        if not team_markup:
+            team_markup = "<p class='muted'>No faculty mentor or student team assigned yet.</p>"
+        report_cards = []
+        for r in issue_reports:
+            deliv_text = html.escape(r['deliverables']) if r.get('deliverables') else ""
+            deliv_html = f"<p><strong>Deliverables:</strong> {deliv_text}</p>" if deliv_text else ""
+            report_cards.append(
+                f"<div style='background:#eef6f8;padding:12px;border-radius:8px;margin-bottom:10px;'>"
+                f"<strong>{html.escape(r['title'])}</strong><br>"
+                f"<p>{html.escape(r['summary'])}</p>"
+                f"{deliv_html}"
+                f"<small style='color:#666;'>Submitted by {html.escape(r['submitted_by'])} on {r['created_at']}</small>"
+                f"</div>"
+            )
+        reports_markup = "".join(report_cards)
+        if not reports_markup:
+            reports_markup = "<p class='muted'>No project reports submitted yet.</p>"
+        status_badge = f"<span style='padding:4px 10px;border-radius:6px;font-weight:bold;font-size:12px;background:{'#d4edda' if assignment['status']=='Accepted' else '#f8d7da' if assignment['status']=='Rejected' else '#fff3cd'};color:{'#155724' if assignment['status']=='Accepted' else '#721c24' if assignment['status']=='Rejected' else '#856404'}'>{html.escape(assignment['status'])}</span>"
+        cards.append(
+            f"<article>"
+            f"<h2>{html.escape(assignment['title'])}</h2>"
+            f"<p>{html.escape(assignment['description'])}</p>"
+            f"<p>District: <strong>{html.escape(assignment['district'])}</strong> · Block: <strong>{html.escape(assignment['block'])}</strong> · Category: <strong>{html.escape(assignment['category'])}</strong></p>"
+            f"<p>Request Status: {status_badge}</p>"
+            f"<h3>1. Accept or Reject Request (Passed to Government)</h3>"
+            f"<form data-endpoint='/api/university/assignment-response'>"
+            f"<input type='hidden' name='issue_id' value='{issue_id}'>"
+            f"<select name='status'><option value='Accepted'>Accept Request</option><option value='Rejected'>Reject Request</option><option value='Needs clarification'>Needs Clarification</option></select>"
+            f"<input name='reason' placeholder='Reason for government record' required style='width:60%;'>"
+            f"<button type='submit'>Save & Transmit Decision to Government</button>"
+            f"</form>"
+            f"<h3>2. Assign Faculty Mentor & Student Team Members</h3>"
+            f"{team_markup}"
+            f"<form class='team' data-endpoint='/api/university/teams' style='margin-top:12px;background:#fffdf8;padding:16px;border:1px solid #dedbd1;border-radius:10px;'>"
+            f"<h4>Assign Project Team</h4>"
+            f"<input type='hidden' name='issue_id' value='{issue_id}'>"
+            f"<input type='hidden' name='university_id' value='{assignment['university_id']}'>"
+            f"<input name='name' placeholder='Project Team Name (e.g. Smart Water Innovation Team)' required style='width:98%;'><br>"
+            f"<input name='faculty_mentor' placeholder='Faculty Mentor Email (e.g. prof.sharma@bitmesra.ac.in)' required style='width:98%;'><br>"
+            f"<input name='members' placeholder='Assigned Student Emails (comma separated: student1@bitmesra.ac.in, student2@bitmesra.ac.in)' required style='width:98%;'><br>"
+            f"<button type='submit' style='margin-top:8px;'>Assign Faculty & Students</button>"
+            f"</form>"
+            f"<h3>3. Submit University Project Report (Visible to All)</h3>"
+            f"{reports_markup}"
+            f"<form class='report-form' data-endpoint='/api/university/reports' style='margin-top:12px;background:#fffdf8;padding:16px;border:1px solid #dedbd1;border-radius:10px;'>"
+            f"<h4>Submit Public Project Report</h4>"
+            f"<input type='hidden' name='issue_id' value='{issue_id}'>"
+            f"<input name='title' placeholder='Report Title (e.g. Water Treatment Pilot Phase 1 Report)' required style='width:98%;'><br>"
+            f"<textarea name='summary' placeholder='Executive Summary & Key Findings (Visible to All)' required style='width:98%;min-height:70px;'></textarea><br>"
+            f"<textarea name='deliverables' placeholder='Project Deliverables, Prototypes, & Outcomes' style='width:98%;min-height:50px;'></textarea><br>"
+            f"<button type='submit' style='margin-top:8px;'>Submit Report to Public Record</button>"
+            f"</form>"
+            f"<h3>4. Solution Proposals</h3>"
+            f"<form data-endpoint='/api/proposals'>"
+            f"<input type='hidden' name='issue_id' value='{issue_id}'>"
+            f"<input name='title' placeholder='Solution Proposal Title' required style='width:98%;'><br>"
+            f"<textarea name='description' placeholder='Describe the technical solution proposal' required style='width:98%;'></textarea><br>"
+            f"<button type='submit'>Submit Proposal</button>"
+            f"</form>"
+            f"</article>"
+        )
+    return f"<h1>{html.escape(university['name'])} Dashboard</h1>" + "".join(cards)
 def industry_for_user(user):
     return next((partner for partner in load_industry_partners() if str(partner.get("contact_email", "")).casefold() == user.casefold()), None)
 def render_industry_dashboard(user):
@@ -94,7 +161,27 @@ def render_government_dashboard():
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])
     distribution = "".join(f"<li>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}: {row['total']}</li>" for row in metrics["district_domains"])
     stages = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["project_stages"])
-    return f"<h1>Government dashboard</h1><p>Jharkhand societal innovation overview.</p><section><h2>Totals</h2><p>Issues: {metrics['total_issues']} · Proposals: {metrics['proposals']} · Assignments: {metrics['assignments']} · Universities: {metrics['universities']} · Industry partners: {metrics['industry_partners']} · Support offers: {metrics['support_offers']}</p></section><section><h2>Moderation</h2><ul>{moderation or '<li>No issue data</li>'}</ul></section><section><h2>District and domain distribution</h2><ul>{distribution or '<li>No issue data</li>'}</ul></section><section><h2>Project progress</h2><ul>{stages or '<li>No project teams</li>'}</ul></section>"
+    responses = load_university_assignment_responses()
+    response_items = []
+    for resp in responses:
+        status_color = "#2b7a4b" if resp["status"] == "Accepted" else "#b83226" if resp["status"] == "Rejected" else "#c48622"
+        response_items.append(
+            f"<li style='margin-bottom:10px;padding:10px;border-bottom:1px solid #eee;'>"
+            f"<strong>{html.escape(resp['university_name'])}</strong> "
+            f"· Issue: <em>{html.escape(resp['issue_title'])}</em> ({html.escape(resp['issue_district'])})<br>"
+            f"Request Status: <span style='color:{status_color};font-weight:bold;'>{html.escape(resp['status'])}</span> "
+            f"· Decision Reason: <strong>{html.escape(str(resp.get('response_reason') or 'No reason provided'))}</strong> "
+            f"<br><small style='color:#666;'>Assigned at: {resp['assigned_at']}</small></li>"
+        )
+    responses_markup = "".join(response_items) or "<li>No university assignment decisions logged yet</li>"
+    return (
+        f"<h1>Government Dashboard</h1><p>Jharkhand societal innovation overview and institutional response tracking.</p>"
+        f"<section><h2>Totals</h2><p>Issues: {metrics['total_issues']} · Proposals: {metrics['proposals']} · Assignments: {metrics['assignments']} · Universities: {metrics['universities']} · Industry partners: {metrics['industry_partners']} · Support offers: {metrics['support_offers']}</p></section>"
+        f"<section><h2>University Request Responses & Decisions (Accept/Reject Feed)</h2><ul>{responses_markup}</ul></section>"
+        f"<section><h2>Moderation</h2><ul>{moderation or '<li>No issue data</li>'}</ul></section>"
+        f"<section><h2>District and domain distribution</h2><ul>{distribution or '<li>No issue data</li>'}</ul></section>"
+        f"<section><h2>Project progress</h2><ul>{stages or '<li>No project teams</li>'}</ul></section>"
+    )
 def notification_markup(user):
     notifications = load_notifications(user)
     if not notifications:
@@ -299,6 +386,9 @@ class MapHandler(BaseHTTPRequestHandler):
         if path == "/login":
             self.send_html(load_login_page(""))
             return
+        if path == "/university/login" or path == "/university-login":
+            self.send_html(load_university_login_page(""))
+            return
         if path == "/register":
             self.send_html(load_register_page(""))
             return
@@ -442,6 +532,23 @@ class MapHandler(BaseHTTPRequestHandler):
             self.send_json({"message": "Rate limit exceeded. Please wait a minute."}, status=429)
             return
         path = urlsplit(self.path).path
+        if path == "/university/login" or path == "/university-login":
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length).decode("utf-8")
+            data = parse_qs(body)
+            email = data.get("email", [""])[0].strip().lower()
+            password = data.get("password", [""])[0]
+            if not authenticate(email, password):
+                self.send_html(load_university_login_page("Email or password is incorrect."), status=401)
+                return
+            university = university_for_user(email)
+            if university is None:
+                self.send_html(load_university_login_page("This account is not linked to a registered university profile."), status=403)
+                return
+            session_id = create_session_record(email)
+            SESSIONS[session_id] = email
+            self.redirect("/university-dashboard", f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
+            return
         if path == "/api/admin/issues":
             user = self.session_user()
             if user is None or not is_admin(user):
@@ -534,7 +641,31 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"message": "Choose a valid response and provide a reason."}, status=400)
                 return
             update_assignment(issue_id, status, reason)
+            create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' has {status.upper()} assignment for Issue #{issue_id}. Reason: {reason}", "assignment_response", issue_id)
             self.send_json({"issue_id": issue_id, "status": status})
+            return
+        if path == "/api/university/reports":
+            user = self.session_user()
+            university = university_for_user(user or "")
+            if university is None:
+                self.send_error(403)
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                issue_id = int(data["issue_id"])
+                title = str(data["title"]).strip()
+                summary = str(data["summary"]).strip()
+                deliverables = str(data.get("deliverables", "")).strip()
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid report data."}, status=400)
+                return
+            if not title or not summary:
+                self.send_json({"message": "Title and summary are required."}, status=400)
+                return
+            report = create_university_report(issue_id, university["id"], user or "", title, summary, deliverables)
+            create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' submitted a project report: '{title}'", "report", issue_id)
+            self.send_json({"message": "Report submitted successfully.", "report": report}, status=201)
             return
         if path == "/api/university/teams":
             user = self.session_user()

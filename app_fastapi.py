@@ -22,7 +22,7 @@ from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue,
 from storage import (
     assign_issue, check_rate_limit, create_account_record, create_industry_partner,
     create_message, create_milestone, create_notification, create_session_record,
-    create_support_offer, create_team, create_university, delete_session_record,
+    create_support_offer, create_team, create_university, create_university_report, delete_session_record,
     get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers,
     load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones,
     load_notifications, load_messages, load_partner_offers, load_proposals,
@@ -33,7 +33,7 @@ from storage import (
 )
 from AI_model import inspect_image_proof, sanitize_and_reencode_image
 from map import (
-    load_login_page, load_register_page, build_proposals_page, build_professionals_page,
+    load_login_page, load_university_login_page, load_register_page, build_proposals_page, build_professionals_page,
     render_admin_issues, render_industry_admin, render_university_issues,
     render_university_dashboard, render_industry_dashboard, render_government_dashboard,
     notification_markup, render_messages, render_user_issues, MAP_PAGE, university_for_user, industry_for_user,
@@ -81,6 +81,27 @@ if FastAPI is not None:
             return HTMLResponse(content=load_login_page('<p class="error">Email or password is incorrect.</p>'), status_code=401)
         session_id = create_session_record(email)
         response = RedirectResponse(url="/", status_code=303)
+        response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
+        return response
+
+    @app.get("/university/login", response_class=HTMLResponse)
+    @app.get("/university-login", response_class=HTMLResponse)
+    async def get_university_login():
+        return HTMLResponse(content=load_university_login_page(""))
+
+    @app.post("/university/login")
+    @app.post("/university-login")
+    async def post_university_login(request: Request):
+        form = await request.form()
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+        if not authenticate(email, password):
+            return HTMLResponse(content=load_university_login_page("Email or password is incorrect."), status_code=401)
+        university = university_for_user(email)
+        if university is None:
+            return HTMLResponse(content=load_university_login_page("This account is not linked to a registered university profile."), status_code=403)
+        session_id = create_session_record(email)
+        response = RedirectResponse(url="/university-dashboard", status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
         return response
 
@@ -192,6 +213,59 @@ if FastAPI is not None:
             data["_proof_data"] = proof_bytes
         created = add_issue(data)
         return JSONResponse(status_code=201 if created["result"] == "new" else 200, content=created)
+
+    @app.post("/api/university/reports")
+    async def create_university_report_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        university = university_for_user(current_user)
+        if not university:
+            raise HTTPException(status_code=403, detail="University account required")
+        data = await request.json()
+        issue_id = int(data["issue_id"])
+        title = str(data["title"]).strip()
+        summary = str(data["summary"]).strip()
+        deliverables = str(data.get("deliverables", "")).strip()
+        if not title or not summary:
+            return JSONResponse(status_code=400, content={"message": "Title and summary are required."})
+        report = create_university_report(issue_id, university["id"], current_user, title, summary, deliverables)
+        create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' submitted a project report: '{title}'", "report", issue_id)
+        return JSONResponse(status_code=201, content={"message": "Report submitted successfully.", "report": report})
+
+    @app.post("/api/university/assignment-response")
+    async def university_assignment_response_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        university = university_for_user(current_user)
+        if not university:
+            raise HTTPException(status_code=403, detail="University account required")
+        data = await request.json()
+        issue_id = int(data["issue_id"])
+        status = str(data["status"])
+        reason = str(data.get("reason", "")).strip()
+        if status not in {"Accepted", "Rejected", "Needs clarification"} or not reason:
+            return JSONResponse(status_code=400, content={"message": "Choose a valid response and provide a reason."})
+        update_assignment(issue_id, status, reason)
+        create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' has {status.upper()} assignment for Issue #{issue_id}. Reason: {reason}", "assignment_response", issue_id)
+        return JSONResponse(status_code=200, content={"issue_id": issue_id, "status": status})
+
+    @app.post("/api/university/teams")
+    async def create_university_team_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        university = university_for_user(current_user)
+        if not university:
+            raise HTTPException(status_code=403, detail="University account required")
+        data = await request.json()
+        issue_id = int(data["issue_id"])
+        university_id = int(data["university_id"])
+        name = str(data["name"]).strip()[:150]
+        mentor = str(data["faculty_mentor"]).strip()[:255]
+        members = [str(m).strip()[:255] for m in data.get("members", []) if str(m).strip()]
+        if not name or not mentor or not members:
+            return JSONResponse(status_code=400, content={"message": "Team name, faculty mentor, and student emails are required."})
+        team = create_team(issue_id, university_id, name, mentor, members)
+        return JSONResponse(status_code=201, content={"message": "Project team created.", "team": team})
 
 else:
     app = None

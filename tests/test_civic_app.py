@@ -82,7 +82,7 @@ class TestSessionAndRateLimiting(unittest.TestCase):
 class TestDashboardTemplates(unittest.TestCase):
     def test_templates_exist(self):
         templates_dir = Path(__file__).resolve().parent.parent / "templates"
-        for name in ("citizen.html", "university.html", "industry.html", "government.html"):
+        for name in ("citizen.html", "university.html", "university_login.html", "industry.html", "government.html"):
             tmpl = templates_dir / name
             self.assertTrue(tmpl.exists(), f"Template {name} missing")
             content = tmpl.read_text(encoding="utf-8")

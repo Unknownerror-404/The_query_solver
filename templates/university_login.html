@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>University Portal Login · Civic Map</title>
+<style>
+:root {
+  --ink: #172b28;
+  --muted: #5e706b;
+  --paper: #f4efe6;
+  --card: #ffffff;
+  --accent: #317c91;
+  --line: #d8d4c9;
+  --gold: #c48622;
+  --error: #bc2c1a;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Arial, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 36px 32px;
+  box-shadow: 0 16px 36px rgba(23, 43, 40, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font: 700 20px Georgia, serif;
+  box-shadow: 0 6px 16px rgba(49, 124, 145, 0.25);
+}
+.brand-title {
+  font: 700 18px Georgia, serif;
+}
+.brand-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+p.subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+form {
+  display: grid;
+  gap: 16px;
+}
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: rgba(244, 239, 230, 0.25);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(49, 124, 145, 0.15);
+}
+button.submit-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 6px;
+}
+button.submit-btn:hover {
+  background: #256374;
+  transform: translateY(-1px);
+}
+.error {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fde8e8;
+  color: var(--error);
+  font-size: 13px;
+  border: 1px solid #f8b4b4;
+  margin-bottom: 16px;
+}
+.footer-links {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.footer-links a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.footer-links a:hover {
+  text-decoration: underline;
+}
+.demo-hint {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(196, 134, 34, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(196, 134, 34, 0.25);
+  font-size: 12px;
+  color: #8c5d10;
+  line-height: 1.4;
+}
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="brand">
+    <div class="brand-mark">U</div>
+    <div>
+      <div class="brand-title">Civic Map</div>
+      <div class="brand-sub">University Portal</div>
+    </div>
+  </div>
+
+  <h1>University Login</h1>
+  <p class="subtitle">Access your institution dashboard to review assigned civic challenges, manage faculty & student teams, and submit project reports.</p>
+
+  __ERROR__
+
+  <form action="/university/login" method="POST">
+    <label>
+      University Official Email
+      <input type="email" name="email" required placeholder="innovation@bitmesra.ac.in">
+    </label>
+
+    <label>
+      Password
+      <input type="password" name="password" required placeholder="Enter your password">
+    </label>
+
+    <button type="submit" class="submit-btn">Sign In to University Portal</button>
+  </form>
+
+  <div class="demo-hint">
+    <strong>Demo University Accounts:</strong><br>
+    • BIT Mesra: <code>innovation@bitmesra.ac.in</code> / <code>gov12345</code><br>
+    • NIT Jamshedpur: <code>innovation@nitjsr.ac.in</code> / <code>gov12345</code>
+  </div>
+
+  <div class="footer-links">
+    <a href="/login">← Standard Citizen Login</a>
+    <a href="/register">Register Account</a>
+  </div>
+</div>
+
+</body>
+</html>

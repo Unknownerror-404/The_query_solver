@@ -259,6 +259,22 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             except Error as error:
                 if error.errno != 1060:
                     raise
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS university_reports (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                university_id INT NOT NULL,
+                submitted_by VARCHAR(255) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                summary TEXT NOT NULL,
+                deliverables TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+                FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE CASCADE
+            )
+            """
+        )
         cursor.execute("SELECT COUNT(*) FROM universities")
         if cursor.fetchone()[0] == 0:
             cursor.executemany(
@@ -1018,4 +1034,77 @@ def check_rate_limit(client_key: str, max_requests: int = 30, window_seconds: in
     finally:
         cursor.close()
         connection.close()
+
+
+def create_university_report(issue_id: int, university_id: int, submitted_by: str, title: str, summary: str, deliverables: str = "") -> dict[str, Any]:
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO university_reports (issue_id, university_id, submitted_by, title, summary, deliverables)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (issue_id, university_id, submitted_by, title, summary, deliverables),
+        )
+        report_id = cursor.lastrowid
+        connection.commit()
+        return {
+            "id": report_id,
+            "issue_id": issue_id,
+            "university_id": university_id,
+            "submitted_by": submitted_by,
+            "title": title,
+            "summary": summary,
+            "deliverables": deliverables,
+        }
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_university_reports(issue_id: int | None = None) -> list[dict[str, Any]]:
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT r.id, r.issue_id, r.university_id, r.submitted_by, r.title, r.summary, r.deliverables, r.created_at,
+                   i.title AS issue_title, i.district AS issue_district, i.category AS issue_category,
+                   u.name AS university_name
+            FROM university_reports r
+            JOIN issues i ON i.id = r.issue_id
+            JOIN universities u ON u.id = r.university_id
+        """
+        params = []
+        if issue_id:
+            query += " WHERE r.issue_id = %s"
+            params.append(issue_id)
+        query += " ORDER BY r.created_at DESC"
+        cursor.execute(query, tuple(params))
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_university_assignment_responses() -> list[dict[str, Any]]:
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT a.issue_id, a.university_id, a.status, a.response_reason, a.assigned_at,
+                   i.title AS issue_title, i.district AS issue_district, i.category AS issue_category,
+                   u.name AS university_name, u.contact_email AS university_email
+            FROM issue_assignments a
+            JOIN issues i ON i.id = a.issue_id
+            JOIN universities u ON u.id = a.university_id
+            ORDER BY a.assigned_at DESC
+            """
+        )
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
 
