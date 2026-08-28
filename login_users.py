@@ -14,11 +14,17 @@ import hmac
 import secrets
 from pathlib import Path
 
+try:
+    from .storage import create_account_record, get_account, import_account, initialise
+except ImportError:
+    from storage import create_account_record, get_account, import_account, initialise
+
 ACCOUNTS_FILE = Path(__file__).with_name("accounts.csv")
 DEMO_EMAIL = "citizen@example.com"
 DEMO_PASSWORD = "map123"
 PROFESSIONAL_DEMO_EMAIL = "engineer@example.gov"
 PROFESSIONAL_DEMO_PASSWORD = "gov12345"
+ADMIN_EMAILS = {"admin@jharkhand.gov.in"}
 VERIFIED_PROFESSIONALS = {
     PROFESSIONAL_DEMO_EMAIL: {
         "name": "Arun Mehta",
@@ -27,7 +33,6 @@ VERIFIED_PROFESSIONALS = {
         "verification": "Verified by organization",
     }
 }
-MODERATOR_EMAILS = {PROFESSIONAL_DEMO_EMAIL}
 CSV_FIELDS = ("email", "password_hash", "salt")
 HASH_ITERATIONS = 310_000
 
@@ -56,32 +61,34 @@ def _ensure_accounts_file() -> None:
         writer.writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
 
 
-def authenticate(email: str, password: str) -> bool:
+def _ensure_accounts() -> None:
+    initialise()
     _ensure_accounts_file()
-    email = email.strip().lower()
     with ACCOUNTS_FILE.open(newline="", encoding="utf-8") as file:
         for account in csv.DictReader(file):
-            if account.get("email", "").lower() != email:
-                continue
-            password_hash, _ = _hash_password(password, account["salt"])
-            return hmac.compare_digest(password_hash, account["password_hash"])
-    return False
+            import_account(account["email"].strip().lower(), account["password_hash"], account["salt"])
+
+
+def authenticate(email: str, password: str) -> bool:
+    _ensure_accounts()
+    email = email.strip().lower()
+    account = get_account(email)
+    if account is None:
+        return False
+    password_hash, _ = _hash_password(password, account["salt"])
+    return hmac.compare_digest(password_hash, account["password_hash"])
 
 
 def create_account(email: str, password: str) -> tuple[bool, str]:
-    _ensure_accounts_file()
+    _ensure_accounts()
     email = email.strip().lower()
     if not email or "@" not in email:
         return False, "Enter a valid email address."
     if len(password) < 8:
         return False, "Password must contain at least 8 characters."
-    with ACCOUNTS_FILE.open(newline="", encoding="utf-8") as file:
-        accounts = list(csv.DictReader(file))
-    if any(account.get("email", "").lower() == email for account in accounts):
-        return False, "An account with that email already exists."
     password_hash, salt = _hash_password(password)
-    with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
-        csv.DictWriter(file, fieldnames=CSV_FIELDS).writerow({"email": email, "password_hash": password_hash, "salt": salt})
+    if not create_account_record(email, password_hash, salt):
+        return False, "An account with that email already exists."
     return True, "Account created."
 
 
@@ -89,8 +96,8 @@ def professional_profile(email: str) -> dict | None:
     return VERIFIED_PROFESSIONALS.get(email.strip().lower())
 
 
-def is_moderator(email: str) -> bool:
-    return email.strip().lower() in MODERATOR_EMAILS
+def is_admin(email: str) -> bool:
+    return email.strip().lower() in ADMIN_EMAILS
 
 
-_ensure_accounts_file()
+_ensure_accounts()
