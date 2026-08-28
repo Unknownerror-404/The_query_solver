@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Government Admin Dashboard · Civic Map</title>
+<style>
+:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
+header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
+.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
+.brand-sub{margin-top:2px;color:var(--gold);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.eyebrow{margin:0 0 6px;color:var(--gold);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
+.tagline{color:var(--muted);font:14px Arial,sans-serif}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
+.nav-button:hover,.nav-button.active{background:var(--ink);color:white}
+main{max-width:1200px;margin:0 auto;padding:34px 24px 50px}
+.banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
+.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--blue))}
+.banner h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}
+.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:800px}
+.section-card, section{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;margin-bottom:24px;box-shadow:0 6px 18px rgba(23,43,40,.06);overflow:hidden}
+.section-card:before, section:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--gold),var(--accent))}
+.section-card h2, section h2{margin:6px 0 16px;font-size:24px;font-weight:500;letter-spacing:-0.5px}
+article{position:relative;border-top:1px solid var(--line);padding:18px 0}
+article:first-of-type{border-top:0;padding-top:4px}
+article h3, article h2{margin:4px 0 6px;font-size:19px;font-weight:500}
+article p{color:var(--muted);font:14px/1.5 Arial,sans-serif;margin:4px 0}
+label{display:block;margin-top:12px;color:var(--ink);font:700 11px Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase}
+input,select,textarea{font:13px Arial,sans-serif;padding:10px 12px;margin:6px 6px 6px 0;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.9);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(196,134,34,.12)}
+textarea{width:98%;min-height:65px;resize:vertical}
+button{background:var(--ink);color:white;border:0;border-radius:8px;padding:10px 14px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s,background .2s}
+button:hover{background:#24413c;transform:translateY(-1px)}
+button.approve-btn{background:#137333}
+button.approve-btn:hover{background:#0d5926}
+button.reject-btn{background:#c5221f}
+button.reject-btn:hover{background:#9e1b18}
+ul{list-style:none;padding:0;margin:0}
+li{padding:10px 14px;border-bottom:1px solid var(--line);font:14px/1.5 Arial,sans-serif;color:var(--ink)}
+li:last-child{border-bottom:none}
+@media(max-width:760px){header{align-items:start;flex-direction:column;gap:12px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">G</div>
+    <div>
+      <div class="brand-name">Civic Map</div>
+      <div class="brand-sub">Government Administration</div>
+    </div>
+  </div>
+  <div class="tagline">
+    Government Portal · <a href="/logout" style="color:var(--muted)">Log out</a>
+  </div>
+  <nav class="nav">
+    <a class="nav-button" href="/">Live Map</a>
+    <a class="nav-button" href="/community">Community</a>
+    <a class="nav-button" href="/proposals">Solutions</a>
+    <a class="nav-button" href="/citizen-dashboard">My Dashboard</a>
+    <a class="nav-button" href="/university-dashboard">University</a>
+    <a class="nav-button" href="/industry-dashboard">Industry</a>
+    <a class="nav-button active" href="/government-dashboard">Government Admin</a>
+  </nav>
+</header>
+
+<main>
+  <div class="banner">
+    <p class="eyebrow">Public administration & analytics</p>
+    <h1>Government administration dashboard.</h1>
+    <p>Moderate pending community reports, assign societal challenges to recommended universities based on domain/district expertise, track industry commitments, and monitor state-wide civic impact analytics.</p>
+  </div>
+
+  __CONTENT__
+</main>
+
+<script>
+document.querySelectorAll('form').forEach(form => {
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const endpoint = form.dataset.endpoint || form.action;
+    const data = Object.fromEntries(new FormData(form));
+    if (event.submitter && event.submitter.name) {
+      data[event.submitter.name] = event.submitter.value;
+    }
+    if (form.className === 'team') {
+      data.members = data.members ? data.members.split(',').map(m => m.trim()).filter(Boolean) : [];
+    }
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        location.reload();
+      } else {
+        const err = await response.json();
+        alert(err.message || 'Operation failed.');
+      }
+    } catch(e) {
+      alert('Network request failed.');
+    }
+  };
+});
+</script>
+</body>
+</html>
