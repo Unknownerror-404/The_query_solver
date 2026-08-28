@@ -15,7 +15,7 @@ MYSQL_CONFIG = {
     "host": os.getenv("CIVIC_MAP_DB_HOST", "127.0.0.1"),
     "port": int(os.getenv("CIVIC_MAP_DB_PORT", "3306")),
     "user": os.getenv("CIVIC_MAP_DB_USER", "root"),
-    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", "Mi123456#"),
+    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", "Aniket@061006"),
     "database": os.getenv("CIVIC_MAP_DB_NAME", "sih26"),
 }
 
@@ -43,33 +43,57 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS issues (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR(255) NOT NULL,
-                category VARCHAR(100) NOT NULL,
-                area VARCHAR(255) NOT NULL,
-                district VARCHAR(100) NOT NULL DEFAULT 'Ranchi',
-                block VARCHAR(100) NOT NULL DEFAULT '',
-                latitude DECIMAL(10, 7) NOT NULL,
-                longitude DECIMAL(10, 7) NOT NULL,
-                description TEXT NOT NULL,
-                supporters INT NOT NULL DEFAULT 0,
-                age VARCHAR(50) NOT NULL,
-                proof_id VARCHAR(100),
-                proof_type VARCHAR(30),
-                proof_data LONGBLOB,
-                proof_status VARCHAR(30),
-                proof_message TEXT,
-                moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
-                moderation_reason TEXT,
-                moderated_by VARCHAR(255),
-                 reporter VARCHAR(255),
-                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS issues (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+
+        -- User-submitted issue information
+        title VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+
+        -- Location information
+        area VARCHAR(255) NOT NULL,
+        district VARCHAR(100) NOT NULL DEFAULT 'Ranchi',
+        block VARCHAR(100) NOT NULL DEFAULT '',
+        latitude DECIMAL(10, 7) NOT NULL,
+        longitude DECIMAL(10, 7) NOT NULL,
+
+        -- Sentence Transformer / AI classification
+        ai_category VARCHAR(100),
+        category_confidence DECIMAL(5, 4),
+        category_mismatch BOOLEAN NOT NULL DEFAULT FALSE,
+
+        -- Semantic tags produced by the tagging system
+        ai_tags JSON,
+
+        -- Model used to generate the AI results
+        tagging_model VARCHAR(150),
+
+        -- Issue metadata
+        supporters INT NOT NULL DEFAULT 0,
+        age VARCHAR(50) NOT NULL,
+
+        -- Proof/evidence
+        proof_id VARCHAR(100),
+        proof_type VARCHAR(30),
+        proof_data LONGBLOB,
+        proof_status VARCHAR(30),
+        proof_message TEXT,
+
+        -- Moderation
+        moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+        moderation_reason TEXT,
+        moderated_by VARCHAR(255),
+
+        -- Reporter
+        reporter VARCHAR(255),
+
+        -- Timestamp
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+        
         for statement in (
             "ALTER TABLE issues ADD COLUMN district VARCHAR(100) NOT NULL DEFAULT 'Ranchi'",
             "ALTER TABLE issues ADD COLUMN block VARCHAR(100) NOT NULL DEFAULT ''",
@@ -78,7 +102,13 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             "ALTER TABLE issues ADD COLUMN moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending'",
             "ALTER TABLE issues ADD COLUMN moderation_reason TEXT",
             "ALTER TABLE issues ADD COLUMN moderated_by VARCHAR(255)",
-                    "ALTER TABLE issues ADD COLUMN reporter VARCHAR(255)",
+            "ALTER TABLE issues ADD COLUMN reporter VARCHAR(255)",
+
+            "ALTER TABLE issues ADD COLUMN ai_category VARCHAR(100)",
+            "ALTER TABLE issues ADD COLUMN ai_confidence DECIMAL(6,5)",
+            "ALTER TABLE issues ADD COLUMN category_mismatch BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE issues ADD COLUMN ai_tags JSON",
+            "ALTER TABLE issues ADD COLUMN tagging_model VARCHAR(150)",
         ):
             try:
                 cursor.execute(statement)
@@ -393,25 +423,95 @@ def load_user_issues(reporter: str) -> list[dict[str, Any]]:
         cursor.close()
         connection.close()
 
-
 def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
     connection = connect()
+
     try:
         cursor = connection.cursor()
+
         cursor.execute(
             """
             INSERT INTO issues
-            (title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, moderation_status, reporter)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, 'Pending', %s)
+            (
+                title,
+                category,
+                ai_category,
+                ai_confidence,
+                category_mismatch,
+                ai_tags,
+                tagging_model,
+                area,
+                district,
+                block,
+                latitude,
+                longitude,
+                description,
+                supporters,
+                age,
+                proof_id,
+                proof_type,
+                proof_data,
+                proof_status,
+                proof_message,
+                moderation_status,
+                reporter
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, 1, 'just now',
+                %s, %s, %s, %s, %s, 'Pending', %s
+            )
             """,
-                (issue["title"], issue["category"], issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""), issue["lat"], issue["lng"], issue.get("description", ""), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("reporter")),
+            (
+                # Original user-provided information
+                issue["title"],
+                issue["category"],
+
+                # Sentence Transformer / tagging.py results
+                issue.get("problem_type"),
+                issue.get("tag_confidence"),
+                issue.get("category_mismatch", False),
+                issue.get("problem_tags"),
+                issue.get("tag_version"),
+
+                # Location
+                issue.get("area", ""),
+                issue.get("district", "Ranchi"),
+                issue.get("block", ""),
+                issue["lat"],
+                issue["lng"],
+
+                # Description
+                issue.get("description", ""),
+
+                # Proof
+                issue.get("proof_id"),
+                issue.get("_proof_type"),
+                issue.get("_proof_data"),
+                issue.get("proof_status"),
+                issue.get("proof_message"),
+
+                # Reporter
+                issue.get("reporter"),
+            ),
         )
+
         connection.commit()
+
         saved = dict(issue)
+
+        # Don't return raw proof data to the application
         saved.pop("_proof_type", None)
         saved.pop("_proof_data", None)
-        saved.update({"id": cursor.lastrowid, "supporters": 1, "age": "just now"})
+
+        saved.update({
+            "id": cursor.lastrowid,
+            "supporters": 1,
+            "age": "just now",
+        })
+
         return saved
+
     finally:
         cursor.close()
         connection.close()
