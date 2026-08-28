@@ -140,6 +140,48 @@ def _token_similarity(first: str, second: str) -> float:
     return len(first_tokens & second_tokens) / math.sqrt(len(first_tokens) * len(second_tokens))
 
 
+AI_CATEGORY_KEYWORDS = {
+    "Education": {"school", "college", "teacher", "student", "education", "classroom"},
+    "Healthcare": {"hospital", "doctor", "clinic", "medicine", "health", "ambulance"},
+    "Agriculture": {"farmer", "crop", "irrigation", "agriculture", "seed", "farm"},
+    "Water Resources": {"water", "pipeline", "supply", "drinking", "flood", "drainage"},
+    "Sanitation": {"garbage", "waste", "sewer", "toilet", "sanitation", "uncollected"},
+    "Environment": {"pollution", "tree", "forest", "smoke", "environment", "river"},
+    "Energy": {"electricity", "power", "transformer", "energy", "voltage"},
+    "Accessibility": {"wheelchair", "accessible", "disability", "ramp", "blind"},
+    "Urban Infrastructure": {"road", "pothole", "streetlight", "traffic", "bridge", "footpath"},
+    "Public Administration": {"office", "certificate", "pension", "ration", "complaint", "government"},
+    "Rural Livelihoods": {"livelihood", "employment", "market", "self-help", "income", "work"},
+}
+
+
+def classify_issue(title: str, description: str, category: str = "") -> dict[str, Any]:
+    """Return an explainable category and severity estimate for a civic report."""
+    text = _tokens(f"{title} {description} {category}")
+    scores = {
+        name: len(text & keywords)
+        for name, keywords in AI_CATEGORY_KEYWORDS.items()
+    }
+    predicted_category, match_count = max(scores.items(), key=lambda item: item[1])
+    if match_count == 0:
+        predicted_category = category.strip() or "Urban Infrastructure"
+        explanation = "No strong keyword signal; retained the submitted category."
+    else:
+        explanation = f"Matched {match_count} civic-domain signal(s) for {predicted_category}."
+
+    urgent_terms = {"danger", "accident", "collapse", "fire", "flood", "unsafe", "emergency", "death"}
+    impact_terms = {"blocked", "days", "week", "entire", "children", "elderly", "hospital", "school"}
+    severity_score = min(100, 30 + len(text & impact_terms) * 10 + len(text & urgent_terms) * 20)
+    severity = "Critical" if severity_score >= 80 else "High" if severity_score >= 60 else "Medium" if severity_score >= 40 else "Low"
+    return {
+        "predicted_category": predicted_category,
+        "category_confidence": round(min(0.99, 0.45 + match_count * 0.12), 2) if match_count else 0.25,
+        "priority_score": severity_score,
+        "priority_label": severity,
+        "matching_explanation": explanation,
+    }
+
+
 DETECTOR = IssueDeduplicator()
 
 

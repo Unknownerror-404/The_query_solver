@@ -22,17 +22,19 @@ UNIVERSITY_DASHBOARD_FILE = BASE_DIR / "templates" / "university.html"
 UNIVERSITY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "university_login.html"
 UNIVERSITY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "university_register.html"
 INDUSTRY_DASHBOARD_FILE = BASE_DIR / "templates" / "industry.html"
+INDUSTRY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "industry_login.html"
+INDUSTRY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "industry_register.html"
 GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
 HOST = "127.0.0.1"
@@ -40,11 +42,40 @@ PORT = 8000
 SESSIONS: dict[str, str] = {}
 PROPOSALS: list[dict] = load_proposals()
 NEXT_PROPOSAL_ID = max((proposal["id"] for proposal in PROPOSALS), default=0) + 1
-ADMIN_PAGE = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Admin moderation</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}button{padding:9px 14px;margin-right:8px;cursor:pointer}textarea{width:100%;min-height:50px;margin:8px 0}</style></head><body><h1>Issue moderation</h1><p>Review pending community reports before institutional assignment.</p>__ISSUES__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));data.status=event.submitter.value;const response=await fetch('/api/admin/issues',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Moderation failed')})</script></body></html>"""
-UNIVERSITY_PAGE = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University collaboration</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,button{padding:9px 12px;margin:5px 5px 5px 0}input{min-width:220px}h2{margin-bottom:6px}</style></head><body><h1>University collaboration</h1><p>Approved civic issues can be assigned to an institution and a project team.</p>__ISSUES__<script>document.querySelectorAll('.assignment').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/assignments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Assignment failed')});document.querySelectorAll('.team').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);const response=await fetch('/api/admin/teams',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Team creation failed')})</script></body></html>"""
+ADMIN_PAGE = """<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Admin Moderation · Civic Map</title>
+<link rel='stylesheet' href='/templates/shared.css'>
+<style>
+body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
+header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+main{max-width:1150px}
+.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}.admin-intro p{max-width:760px;color:var(--muted);font:14px/1.6 Arial,sans-serif}
+.moderation-list{display:grid;gap:16px}.moderation-card{padding:24px}.moderation-card h2,.moderation-card h3{margin:0 0 8px;font-size:20px;font-weight:500}.moderation-card p{color:var(--muted);font:14px/1.55 Arial,sans-serif}.moderation-card form{margin-top:18px}.moderation-card textarea{display:block;width:100%;min-height:78px;padding:11px 13px;margin:8px 0;border:1px solid var(--line);border-radius:8px;font:13px Arial,sans-serif;resize:vertical}.moderation-card button{margin:4px 8px 0 0;padding:10px 14px}.moderation-card button[value='Approved']{background:var(--success)}.moderation-card button[value='Rejected']{background:var(--danger)}.empty{padding:28px;background:var(--card);border:1px dashed var(--line);border-radius:14px;color:var(--muted);font:14px Arial,sans-serif}
+@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}}
+</style>
+</head>
+<body>
+<header>
+    <div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>Government Administration</div></div></div>
+    <div class='tagline'>Admin workspace · <a href='/logout' style='color:var(--muted)'>Log out</a></div>
+    <nav class='nav'><a class='nav-button' href='/'>Live Map</a><a class='nav-button' href='/community'>Community</a><a class='nav-button' href='/proposals'>Solutions</a><a class='nav-button' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button active' href='/admin'>Moderation</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav>
+</header>
+<main>
+    <div class='admin-intro'><p class='eyebrow'>Trust and safety</p><h1>Issue and proposal moderation.</h1><p>Review community reports and solution proposals before they move into institutional collaboration.</p></div>
+    <div class='moderation-list'>__ISSUES__</div>
+</main>
+<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(event.submitter&&event.submitter.name)data.status=event.submitter.value;let endpoint='/api/admin/issues';if(form.className==='proposal-moderation')endpoint='/api/admin/proposals';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';if(form.className==='industry-create')endpoint='/api/admin/industry-partners';if(form.className==='offer-update')endpoint='/api/admin/offer-commitments';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Admin operation failed')})</script>
+</body>
+</html>"""
+UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration · Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace · <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button' href='/admin'>Moderation</a><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.response').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/assignment-response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Response failed')});</script></body></html>")
+UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Approval update failed')});</script></body></html>")
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.university-profile').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/universities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Profile update failed')});</script></body></html>")
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelector('.university-create').onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/universities/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')};</script></body></html>")
+UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</body></html>", "<script>document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const button=form.querySelector('button');button.disabled=true;button.textContent='Saving...';const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok){button.textContent='Saved';button.classList.add('saved');setTimeout(()=>location.reload(),500)}else{button.disabled=false;button.textContent='Save approval';alert((await response.json()).message||'Approval update failed')}});</script></body></html>")
 UNIVERSITY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>University dashboard</h1><p>Assigned challenges, university decisions, project teams, and proposed solutions.</p>__ASSIGNMENTS__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);const response=await fetch(form.dataset.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Request failed')})</script></body></html>"""
 INDUSTRY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Industry dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>Industry partnership dashboard</h1><p>Offer practical support to approved societal challenges.</p>__CONTENT__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/industry/offers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Offer failed')})</script></body></html>"""
 GOVERNMENT_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Government dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;color:#172b28}section{border:1px solid #d9d7cd;padding:18px;margin:14px 0}li{margin:7px 0}</style></head><body>__CONTENT__</body></html>"""
@@ -54,6 +85,10 @@ def load_login_page(error=""):
 def load_university_login_page(error=""):
     page = UNIVERSITY_LOGIN_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
+def load_industry_login_page(message=""):
+    return INDUSTRY_LOGIN_PAGE_FILE.read_text(encoding="utf-8").replace("__MESSAGE__", message)
+def load_industry_register_page(message=""):
+    return INDUSTRY_REGISTER_PAGE_FILE.read_text(encoding="utf-8").replace("__MESSAGE__", message)
 def load_university_register_page(message=""):
     page = UNIVERSITY_REGISTER_PAGE_FILE.read_text(encoding="utf-8")
     district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
@@ -66,7 +101,7 @@ def load_proposals_page():
 def load_professionals_page():
     return PROFESSIONALS_PAGE_FILE.read_text(encoding="utf-8")
 def university_for_user(user):
-    return next((university for university in load_universities() if str(university.get("contact_email", "")).casefold() == user.casefold()), None)
+    return next((university for university in load_universities() if university.get("approval_status", "Active") == "Active" and str(university.get("contact_email", "")).casefold() == user.casefold()), None)
 DISTRICT_COORDS = {
     "Bokaro": (23.6693, 85.9563),
     "Chatra": (24.2120, 84.8715),
@@ -126,7 +161,37 @@ def university_location_score(university, issue):
     return max(1, int(35 - min(distance, 350) / 10))
 def university_issue_score(university, issue):
     return university_expertise_score(university, issue) + university_location_score(university, issue)
+
+
+def industry_match_score(partner, issue):
+    issue_words = _keywords(" ".join(str(issue.get(field, "")) for field in ("title", "description", "category", "block", "area")))
+    domain_words = _keywords(partner.get("domains", ""))
+    expertise_matches = issue_words & domain_words
+    location_match = str(issue.get("district", "")).casefold() == str(partner.get("district", "")).casefold()
+    location_score = 45 if location_match else 0
+    issue_coords = _issue_coords(issue)
+    partner_coords = DISTRICT_COORDS.get(str(partner.get("district", "")))
+    if not location_match and issue_coords and partner_coords:
+        distance = distance_km(issue_coords[0], issue_coords[1], partner_coords[0], partner_coords[1])
+        location_score = max(1, int(35 - min(distance, 350) / 10))
+    expertise_score = len(expertise_matches) * 20
+    return expertise_score + location_score, expertise_matches, location_match
+
+
+def industry_match_markup(partner, issue):
+    score, expertise_matches, location_match = industry_match_score(partner, issue)
+    expertise_text = ", ".join(sorted(expertise_matches)) if expertise_matches else "No direct domain keyword overlap"
+    location_text = "same district" if location_match else "nearest available location"
+    return (
+        f"<div style='background:#edf7f6;border-left:4px solid #317c91;border-radius:8px;padding:10px 12px;margin:10px 0;font-size:12px;'>"
+        f"<strong>AI-assisted partner match: {score} points</strong><br>"
+        f"Expertise signals: {html.escape(expertise_text)} · Location: {html.escape(location_text)}"
+        f"</div>"
+    )
+
+
 def best_university_for_issue(issue, universities):
+    universities = [university for university in universities if university.get("approval_status", "Active") == "Active"]
     ranked = sorted(
         universities,
         key=lambda university: (
@@ -252,7 +317,7 @@ def render_university_dashboard(user):
         )
     return f"<h1>{html.escape(university['name'])} Dashboard</h1>" + "".join(cards)
 def industry_for_user(user):
-    return next((partner for partner in load_industry_partners() if str(partner.get("contact_email", "")).casefold() == user.casefold()), None)
+    return next((partner for partner in load_industry_partners() if partner.get("approval_status", "Active") == "Active" and str(partner.get("contact_email", "")).casefold() == user.casefold()), None)
 def render_industry_dashboard(user):
     partner = industry_for_user(user)
     if partner is None:
@@ -263,7 +328,11 @@ def render_industry_dashboard(user):
     universities = load_universities()
     teams = load_teams()
     reports = load_university_reports()
-    approved_issues = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"]
+    approved_issues = sorted(
+        (issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"),
+        key=lambda issue: industry_match_score(partner, issue)[0],
+        reverse=True,
+    )
     
     total_offers = len(offers)
     total_funding = sum(int(offer.get("funding_amount") or 0) for offer in offers)
@@ -372,6 +441,7 @@ def render_industry_dashboard(user):
             f"</div>"
             f"</div>"
             f"<p style='color:#333;font-size:14px;line-height:1.5;margin:8px 0 12px;'>{html.escape(issue.get('description', ''))}</p>"
+            f"{industry_match_markup(partner, issue)}"
             f"{academic_info}"
             f"{reports_markup}"
             f"<details style='margin-top:14px;background:#fff;border:1px solid #e0ded6;border-radius:10px;padding:14px;'>"
@@ -418,6 +488,16 @@ def render_government_dashboard():
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])
     distribution = "".join(f"<li>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}: {row['total']}</li>" for row in metrics["district_domains"])
     stages = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["project_stages"])
+    max_distribution = max((row["total"] for row in metrics["district_domains"]), default=1)
+    distribution_chart = "".join(
+        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_distribution * 100))}%;background:#317c91'></div></div></div>"
+        for row in metrics["district_domains"]
+    )
+    max_stages = max((row["total"] for row in metrics["project_stages"]), default=1)
+    stages_chart = "".join(
+        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['status']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_stages * 100))}%;background:#e65f38'></div></div></div>"
+        for row in metrics["project_stages"]
+    )
     responses = load_university_assignment_responses()
     response_items = []
     for resp in responses:
@@ -436,8 +516,8 @@ def render_government_dashboard():
         f"<section><h2>Totals</h2><p>Issues: {metrics['total_issues']} · Proposals: {metrics['proposals']} · Assignments: {metrics['assignments']} · Universities: {metrics['universities']} · Industry partners: {metrics['industry_partners']} · Support offers: {metrics['support_offers']}</p></section>"
         f"<section><h2>University Request Responses & Decisions (Accept/Reject Feed)</h2><ul>{responses_markup}</ul></section>"
         f"<section><h2>Moderation</h2><ul>{moderation or '<li>No issue data</li>'}</ul></section>"
-        f"<section><h2>District and domain distribution</h2><ul>{distribution or '<li>No issue data</li>'}</ul></section>"
-        f"<section><h2>Project progress</h2><ul>{stages or '<li>No project teams</li>'}</ul></section>"
+        f"<section><h2>District and domain distribution</h2><div>{distribution_chart or '<p>No issue data</p>'}</div><details><summary>View data list</summary><ul>{distribution or '<li>No issue data</li>'}</ul></details></section>"
+        f"<section><h2>Project progress</h2><div>{stages_chart or '<p>No project teams</p>'}</div><details><summary>View data list</summary><ul>{stages or '<li>No project teams</li>'}</ul></details></section>"
     )
 def notification_markup(user):
     notifications = load_notifications(user)
@@ -475,24 +555,42 @@ def render_user_issues(user):
             f'</div></article>'
         )
     return "".join(cards)
+def render_admin_proposals():
+    pending = [proposal for proposal in PROPOSALS if proposal.get("moderation_status", "Pending") == "Pending"]
+    if not pending:
+        return "<h2>Proposal moderation</h2><p>No pending proposals.</p>"
+    cards = ["<h2>Proposal moderation</h2>"]
+    for proposal in pending:
+        cards.append(
+            f"<article class='moderation-card'><h3>{html.escape(str(proposal.get('title', 'Untitled proposal')))}</h3>"
+            f"<p>{html.escape(str(proposal.get('description', '')))}</p>"
+            f"<form class='proposal-moderation'><input type='hidden' name='proposal_id' value='{proposal['id']}'>"
+            f"<textarea name='reason' placeholder='Reason for this decision' required></textarea>"
+            f"<button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button><button name='status' value='Archived'>Archive</button></form></article>"
+        )
+    return "".join(cards)
+
+
 def render_admin_issues():
     pending = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Pending"]
     if not pending:
-        return "<p>No pending issues.</p>"
+        return "<p>No pending issues.</p>" + render_admin_proposals()
     return "".join(
-        f"<article><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} · {html.escape(str(issue.get('block', '')))} · {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
+        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} · {html.escape(str(issue.get('block', '')))} · {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
         for issue in pending
-    )
+    ) + render_admin_proposals()
 def render_industry_admin():
     partners = load_industry_partners()
     offers = load_all_partner_offers()
-    offer_markup = "".join(f"<form class='offer-update'><input type='hidden' name='offer_id' value='{offer['id']}'><p>{html.escape(offer['partner_name'])} offered {html.escape(offer['support_type'])} for {html.escape(offer['title'])}</p><select name='status'><option>Offered</option><option>Accepted</option><option>Delivered</option><option>Declined</option></select><input name='note' placeholder='Commitment note'><button>Update commitment</button></form>" for offer in offers) or "<p>No support offers yet.</p>"
-    return "<h2>Industry partner registration</h2><form class='industry-create'><input name='name' placeholder='Organization name' required><select name='partner_type'><option>Industry</option><option>Startup</option><option>MSME</option><option>CSR Organization</option><option>Research Laboratory</option></select><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='contact_email' placeholder='Contact email' required><button>Register partner</button></form><h2>Registered partners</h2>" + "".join(f"<p>{html.escape(partner['name'])} · {html.escape(partner['partner_type'])} · {html.escape(partner['contact_email'])}</p>" for partner in partners) + "<h2>Support commitments</h2>" + offer_markup
+    pending_count = sum(1 for partner in partners if partner.get('approval_status', 'Active') == 'Pending')
+    partner_markup = "".join(f"<article class='partner-card'><div class='partner-heading'><div><p class='eyebrow'>Partner request</p><h3>{html.escape(partner['name'])}</h3><p>{html.escape(partner['partner_type'])} · {html.escape(partner['district'])}</p></div><span class='approval-badge approval-{str(partner.get('approval_status', 'Active')).lower()}'>{html.escape(partner.get('approval_status', 'Active'))}</span></div><p class='partner-meta'><strong>Domains:</strong> {html.escape(partner['domains'])}<br><strong>Contact:</strong> {html.escape(partner['contact_email'])}</p><form class='approval' data-kind='industry' data-id='{partner['id']}'><label>Decision<select name='status'><option {'selected' if partner.get('approval_status', 'Active') == 'Active' else ''}>Active</option><option {'selected' if partner.get('approval_status') == 'Rejected' else ''}>Rejected</option><option {'selected' if partner.get('approval_status') == 'Pending' else ''}>Pending</option></select></label><button type='submit'>Save decision</button></form></article>" for partner in partners) or "<p class='empty-state'>No industry partner registrations yet.</p>"
+    offer_markup = "".join(f"<article class='commitment-card'><p><strong>{html.escape(offer['partner_name'])}</strong> offered {html.escape(offer['support_type'])} for {html.escape(offer['title'])}</p><form class='offer-update'><input type='hidden' name='offer_id' value='{offer['id']}'><select name='status'><option>Offered</option><option>Accepted</option><option>Delivered</option><option>Declined</option></select><input name='note' placeholder='Commitment note'><button type='submit'>Update commitment</button></form></article>" for offer in offers) or "<p class='empty-state'>No support offers yet.</p>"
+    return f"<div class='industry-admin-shell'><div class='admin-intro'><p class='eyebrow'>Industry verification</p><h1>Review industry partner requests.</h1><p>Approve organizations before they access approved civic challenges and submit support commitments.</p></div><div class='admin-stats'><div><strong>{pending_count}</strong><span>Pending requests</span></div><div><strong>{len(partners)}</strong><span>Total partners</span></div><div><strong>{len(offers)}</strong><span>Support offers</span></div></div><section class='admin-section'><div class='section-heading'><div><p class='eyebrow'>Onboarding queue</p><h2>Partner registrations</h2></div><span class='queue-label'>{pending_count} awaiting review</span></div><div class='partner-grid'>{partner_markup}</div></section><section class='admin-section'><p class='eyebrow'>Collaboration monitoring</p><h2>Support commitments</h2><div class='commitment-list'>{offer_markup}</div></section><section class='admin-section'><p class='eyebrow'>Manual onboarding</p><h2>Register a partner</h2><form class='industry-create admin-form'><input name='name' placeholder='Organization name' required><select name='partner_type'><option>Industry</option><option>Startup</option><option>MSME</option><option>CSR Organization</option><option>Research Laboratory</option></select><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='contact_email' type='email' placeholder='Contact email' required><button type='submit'>Register partner</button></form></section></div>"
 def render_university_issues():
     universities = load_universities()
     assignments = load_assignments()
     directory = "<h2>University registration</h2><form class='university-create'><input name='name' placeholder='University name' required><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='expertise' placeholder='Expertise keywords' required><input name='departments' placeholder='Departments'><input name='laboratories' placeholder='Laboratories'><input name='incubation_facilities' placeholder='Incubation facilities'><input name='contact_email' placeholder='Contact email' required><button type='submit'>Register university</button></form><h2>University profiles</h2>" + "".join(
-        f"<form class='university-profile'><input type='hidden' name='university_id' value='{university['id']}'><input name='name' value='{html.escape(university['name'])}' required><input name='district' value='{html.escape(university['district'])}' required><input name='domains' value='{html.escape(university['domains'])}' required><input name='expertise' value='{html.escape(university.get('expertise') or '')}' placeholder='Expertise keywords'><input name='departments' value='{html.escape(university.get('departments') or '')}' placeholder='Departments'><input name='laboratories' value='{html.escape(university.get('laboratories') or '')}' placeholder='Laboratories'><input name='incubation_facilities' value='{html.escape(university.get('incubation_facilities') or '')}' placeholder='Incubation facilities'><input name='contact_email' value='{html.escape(university.get('contact_email') or '')}'><button type='submit'>Save profile</button></form>"
+        f"<form class='university-profile'><input type='hidden' name='university_id' value='{university['id']}'><input name='name' value='{html.escape(university['name'])}' required><input name='district' value='{html.escape(university['district'])}' required><input name='domains' value='{html.escape(university['domains'])}' required><input name='expertise' value='{html.escape(university.get('expertise') or '')}' placeholder='Expertise keywords'><input name='departments' value='{html.escape(university.get('departments') or '')}' placeholder='Departments'><input name='laboratories' value='{html.escape(university.get('laboratories') or '')}' placeholder='Laboratories'><input name='incubation_facilities' value='{html.escape(university.get('incubation_facilities') or '')}' placeholder='Incubation facilities'><input name='contact_email' value='{html.escape(university.get('contact_email') or '')}'><button type='submit'>Save profile</button></form><form class='approval' data-kind='university' data-id='{university['id']}'><span>Approval: {html.escape(university.get('approval_status', 'Active'))}</span><select name='status'><option>Active</option><option>Rejected</option><option>Pending</option></select><button>Save approval</button></form>"
         for university in universities
     )
     approved = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"]
@@ -529,6 +627,12 @@ PAGE = PAGE.replace(
 ).replace(
     "<label>Details<textarea name=\"description\" placeholder=\"Add useful context\"></textarea></label>",
     "<label>District<select name=\"district\">" + district_options + "</select></label><label>Block or city<input name=\"block\" placeholder=\"Block, municipality, or ward\"></label><label>Details<textarea name=\"description\" placeholder=\"Add useful context\"></textarea></label>",
+).replace(
+    'accept=\"image/jpeg,image/png,image/webp\"',
+    'accept=\"image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf,.doc,.docx\"',
+).replace(
+    'Photo proof<input name=\"proof_image\" type=\"file\"',
+    'Photo, video, or document proof<input name=\"proof_image\" type=\"file\"',
 ).replace(
     "description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
     "description:form.get('description'),area:form.get('block')||form.get('district'),district:form.get('district'),block:form.get('block'),lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
@@ -636,8 +740,17 @@ class MapHandler(BaseHTTPRequestHandler):
         self.end_headers()
     def do_GET(self) -> None:
         path = urlsplit(self.path).path
+        if path == "/templates/shared.css":
+            self.send_payload((BASE_DIR / "templates" / "shared.css").read_bytes(), content_type="text/css; charset=utf-8")
+            return
         if path == "/login":
             self.send_html(load_login_page(""))
+            return
+        if path == "/industry/login" or path == "/industry-login":
+            self.send_html(load_industry_login_page(""))
+            return
+        if path == "/industry/register" or path == "/industry-register":
+            self.send_html(load_industry_register_page(""))
             return
         if path == "/university/login" or path == "/university-login":
             self.send_html(load_university_login_page(""))
@@ -711,14 +824,14 @@ class MapHandler(BaseHTTPRequestHandler):
             if not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(ADMIN_PAGE.replace("__ISSUES__", render_admin_issues()))
+            self.send_html(ADMIN_PAGE.replace("__ISSUES__", render_admin_issues() + render_industry_admin()))
             return
         if path == "/industry-admin":
             user = self.session_user()
             if user is None or not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(f"<!doctype html><html><body>{render_industry_admin()}<script>document.querySelector('.industry-create').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/industry-partners',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')}};document.querySelectorAll('.offer-update').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/offer-commitments',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Commitment update failed')}})</script></body></html>")
+            self.send_html(f"<!doctype html><html><head><link rel='stylesheet' href='/templates/shared.css'></head><body><main>{render_industry_admin()}</main><script>document.querySelector('.industry-create').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/industry-partners',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')}};document.querySelectorAll('.offer-update').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/offer-commitments',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Commitment update failed')}});document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Approval update failed')}})</script></body></html>")
             return
         if path == "/universities":
             user = self.session_user()
@@ -797,13 +910,59 @@ class MapHandler(BaseHTTPRequestHandler):
             if not authenticate(email, password):
                 self.send_html(load_university_login_page("Email or password is incorrect."), status=401)
                 return
-            university = university_for_user(email)
+            university = next((item for item in load_universities() if str(item.get("contact_email", "")).casefold() == email.casefold()), None)
             if university is None:
                 self.send_html(load_university_login_page("This account is not linked to a registered university profile."), status=403)
+                return
+            if university.get("approval_status", "Active") != "Active":
+                status = university.get("approval_status", "Pending").lower()
+                self.send_html(load_university_login_page(f"Your university registration is {status}. An administrator must approve it before dashboard access."), status=403)
                 return
             session_id = create_session_record(email)
             SESSIONS[session_id] = email
             self.redirect("/university-dashboard", f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
+            return
+        if path == "/industry/login" or path == "/industry-login":
+            length = int(self.headers.get("Content-Length", "0"))
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            email = form.get("email", [""])[0].strip().lower()
+            password = form.get("password", [""])[0]
+            if not authenticate(email, password):
+                self.send_html(load_industry_login_page('<p class="error">Email or password is incorrect.</p>'), status=401)
+                return
+            if industry_for_user(email) is None:
+                self.send_html(load_industry_login_page('<p class="error">This account is not linked to an approved industry partner profile. Registration must be approved by an administrator.</p>'), status=403)
+                return
+            session_id = create_session_record(email)
+            SESSIONS[session_id] = email
+            self.redirect("/industry-dashboard", f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
+            return
+        if path == "/industry/register" or path == "/industry-register":
+            length = int(self.headers.get("Content-Length", "0"))
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            email = form.get("email", [""])[0].strip().lower()
+            password = form.get("password", [""])[0]
+            confirm_password = form.get("confirm_password", [""])[0]
+            values = {"name": form.get("name", [""])[0].strip()[:255], "partner_type": form.get("partner_type", [""])[0].strip()[:50], "district": form.get("district", [""])[0].strip()[:100], "domains": form.get("domains", [""])[0].strip()[:1000], "contact_email": email}
+            if password != confirm_password:
+                self.send_html(load_industry_register_page('<p class="error">Passwords do not match.</p>'), status=400)
+                return
+            if not all(values.values()) or "@" not in email:
+                self.send_html(load_industry_register_page('<p class="error">Organization, type, district, domains, and a valid email are required.</p>'), status=400)
+                return
+            if any(str(partner.get("contact_email", "")).casefold() == email.casefold() for partner in load_industry_partners()):
+                self.send_html(load_industry_register_page('<p class="error">An industry profile already uses this email.</p>'), status=400)
+                return
+            created, message = create_account(email, password)
+            if not created:
+                self.send_html(load_industry_register_page(f'<p class="error">{html.escape(message)}</p>'), status=400)
+                return
+            try:
+                create_industry_partner(**values)
+            except Exception:
+                self.send_html(load_industry_register_page('<p class="error">The organization profile could not be created.</p>'), status=400)
+                return
+            self.send_html(load_industry_register_page('<p class="success">Registration submitted. An administrator must approve your organization before you can sign in.</p>'))
             return
         if path == "/university/register" or path == "/university-register":
             length = int(self.headers.get("Content-Length", "0"))
@@ -827,17 +986,43 @@ class MapHandler(BaseHTTPRequestHandler):
             if not values["name"] or not values["district"] or not values["domains"] or not values["expertise"] or "@" not in email:
                 self.send_html(load_university_register_page('<p class="error">University name, district, domains, expertise, and valid email are required.</p>'), status=400)
                 return
-            if university_for_user(email) is not None:
-                self.send_html(load_university_register_page('<p class="error">A university profile already uses this email.</p>'), status=400)
+            existing_university = next((item for item in load_universities() if str(item.get("contact_email", "")).casefold() == email.casefold()), None)
+            if existing_university is not None:
+                status = existing_university.get("approval_status", "Active").lower()
+                self.send_html(load_university_register_page(f'<p class="success">A university registration already exists for this email. Current approval status: <strong>{html.escape(status.title())}</strong>. Please use the university login after administrator approval.</p>'))
                 return
             created, message = create_account(email, password)
             if not created:
                 self.send_html(load_university_register_page(f'<p class="error">{html.escape(message)}</p>'), status=400)
                 return
             university = create_university(**values)
-            assigned = auto_assign_tasks_to_university(university)
-            assignment_text = f" AI assigned {len(assigned)} approved task(s) to your dashboard." if assigned else " No approved matching tasks are available yet."
-            self.send_html(load_university_register_page(f'<p class="success">University registered successfully.{assignment_text} You can sign in now.</p>'))
+            self.send_html(load_university_register_page(f'<p class="success"><strong>Registration acknowledged.</strong> {html.escape(university["name"])} has been submitted for administrator approval. Reference email: <strong>{html.escape(email)}</strong>. You can sign in after the approval status becomes Active.</p>'))
+            return
+        if path == "/api/admin/proposals":
+            user = self.session_user()
+            if user is None or not is_admin(user):
+                self.send_error(403)
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                proposal_id = int(data["proposal_id"])
+                status = str(data["status"])
+                reason = str(data.get("reason", "")).strip()
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid proposal moderation data."}, status=400)
+                return
+            if status not in {"Approved", "Rejected", "Archived"} or not reason or len(reason) > 1000:
+                self.send_json({"message": "Choose a valid decision and provide a reason."}, status=400)
+                return
+            proposal = next((item for item in PROPOSALS if item.get("id") == proposal_id), None)
+            if proposal is None:
+                self.send_json({"message": "Proposal not found."}, status=404)
+                return
+            proposal["status"] = status
+            proposal["review"] = {"decision": status, "explanation": reason, "reviewer": user}
+            update_proposal(proposal)
+            self.send_json({"proposal_id": proposal_id, "status": status})
             return
         if path == "/api/admin/issues":
             user = self.session_user()
@@ -1141,11 +1326,36 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"message": "Name, district, domains, expertise, and a valid contact email are required."}, status=400)
                 return
             try:
-                university = create_university(**values)
+                university = create_university(**values, approval_status="Active")
             except Exception:
                 self.send_json({"message": "A university with this contact email may already exist."}, status=400)
                 return
             self.send_json({"message": "University registered.", "university": university}, status=201)
+            return
+        if path.startswith("/api/admin/institutions/") and path.endswith("/approval"):
+            user = self.session_user()
+            if user is None or not is_admin(user):
+                self.send_error(403)
+                return
+            parts = path.strip("/").split("/")
+            if len(parts) != 6 or parts[3] not in {"university", "industry"} or parts[5] != "approval":
+                self.send_json({"message": "Invalid institution approval path."}, status=400)
+                return
+            try:
+                institution_id = int(parts[4])
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                status = str(data["status"])
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid approval data."}, status=400)
+                return
+            if status not in {"Active", "Rejected", "Pending"}:
+                self.send_json({"message": "Invalid approval status."}, status=400)
+                return
+            if not update_institution_approval(parts[3], institution_id, status):
+                self.send_json({"message": "Institution not found."}, status=404)
+                return
+            self.send_json({"kind": parts[3], "institution_id": institution_id, "status": status})
             return
         if path == "/api/admin/industry-partners":
             user = self.session_user()
@@ -1243,20 +1453,24 @@ class MapHandler(BaseHTTPRequestHandler):
                 issue["reporter"] = self.session_user() or ""
                 encoded_proof = issue.pop("proof_image","")
                 proof_type = issue.pop("proof_type","image/jpeg")
-                if proof_type not in {"image/jpeg","image/png","image/webp"}:
-                    self.send_error(415,"Unsupported proof image type")
+                allowed_proof_types = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+                if proof_type not in allowed_proof_types:
+                    self.send_error(415,"Unsupported proof file type")
                     return
                 proof_bytes = base64.b64decode(encoded_proof,validate=True) if encoded_proof else b""
-                if len(proof_bytes) > 8 * 1024 * 1024:
-                    self.send_error(413,"Proof image is larger than 8 MB")
+                if len(proof_bytes) > 25 * 1024 * 1024:
+                    self.send_error(413,"Proof file is larger than 25 MB")
                     return
                 if proof_bytes:
-                    proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
-                    proof = inspect_image_proof(proof_bytes,issue["lat"],issue["lng"])
-                    if proof["status"] == "mismatch":
-                        self.send_json(proof,status=422)
-                        return
-                    issue.update({"proof_status":proof["status"],"proof_message":proof["message"]})
+                    if proof_type.startswith("image/"):
+                        proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
+                        proof = inspect_image_proof(proof_bytes,issue["lat"],issue["lng"])
+                        if proof["status"] == "mismatch":
+                            self.send_json(proof,status=422)
+                            return
+                        issue.update({"proof_status":proof["status"],"proof_message":proof["message"]})
+                    else:
+                        issue.update({"proof_status":"unverified","proof_message":"Supporting file uploaded; location verification is available for images."})
                     proof_id = secrets.token_urlsafe(12)
                     issue["proof_id"] = proof_id
                     issue["_proof_type"] = proof_type

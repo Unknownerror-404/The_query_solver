@@ -8,9 +8,9 @@ import threading
 from pathlib import Path
 
 try:
-    from .storage import add_issue_support, initialise, insert_issue, load_issues, update_issue
+    from .storage import add_issue_support, initialise, insert_issue, load_issues, load_university_reports, update_issue
 except ImportError:
-    from storage import add_issue_support, initialise, insert_issue, load_issues, update_issue
+    from storage import add_issue_support, initialise, insert_issue, load_issues, load_university_reports, update_issue
 
 DEFAULT_ISSUES = [
     {"id": 1, "title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
@@ -58,9 +58,14 @@ def nearby_issues(latitude: float | None = None, longitude: float | None = None,
 
 def add_issue(issue: dict) -> dict:
     try:
-        from .AI_model import find_duplicate
+        from .AI_model import classify_issue, find_duplicate
     except ImportError:
-        from AI_model import find_duplicate
+        from AI_model import classify_issue, find_duplicate
+
+    classification = classify_issue(issue.get("title", ""), issue.get("description", ""), issue.get("category", ""))
+    issue.update(classification)
+    if not str(issue.get("category", "")).strip():
+        issue["category"] = classification["predicted_category"]
 
     match = find_duplicate(issue, ISSUES)
     if match and match.decision == "duplicate":
@@ -253,10 +258,12 @@ def proof_markup(issue: dict) -> str:
 
 def render_page(user: str, latitude: float | None = None, longitude: float | None = None) -> str:
     issues = nearby_issues(latitude, longitude)
+    reports = load_university_reports()
     location_label = "Showing all civic voices" if latitude is None or longitude is None else "Showing voices within 2 km of your location"
     cards = "".join(
         f'<article class="issue"><div class="meta">{html.escape(issue["category"])} · {html.escape(issue["area"])}</div>'
         f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'{public_report_markup(issue["id"], reports)}'
         f'{proof_markup(issue)}'
         f'<div class="issue-footer"><span>{issue["supporters"]} supporters · {html.escape(issue["age"])}</span>'
         f'<button class="upvote" data-id="{issue["id"]}">▲ Support this voice</button></div></article>'
@@ -265,6 +272,21 @@ def render_page(user: str, latitude: float | None = None, longitude: float | Non
     template = Path(__file__).with_name("templates").joinpath("community.html").read_text(encoding="utf-8")
     return (template.replace("__USER__", html.escape(user)).replace("__LOCATION__", html.escape(location_label))
             .replace("__ISSUES__", cards).replace("__PROPOSALS__", proposed_solutions_markup()))
+
+
+def public_report_markup(issue_id: int, reports: list[dict]) -> str:
+    issue_reports = [report for report in reports if report.get("issue_id") == issue_id]
+    if not issue_reports:
+        return ""
+    cards = "".join(
+        f'<details class="final-report"><summary>View final solution report · {html.escape(str(report.get("university_name", "University")))}</summary>'
+        f'<h3>{html.escape(report.get("title", "Project report"))}</h3>'
+        f'<p>{html.escape(report.get("summary", ""))}</p>'
+        f'<p><strong>Deliverables and outcomes:</strong> {html.escape(report.get("deliverables") or "Not specified")}</p>'
+        f'<small>Submitted by {html.escape(report.get("university_name", "University"))} on {html.escape(str(report.get("created_at", "")))}</small></details>'
+        for report in issue_reports
+    )
+    return cards
 
 
 def json_page(user: str, location_label: str, cards: str) -> str:

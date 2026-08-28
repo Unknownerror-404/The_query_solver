@@ -10,7 +10,10 @@ import binascii
 import html
 import json
 import secrets
+from pathlib import Path
 from typing import Any, Optional
+
+BASE_DIR = Path(__file__).resolve().parent
 
 try:
     from fastapi import FastAPI, Request, HTTPException, Depends, Response
@@ -25,14 +28,16 @@ from storage import (
     create_milestone, create_notification, create_session_record,
     create_support_offer, create_team, create_university, create_university_report, delete_session_record,
     get_proof, get_proposal_visual, get_session_user, insert_proposal,
-    load_milestones, load_teams, load_university_assignments, load_universities,
+    load_industry_partners, load_milestones, load_teams, load_university_assignments, load_universities,
     moderate_issue, update_assignment, update_milestone, update_offer_commitment,
     update_proposal, update_team_outcomes, update_team_status, update_university,
+    update_institution_approval,
 )
 from AI_model import inspect_image_proof, sanitize_and_reencode_image
 from evidence_review import review_issue_evidence
 from map import (
     load_login_page, load_university_login_page, load_university_register_page, load_register_page,
+    load_industry_login_page, load_industry_register_page,
     build_proposals_page, build_professionals_page,
     render_admin_issues, render_industry_admin, render_university_issues, proposal_issue, known_recipients,
     render_university_dashboard, render_industry_dashboard, render_government_dashboard,
@@ -86,6 +91,10 @@ if FastAPI is not None:
         html_content = MAP_PAGE.replace("__ISSUES__", issues_json).replace("__USER__", html.escape(current_user))
         return HTMLResponse(content=html_content)
 
+    @app.get("/templates/shared.css", response_class=Response)
+    async def shared_stylesheet():
+        return Response(content=(BASE_DIR / "templates" / "shared.css").read_text(encoding="utf-8"), media_type="text/css")
+
     @app.get("/login", response_class=HTMLResponse)
     async def get_login():
         return HTMLResponse(content=load_login_page(""))
@@ -107,6 +116,55 @@ if FastAPI is not None:
     async def get_university_login():
         return HTMLResponse(content=load_university_login_page(""))
 
+    @app.get("/industry/login", response_class=HTMLResponse)
+    @app.get("/industry-login", response_class=HTMLResponse)
+    async def get_industry_login():
+        return HTMLResponse(content=load_industry_login_page(""))
+
+    @app.get("/industry/register", response_class=HTMLResponse)
+    @app.get("/industry-register", response_class=HTMLResponse)
+    async def get_industry_register():
+        return HTMLResponse(content=load_industry_register_page(""))
+
+    @app.post("/industry/login")
+    @app.post("/industry-login")
+    async def post_industry_login(request: Request):
+        form = await request.form()
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+        if not authenticate(email, password):
+            return HTMLResponse(content=load_industry_login_page('<p class="error">Email or password is incorrect.</p>'), status_code=401)
+        partner = industry_for_user(email)
+        if partner is None:
+            return HTMLResponse(content=load_industry_login_page('<p class="error">This account is not linked to an approved industry partner profile. Registration must be approved by an administrator.</p>'), status_code=403)
+        session_id = create_session_record(email)
+        response = RedirectResponse(url="/industry-dashboard", status_code=303)
+        response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
+        return response
+
+    @app.post("/industry/register")
+    @app.post("/industry-register")
+    async def post_industry_register(request: Request):
+        form = await request.form()
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+        confirm_password = str(form.get("confirm_password", ""))
+        values = {"name": str(form.get("name", "")).strip()[:255], "partner_type": str(form.get("partner_type", "")).strip()[:50], "district": str(form.get("district", "")).strip()[:100], "domains": str(form.get("domains", "")).strip()[:1000], "contact_email": email}
+        if password != confirm_password:
+            return HTMLResponse(content=load_industry_register_page('<p class="error">Passwords do not match.</p>'), status_code=400)
+        if not all(values.values()) or "@" not in email:
+            return HTMLResponse(content=load_industry_register_page('<p class="error">Organization, type, district, domains, and a valid email are required.</p>'), status_code=400)
+        if any(str(partner.get("contact_email", "")).casefold() == email.casefold() for partner in load_industry_partners()):
+            return HTMLResponse(content=load_industry_register_page('<p class="error">An industry profile already uses this email.</p>'), status_code=400)
+        created, message = create_account(email, password)
+        if not created:
+            return HTMLResponse(content=load_industry_register_page(f'<p class="error">{html.escape(message)}</p>'), status_code=400)
+        try:
+            create_industry_partner(**values)
+        except Exception:
+            return HTMLResponse(content=load_industry_register_page('<p class="error">The organization profile could not be created.</p>'), status_code=400)
+        return HTMLResponse(content=load_industry_register_page('<p class="success">Registration submitted. An administrator must approve your organization before you can sign in.</p>'))
+
     @app.get("/university/register", response_class=HTMLResponse)
     @app.get("/university-register", response_class=HTMLResponse)
     async def get_university_register():
@@ -120,9 +178,12 @@ if FastAPI is not None:
         password = str(form.get("password", ""))
         if not authenticate(email, password):
             return HTMLResponse(content=load_university_login_page("Email or password is incorrect."), status_code=401)
-        university = university_for_user(email)
+        university = next((item for item in load_universities() if str(item.get("contact_email", "")).casefold() == email.casefold()), None)
         if university is None:
             return HTMLResponse(content=load_university_login_page("This account is not linked to a registered university profile."), status_code=403)
+        if university.get("approval_status", "Active") != "Active":
+            status = university.get("approval_status", "Pending").lower()
+            return HTMLResponse(content=load_university_login_page(f"Your university registration is {status}. An administrator must approve it before dashboard access."), status_code=403)
         session_id = create_session_record(email)
         response = RedirectResponse(url="/university-dashboard", status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
@@ -149,15 +210,15 @@ if FastAPI is not None:
             return HTMLResponse(content=load_university_register_page('<p class="error">Passwords do not match.</p>'), status_code=400)
         if not values["name"] or not values["district"] or not values["domains"] or not values["expertise"] or "@" not in email:
             return HTMLResponse(content=load_university_register_page('<p class="error">University name, district, domains, expertise, and valid email are required.</p>'), status_code=400)
-        if university_for_user(email) is not None:
-            return HTMLResponse(content=load_university_register_page('<p class="error">A university profile already uses this email.</p>'), status_code=400)
+        existing_university = next((item for item in load_universities() if str(item.get("contact_email", "")).casefold() == email.casefold()), None)
+        if existing_university is not None:
+            status = existing_university.get("approval_status", "Active").lower()
+            return HTMLResponse(content=load_university_register_page(f'<p class="success">A university registration already exists for this email. Current approval status: <strong>{html.escape(status.title())}</strong>. Please use the university login after administrator approval.</p>'))
         created, message = create_account(email, password)
         if not created:
             return HTMLResponse(content=load_university_register_page(f'<p class="error">{html.escape(message)}</p>'), status_code=400)
         university = create_university(**values)
-        assigned = auto_assign_tasks_to_university(university)
-        assignment_text = f" AI assigned {len(assigned)} approved task(s) to your dashboard." if assigned else " No approved matching tasks are available yet."
-        return HTMLResponse(content=load_university_register_page(f'<p class="success">University registered successfully.{assignment_text} You can sign in now.</p>'))
+        return HTMLResponse(content=load_university_register_page(f'<p class="success"><strong>Registration acknowledged.</strong> {html.escape(university["name"])} has been submitted for administrator approval. Reference email: <strong>{html.escape(email)}</strong>. You can sign in after the approval status becomes Active.</p>'))
 
     @app.get("/logout")
     async def logout(request: Request):
@@ -237,7 +298,7 @@ if FastAPI is not None:
         if not current_user:
             return RedirectResponse(url="/login", status_code=303)
         require_admin(current_user)
-        return HTMLResponse(content=ADMIN_PAGE.replace("__ISSUES__", render_admin_issues()))
+        return HTMLResponse(content=ADMIN_PAGE.replace("__ISSUES__", render_admin_issues() + render_industry_admin()))
 
     @app.get("/universities", response_class=HTMLResponse)
     async def universities_page(current_user: Optional[str] = Depends(get_current_user)):
@@ -250,12 +311,12 @@ if FastAPI is not None:
     async def industry_admin_page(current_user: Optional[str] = Depends(get_current_user)):
         require_admin(current_user)
         page = (
-            "<!doctype html><html><body>"
+            "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><link rel='stylesheet' href='/templates/shared.css'></head><body><main>"
             f"{render_industry_admin()}"
             "<script>"
             "document.querySelector('.industry-create').onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/industry-partners',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')};"
-            "document.querySelectorAll('.offer-update').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/offer-commitments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Commitment update failed')})"
-            "</script></body></html>"
+            "document.querySelectorAll('.offer-update').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/offer-commitments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Commitment update failed')});document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Approval update failed')})"
+            "</script></main></body></html>"
         )
         return HTMLResponse(content=page)
 
@@ -300,19 +361,23 @@ if FastAPI is not None:
             data["reporter"] = current_user
             encoded_proof = data.pop("proof_image", "")
             proof_type = data.pop("proof_type", "image/jpeg")
-            if proof_type not in {"image/jpeg", "image/png", "image/webp"}:
-                return JSONResponse(status_code=415, content={"message": "Unsupported proof image type"})
+            allowed_proof_types = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+            if proof_type not in allowed_proof_types:
+                return JSONResponse(status_code=415, content={"message": "Unsupported proof file type"})
             proof_bytes = base64.b64decode(encoded_proof, validate=True) if encoded_proof else b""
         except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error):
             return JSONResponse(status_code=400, content={"message": "Invalid issue data."})
         if len(proof_bytes) > 8 * 1024 * 1024:
             return JSONResponse(status_code=413, content={"message": "Proof image is larger than 8 MB"})
         if proof_bytes:
-            proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
-            proof = inspect_image_proof(proof_bytes, data["lat"], data["lng"])
-            if proof["status"] == "mismatch":
-                return JSONResponse(status_code=422, content=proof)
-            data.update({"proof_status": proof["status"], "proof_message": proof["message"]})
+            if proof_type.startswith("image/"):
+                proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
+                proof = inspect_image_proof(proof_bytes, data["lat"], data["lng"])
+                if proof["status"] == "mismatch":
+                    return JSONResponse(status_code=422, content=proof)
+                data.update({"proof_status": proof["status"], "proof_message": proof["message"]})
+            else:
+                data.update({"proof_status": "unverified", "proof_message": "Supporting file uploaded; location verification is available for images."})
             data["proof_id"] = secrets.token_urlsafe(12)
             data["_proof_type"] = proof_type
             data["_proof_data"] = proof_bytes
@@ -357,6 +422,27 @@ if FastAPI is not None:
             if decision == "Approved":
                 auto_assign_issue_to_best_university(issue)
         return JSONResponse(content={"status": decision, "issue_id": issue_id})
+
+    @app.post("/api/admin/proposals")
+    async def moderate_proposal_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_admin(current_user)
+        try:
+            data = await request.json()
+            proposal_id = int(data["proposal_id"])
+            decision = str(data["status"])
+            reason = str(data.get("reason", "")).strip()
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid proposal moderation data."})
+        if decision not in {"Approved", "Rejected", "Archived"} or not reason or len(reason) > 1000:
+            return JSONResponse(status_code=400, content={"message": "Choose a valid decision and provide a reason."})
+        proposal = next((item for item in PROPOSALS if item.get("id") == proposal_id), None)
+        if proposal is None:
+            return JSONResponse(status_code=404, content={"message": "Proposal not found."})
+        proposal.update({"moderation_status": decision, "moderation_reason": reason, "moderated_by": user})
+        proposal["status"] = decision
+        proposal["review"] = {"decision": decision, "explanation": reason, "reviewer": user}
+        update_proposal(proposal)
+        return JSONResponse(content={"proposal_id": proposal_id, "status": decision})
 
     @app.post("/api/admin/assignments")
     async def assign_issue_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
@@ -592,7 +678,7 @@ if FastAPI is not None:
         if not values["name"] or not values["district"] or not values["domains"] or not values["expertise"] or "@" not in values["contact_email"]:
             return JSONResponse(status_code=400, content={"message": "Name, district, domains, expertise, and a valid contact email are required."})
         try:
-            university = create_university(**values)
+            university = create_university(**values, approval_status="Active")
         except Exception:
             return JSONResponse(status_code=400, content={"message": "A university with this contact email may already exist."})
         auto_assign_tasks_to_university(university)
@@ -613,6 +699,19 @@ if FastAPI is not None:
         except Exception:
             return JSONResponse(status_code=400, content={"message": "A partner with this email may already exist."})
         return JSONResponse(status_code=201, content={"message": "Industry partner registered.", "partner": partner})
+
+    @app.post("/api/admin/institutions/{kind}/{institution_id}/approval")
+    async def update_institution_approval_api(kind: str, institution_id: int, request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        require_admin(current_user)
+        try:
+            status = str((await request.json()).get("status", "")).strip()
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid approval data."})
+        if status not in {"Active", "Rejected", "Pending"}:
+            return JSONResponse(status_code=400, content={"message": "Invalid approval status."})
+        if not update_institution_approval(kind, institution_id, status):
+            return JSONResponse(status_code=404, content={"message": "Institution not found."})
+        return JSONResponse(content={"kind": kind, "institution_id": institution_id, "status": status})
 
     @app.post("/api/admin/offer-commitments")
     async def update_offer_commitment_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):

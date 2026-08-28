@@ -12,7 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from login_users import authenticate, create_account, _hash_password
 from community import distance_km, upvote_issue, ISSUES
-from AI_model import IssueDeduplicator, sanitize_and_reencode_image, inspect_image_proof
+from AI_model import IssueDeduplicator, classify_issue, sanitize_and_reencode_image, inspect_image_proof
+from map import industry_match_score
 from storage import create_session_record, get_session_user, delete_session_record, check_rate_limit
 
 
@@ -48,6 +49,21 @@ class TestDistanceAndDeduplication(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertIn(match.decision, {"duplicate", "possible_duplicate"})
 
+    def test_ai_classification_and_priority(self):
+        result = classify_issue("Dangerous pothole near school", "Road blocked for days and unsafe for children")
+        self.assertEqual(result["predicted_category"], "Urban Infrastructure")
+        self.assertGreaterEqual(result["priority_score"], 80)
+        self.assertEqual(result["priority_label"], "Critical")
+        self.assertTrue(result["matching_explanation"])
+
+    def test_industry_match_uses_expertise_and_location(self):
+        partner = {"district": "Ranchi", "domains": "Water Resources, Healthcare"}
+        issue = {"district": "Ranchi", "category": "Water Resources", "title": "Broken water pipeline", "description": "Drinking water supply is blocked"}
+        score, matches, same_district = industry_match_score(partner, issue)
+        self.assertGreaterEqual(score, 45)
+        self.assertTrue(matches)
+        self.assertTrue(same_district)
+
 
 class TestImageSanitization(unittest.TestCase):
     def test_sanitize_empty_bytes(self):
@@ -82,11 +98,21 @@ class TestSessionAndRateLimiting(unittest.TestCase):
 class TestDashboardTemplates(unittest.TestCase):
     def test_templates_exist(self):
         templates_dir = Path(__file__).resolve().parent.parent / "templates"
-        for name in ("citizen.html", "university.html", "university_login.html", "industry.html", "government.html"):
+        for name in ("citizen.html", "university.html", "university_login.html", "industry.html", "industry_login.html", "industry_register.html", "government.html"):
             tmpl = templates_dir / name
             self.assertTrue(tmpl.exists(), f"Template {name} missing")
             content = tmpl.read_text(encoding="utf-8")
             self.assertIn("<!doctype html>", content.lower())
+            self.assertIn('/templates/shared.css', content)
+
+    def test_industry_auth_templates_have_flow_links(self):
+        templates_dir = Path(__file__).resolve().parent.parent / "templates"
+        login = (templates_dir / "industry_login.html").read_text(encoding="utf-8")
+        register = (templates_dir / "industry_register.html").read_text(encoding="utf-8")
+        self.assertIn('action="/industry/login"', login)
+        self.assertIn('action="/industry/register"', register)
+        self.assertIn('href="/industry/register"', login)
+        self.assertIn('href="/industry/login"', register)
 
 
 if __name__ == "__main__":

@@ -6,10 +6,14 @@
 - [x] Citizen issue reporting with map location
 - [x] Issue categories and community browsing
 - [x] Image proof upload with EXIF GPS verification
+- [x] Add video and supporting-document uploads
 - [x] Store issue records in MySQL
 - [x] Store issue proof images in MySQL
 - [x] Store accounts and issue supporters in MySQL
 - [x] AI-assisted duplicate issue detection
+- [x] Add automatic issue category prediction
+- [x] Add AI-assisted priority/severity scoring and matching explanations
+- [x] Fix industry dashboard assignment data-shape crash
 - [x] Community issue upvotes
 - [x] Basic solution proposal submission
 - [x] Basic professional review portal
@@ -47,6 +51,7 @@
 ## Phase 4: Industry Partnership
 
 - [x] Build industry, startup, MSME, and CSR partner profiles
+- [x] Add a separate polished industry registration and login flow
 - [x] Allow partners to browse approved challenges
 - [x] Add offers for mentorship, funding, prototyping, testing, and deployment
 - [x] Allow universities to request industry support
@@ -70,20 +75,39 @@
 - [x] Show district-wise and domain-wise issue analytics
 - [x] Show university participation and industry engagement
 - [x] Show project completion and measurable community impact
+- [x] Add visual charts for district/domain distribution and project progress
+- [ ] Add visual charts for university participation, industry support, completed projects, and impact outcomes
 - [x] Add email or in-app notifications
 - [x] Add role-based project communication
 
 ## Phase 7: Production Hardening
 
 - [x] Move sessions to persistent secure session storage
-- [x] Add CSRF protection and HTTPS deployment
+- [ ] Add CSRF protection and HTTPS deployment
 - [x] Validate and re-encode uploaded images
-- [x] Add malware scanning and EXIF privacy handling
-- [x] Move rate limits to Redis or MySQL
-- [x] Add automated tests for storage, proof uploads, deduplication, and APIs
+- [ ] Add malware scanning and complete EXIF privacy handling
+- [ ] Move rate limits to Redis or MySQL for persistent enforcement
+- [ ] Add secure database-backed role permissions
+- [ ] Add password reset and account recovery
+- [ ] Add persistent CAPTCHA/rate-limit protection
 - [x] Replace the basic HTTP server with FastAPI or Django
 - [x] Add database backups and deployment configuration
 
+## Phase 8: SIH Final Improvements
+
+- [ ] Add responsive PWA or a dedicated mobile client
+- [x] Add admin approval workflow for university registrations
+- [ ] Add admin approval workflow for professionals and industry partners
+- [x] Add proposal moderation to the admin interface
+- [ ] Add tests for university registration and approval
+- [ ] Add tests for expertise matching and nearest-location fallback
+- [ ] Add tests for proposal submission and industry offer flow
+- [ ] Add tests for admin moderation and assignment workflows
+
 ## Project Status
 
-All planned development, collaboration portal dashboards, database persistence, security hardening, FastAPI integration, and test suites are fully complete.
+The project is a functional demo with citizen reporting, moderation, university collaboration,
+industry support, project tracking, MySQL persistence, and FastAPI integration implemented.
+The remaining work is focused on multimedia support, stronger AI assistance, verified onboarding,
+dashboard visualization, production security, broader testing, mobile delivery, and fixing the
+industry dashboard data-shape bug listed above.

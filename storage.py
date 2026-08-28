@@ -62,6 +62,11 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 proof_data LONGBLOB,
                 proof_status VARCHAR(30),
                 proof_message TEXT,
+                predicted_category VARCHAR(100),
+                category_confidence DECIMAL(4, 2),
+                priority_score INT,
+                priority_label VARCHAR(30),
+                matching_explanation TEXT,
                 moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
                 moderation_reason TEXT,
                 moderated_by VARCHAR(255),
@@ -75,6 +80,11 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             "ALTER TABLE issues ADD COLUMN block VARCHAR(100) NOT NULL DEFAULT ''",
             "ALTER TABLE issues ADD COLUMN proof_type VARCHAR(30)",
             "ALTER TABLE issues ADD COLUMN proof_data LONGBLOB",
+            "ALTER TABLE issues ADD COLUMN predicted_category VARCHAR(100)",
+            "ALTER TABLE issues ADD COLUMN category_confidence DECIMAL(4, 2)",
+            "ALTER TABLE issues ADD COLUMN priority_score INT",
+            "ALTER TABLE issues ADD COLUMN priority_label VARCHAR(30)",
+            "ALTER TABLE issues ADD COLUMN matching_explanation TEXT",
             "ALTER TABLE issues ADD COLUMN moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending'",
             "ALTER TABLE issues ADD COLUMN moderation_reason TEXT",
             "ALTER TABLE issues ADD COLUMN moderated_by VARCHAR(255)",
@@ -148,10 +158,16 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 laboratories TEXT,
                 incubation_facilities TEXT,
                 contact_email VARCHAR(255),
+                approval_status VARCHAR(30) NOT NULL DEFAULT 'Active',
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+        try:
+            cursor.execute("ALTER TABLE universities ADD COLUMN approval_status VARCHAR(30) NOT NULL DEFAULT 'Active'")
+        except Error as error:
+            if error.errno != 1060:
+                raise
         for statement in (
             "ALTER TABLE universities ADD COLUMN expertise TEXT",
             "ALTER TABLE universities ADD COLUMN departments TEXT",
@@ -296,10 +312,16 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 district VARCHAR(100) NOT NULL,
                 domains TEXT NOT NULL,
                 contact_email VARCHAR(255) NOT NULL UNIQUE,
+                approval_status VARCHAR(30) NOT NULL DEFAULT 'Active',
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+        try:
+            cursor.execute("ALTER TABLE industry_partners ADD COLUMN approval_status VARCHAR(30) NOT NULL DEFAULT 'Active'")
+        except Error as error:
+            if error.errno != 1060:
+                raise
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS support_offers (
@@ -391,11 +413,13 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
 
 
 def _issue(row: tuple[Any, ...]) -> dict[str, Any]:
-    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_status", "proof_message", "moderation_status", "moderation_reason", "moderated_by", "reporter")
+    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter")
     issue = {key: value for key, value in zip(keys, row) if value is not None}
     for coordinate in ("lat", "lng"):
         if isinstance(issue.get(coordinate), Decimal):
             issue[coordinate] = float(issue[coordinate])
+    if isinstance(issue.get("category_confidence"), Decimal):
+        issue["category_confidence"] = float(issue["category_confidence"])
     return issue
 
 
@@ -403,7 +427,7 @@ def load_issues() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_status, proof_message, moderation_status, moderation_reason, moderated_by, reporter FROM issues ORDER BY id")
+        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter FROM issues ORDER BY id")
         return [_issue(row) for row in cursor.fetchall()]
     finally:
         cursor.close()
@@ -428,10 +452,10 @@ def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
         cursor.execute(
             """
             INSERT INTO issues
-            (title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, moderation_status, reporter)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, 'Pending', %s)
+            (title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, reporter)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending', %s)
             """,
-                (issue["title"], issue["category"], issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""), issue["lat"], issue["lng"], issue.get("description", ""), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("reporter")),
+                (issue["title"], issue["category"], issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""), issue["lat"], issue["lng"], issue.get("description", ""), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("predicted_category"), issue.get("category_confidence"), issue.get("priority_score"), issue.get("priority_label"), issue.get("matching_explanation"), issue.get("reporter")),
         )
         connection.commit()
         saved = dict(issue)
@@ -565,7 +589,7 @@ def load_universities() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT id, name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email FROM universities ORDER BY name")
+        cursor.execute("SELECT id, name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email, approval_status FROM universities ORDER BY name")
         return cursor.fetchall()
     finally:
         cursor.close()
@@ -587,13 +611,13 @@ def update_university(university_id: int, name: str, district: str, domains: str
         connection.close()
 
 
-def create_university(name: str, district: str, domains: str, departments: str, laboratories: str, incubation_facilities: str, contact_email: str, expertise: str = "") -> dict[str, Any]:
+def create_university(name: str, district: str, domains: str, departments: str, laboratories: str, incubation_facilities: str, contact_email: str, expertise: str = "", approval_status: str = "Pending") -> dict[str, Any]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("INSERT INTO universities (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email))
+        cursor.execute("INSERT INTO universities (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (name, district, domains, expertise, departments, laboratories, incubation_facilities, contact_email, approval_status))
         connection.commit()
-        return {"id": cursor.lastrowid, "name": name, "district": district, "domains": domains, "expertise": expertise, "departments": departments, "laboratories": laboratories, "incubation_facilities": incubation_facilities, "contact_email": contact_email}
+        return {"id": cursor.lastrowid, "name": name, "district": district, "domains": domains, "expertise": expertise, "departments": departments, "laboratories": laboratories, "incubation_facilities": incubation_facilities, "contact_email": contact_email, "approval_status": approval_status}
     finally:
         cursor.close()
         connection.close()
@@ -802,7 +826,7 @@ def load_industry_partners() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT id, name, partner_type, district, domains, contact_email FROM industry_partners ORDER BY name")
+        cursor.execute("SELECT id, name, partner_type, district, domains, contact_email, approval_status FROM industry_partners ORDER BY name")
         return cursor.fetchall()
     finally:
         cursor.close()
@@ -894,9 +918,26 @@ def create_industry_partner(name: str, partner_type: str, district: str, domains
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("INSERT INTO industry_partners (name, partner_type, district, domains, contact_email) VALUES (%s, %s, %s, %s, %s)", (name, partner_type, district, domains, contact_email))
+        cursor.execute("INSERT INTO industry_partners (name, partner_type, district, domains, contact_email, approval_status) VALUES (%s, %s, %s, %s, %s, 'Pending')", (name, partner_type, district, domains, contact_email))
         connection.commit()
-        return {"id": cursor.lastrowid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email}
+        return {"id": cursor.lastrowid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email, "approval_status": "Pending"}
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def update_institution_approval(kind: str, institution_id: int, status: str) -> bool:
+    table = "universities" if kind == "university" else "industry_partners" if kind == "industry" else ""
+    if not table or status not in {"Active", "Rejected", "Pending"}:
+        return False
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(f"UPDATE {table} SET approval_status = %s WHERE id = %s", (status, institution_id))
+        connection.commit()
+        cursor.execute(f"SELECT approval_status FROM {table} WHERE id = %s", (institution_id,))
+        row = cursor.fetchone()
+        return bool(row and row[0] == status)
     finally:
         cursor.close()
         connection.close()
