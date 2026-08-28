@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Civic Map · Community Voices</title>
+<style>
+:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
+header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
+.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
+.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.eyebrow{margin:0 0 6px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
+.tagline{color:var(--muted);font:14px Arial,sans-serif}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
+.nav-button:hover,.nav-button.active{background:var(--ink);color:white}
+.nav-button.primary{background:var(--accent);border-color:var(--accent);color:white}
+.nav-button.primary:hover{background:#d44d27}
+main{max-width:1150px;margin:0 auto;padding:34px 24px 50px}
+.banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
+.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
+.banner h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}
+.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:700px}
+.sections{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:24px}
+.section-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:0 6px 18px rgba(23,43,40,.06);overflow:hidden}
+.section-card:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
+.section-card h2{margin:6px 0 16px;font-size:24px;font-weight:500;letter-spacing:-0.5px}
+.issue,.proposal{position:relative;border-top:1px solid var(--line);padding:18px 0}
+.issue:first-of-type,.proposal:first-of-type{border-top:0;padding-top:4px}
+.issue h2,.proposal h2{margin:6px 0 4px;font-size:19px;font-weight:500}
+.issue p,.proposal p{color:var(--muted);font:14px/1.5 Arial,sans-serif;margin:6px 0}
+.issue-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;font:12px Arial,sans-serif;color:var(--muted)}
+button{background:var(--ink);color:white;border:0;border-radius:8px;padding:8px 12px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s,background .2s}
+button:hover{background:#24413c;transform:translateY(-1px)}
+button.upvote.supported{background:var(--accent)}
+a.link-action{color:var(--accent);font:700 13px Arial,sans-serif;text-decoration:none}
+a.link-action:hover{text-decoration:underline}
+@media(max-width:800px){header,.sections{align-items:start;flex-direction:column} .sections{display:flex}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">C</div>
+    <div>
+      <div class="brand-name">Civic Map</div>
+      <div class="brand-sub">Community Voices</div>
+    </div>
+  </div>
+  <div class="tagline">
+    Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a>
+  </div>
+  <nav class="nav">
+    <a class="nav-button" href="/">Live Map</a>
+    <a class="nav-button active" href="/community">Community</a>
+    <a class="nav-button" href="/proposals">Solutions</a>
+    <a class="nav-button" href="/citizen-dashboard">My Dashboard</a>
+    <a class="nav-button" href="/university-dashboard">University</a>
+    <a class="nav-button" href="/industry-dashboard">Industry</a>
+    <a class="nav-button" href="/government-dashboard">Government</a>
+  </nav>
+</header>
+
+<main>
+  <div class="banner">
+    <p class="eyebrow">Collective action</p>
+    <h1>Local community voices.</h1>
+    <p>__LOCATION__</p>
+  </div>
+
+  <div class="sections">
+    <section class="section-card">
+      <p class="eyebrow">Civic Problems</p>
+      <h2>Community Support</h2>
+      __ISSUES__
+    </section>
+    <section class="section-card">
+      <p class="eyebrow">Proposed Solutions</p>
+      <h2>Ideas for Change</h2>
+      __PROPOSALS__
+      <p style="margin-top:16px;"><a class="link-action" href="/proposals">Open full solution proposal portal →</a></p>
+    </section>
+  </div>
+</main>
+
+<script>
+document.querySelectorAll('.upvote').forEach(button => button.onclick = async () => {
+    const response = await fetch('/api/issues/' + button.dataset.id + '/upvote', {method:'POST'});
+    const data = await response.json();
+    if (response.ok) {
+        button.classList.add('supported');
+        button.textContent = '▲ Supported · ' + data.supporters;
+    } else if (response.status === 409) {
+        button.textContent = '▲ Supported · ' + data.supporters;
+    } else {
+        alert(data.message || 'Support could not be recorded.');
+    }
+});
+document.querySelectorAll('.solution-vote').forEach(button => button.onclick = async () => {
+    const response = await fetch('/api/proposals/' + button.dataset.id + '/vote', {method:'POST'});
+    const result = await response.json();
+    if (!response.ok) { alert(result.message || 'You must support this issue before voting.'); return; }
+    button.parentElement.querySelector('b').textContent = result.votes + ' solution votes';
+    button.textContent = result.result === 'changed' ? 'Vote changed' : 'Voted';
+});
+</script>
+</body>
+</html>
