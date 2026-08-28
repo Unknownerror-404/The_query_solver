@@ -12,6 +12,7 @@ import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 from pathlib import Path
+from .tagging import tag_issue
 BASE_DIR = Path(__file__).resolve().parent
 LOGIN_PAGE_FILE = BASE_DIR / "templates" / "login.html"
 REGISTER_PAGE_FILE = BASE_DIR / "templates" / "register.html"
@@ -28,11 +29,13 @@ try:
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
 except ImportError:
-    from login_users import authenticate, create_account, is_admin, professional_profile
-    from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
-    from AI_model import inspect_image_proof, sanitize_and_reencode_image
-    from evidence_review import review_issue_evidence
+    from .login_users import authenticate, create_account, is_admin, professional_profile
+    from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, nearby_issues, render_page, upvote_issue
+    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_universities, load_user_issues, moderate_issue, update_assignment, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from .AI_model import inspect_image_proof, sanitize_and_reencode_image
+    from .evidence_review import review_issue_evidence
+    from .tagging import tag_issue
+
 HOST = "127.0.0.1"
 PORT = 8000
 SESSIONS: dict[str, str] = {}
@@ -830,6 +833,7 @@ class MapHandler(BaseHTTPRequestHandler):
                     issue["_proof_data"] = proof_bytes
                 else:
                     proof_id = ""
+                issue = tag_issue(issue)
                 created = add_issue(issue)
             except (ValueError,KeyError,json.JSONDecodeError):
                 self.send_error(400)
