@@ -6,10 +6,30 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Iterable
 
 import mysql.connector
 from mysql.connector import Error, IntegrityError
+
+_ENV_FILE = Path(__file__).with_name(".env")
+
+
+def _load_env_file(path: Path = _ENV_FILE) -> None:
+    if not path.is_file():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip("'").strip('"')
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_env_file()
 
 MYSQL_CONFIG = {
     "host": os.getenv("CIVIC_MAP_DB_HOST", "127.0.0.1"),
@@ -26,15 +46,31 @@ def connect():
 
 def ensure_database() -> None:
     server_config = {key: value for key, value in MYSQL_CONFIG.items() if key != "database"}
-    connection = mysql.connector.connect(**server_config)
+    try:
+        connection = mysql.connector.connect(**server_config)
+    except Error:
+        # Application users are often allowed only on the named database.
+        connection = connect()
+        connection.close()
+        return
+    cursor = None
     try:
         cursor = connection.cursor()
-        cursor.execute(
-            "CREATE DATABASE IF NOT EXISTS `{}`".format(MYSQL_CONFIG["database"].replace("`", "``"))
-        )
-        connection.commit()
+        try:
+            cursor.execute(
+                "CREATE DATABASE IF NOT EXISTS `{}`".format(MYSQL_CONFIG["database"].replace("`", "``"))
+            )
+            connection.commit()
+        except Error:
+            cursor.execute(
+                "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = %s",
+                (MYSQL_CONFIG["database"],),
+            )
+            if cursor.fetchone() is None:
+                raise
     finally:
-        cursor.close()
+        if cursor is not None:
+            cursor.close()
         connection.close()
 
 
