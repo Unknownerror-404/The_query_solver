@@ -93,6 +93,7 @@ body{overflow:auto}
 .login{padding:31px 24px}
 }
 </style>
+<link rel="stylesheet" href="/templates/shared.css">
 </head>
 <body>
 <div class="page">
@@ -146,6 +147,8 @@ __ERROR__
 <button type="submit">Sign in to Civic Map</button>
 </form>
 <div class="create">New here? <a href="/register">Create an account →</a></div>
+<div class="create" style="margin-top: 12px;">Are you a University or Institution? <a href="/university/login" style="color:var(--blue);font-weight:bold;">University Portal Login →</a></div>
+<div class="create" style="margin-top: 12px;">Are you an Industry or CSR Partner? <a href="/industry/login" style="color:var(--accent);font-weight:bold;">Industry Portal Login →</a></div>
 <div class="safe">
 <div class="safe-icon">✓</div>
 <div>
@@ -160,16 +163,16 @@ __ERROR__
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const mapOptions={zoomControl:false,attributionControl:true,dragging:true,scrollWheelZoom:true,doubleClickZoom:true,boxZoom:false,keyboard:true,touchZoom:true};
-const loginMap=L.map('login-map',mapOptions).setView([12.9716,77.5946],12);
-const panelMap=L.map('login-panel-map',{...mapOptions,attributionControl:false}).setView([12.9716,77.5946],12);
+const loginMap=L.map('login-map',mapOptions).setView([23.3441,85.3096],12);
+const panelMap=L.map('login-panel-map',{...mapOptions,attributionControl:false}).setView([23.3441,85.3096],12);
 const tileOptions={maxZoom:19,attribution:'&copy; OpenStreetMap contributors'};
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',tileOptions).addTo(loginMap);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',tileOptions).addTo(panelMap);
 const mapIssues=[
-{lat:12.982,lng:77.622,color:'#e65f38',letter:'R'},
-{lat:12.956,lng:77.642,color:'#317c91',letter:'W'},
-{lat:12.938,lng:77.601,color:'#c48622',letter:'W'},
-{lat:12.925,lng:77.635,color:'#d75b47',letter:'L'}
+{lat:23.356,lng:85.318,color:'#e65f38',letter:'R'},
+{lat:23.331,lng:85.328,color:'#317c91',letter:'W'},
+{lat:23.320,lng:85.292,color:'#c48622',letter:'W'},
+{lat:23.365,lng:85.286,color:'#d75b47',letter:'L'}
 ];
 function createMarker(issue){
 return L.divIcon({
