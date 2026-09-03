@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Industry Registration · Civic Map</title>
+<style>
+:root{--ink:#172b28;--muted:#5e706b;--paper:#f4efe6;--card:#fffdf8;--accent:#e65f38;--line:#d8d4c9;--gold:#c48622;--blue:#317c91;--error:#bc2c1a}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink);display:grid;place-items:center;padding:24px 16px}.login-card{width:100%;max-width:720px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:36px 32px;box-shadow:0 16px 36px rgba(23,43,40,.08);position:relative;overflow:hidden}.login-card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.brand-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:10px;background:var(--accent);color:white;font:700 20px Georgia,serif}.brand-title{font:700 18px Georgia,serif}.brand-sub{font:700 11px Arial,sans-serif;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase}h1{font-size:22px;margin:0 0 8px;font-weight:600}p.subtitle{color:var(--muted);font:13px/1.5 Arial,sans-serif;margin:0 0 24px;max-width:620px}form{display:grid;gap:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}label{display:grid;gap:6px;font:700 12px Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase}.wide{grid-column:1/-1}input,select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font:14px Arial,sans-serif;background:rgba(244,239,230,.25);color:var(--ink);outline:none}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(230,95,56,.15)}small{color:var(--muted);font:12px/1.4 Arial,sans-serif;font-weight:400;letter-spacing:0;text-transform:none}button.submit-btn{width:100%;padding:12px;border:0;border-radius:8px;background:var(--ink);color:white;font:700 14px Arial,sans-serif;cursor:pointer}button.submit-btn:hover{background:#24413c}.error,.success{padding:10px 14px;border-radius:8px;font:13px/1.45 Arial,sans-serif;margin:0 0 4px}.error{background:#fde8e8;color:var(--error);border:1px solid #f8b4b4}.success{background:#e7f6ee;color:#23613d;border:1px solid #afdcc2}.footer-links{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font:13px Arial,sans-serif}.footer-links a{color:var(--accent);font-weight:600;text-decoration:none}@media(max-width:720px){html,body{display:block;padding:18px 12px}.login-card{padding:32px 22px}.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}}
+</style>
+<link rel="stylesheet" href="/templates/shared.css">
+</head>
+<body>
+<div class="login-card">
+  <div class="brand"><div class="brand-mark">I</div><div><div class="brand-title">Civic Map</div><div class="brand-sub">Industry & CSR Portal</div></div></div>
+  <h1>Register your organization</h1>
+  <p class="subtitle">Create an industry, startup, MSME, CSR, or research-lab profile to contribute expertise, funding, testing, and deployment support to approved civic projects.</p>
+  __MESSAGE__
+  <form action="/industry/register" method="POST">
+    <div class="form-grid">
+      <label>Organization name<input name="name" required maxlength="255" placeholder="Organization or company name"></label>
+      <label>Organization type<select name="partner_type" required><option>Industry</option><option>Startup</option><option>MSME</option><option>CSR Organization</option><option>Research Laboratory</option></select></label>
+      <label>District<input name="district" required maxlength="100" placeholder="Ranchi"></label>
+      <label>Contact email<input name="email" type="email" required maxlength="255" autocomplete="email" placeholder="partnerships@example.org"></label>
+      <label class="wide">Focus domains<input name="domains" required maxlength="1000" placeholder="Water Resources, Energy, Healthcare"><small>Use comma-separated domains so relevant challenges can be matched to your organization.</small></label>
+      <label>Password<input name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label>
+      <label>Confirm password<input name="confirm_password" type="password" required minlength="8" autocomplete="new-password" placeholder="Repeat your password"></label>
+    </div>
+    <button class="submit-btn" type="submit">Submit organization registration</button>
+  </form>
+  <div class="footer-links"><a href="/industry/login">Already registered? Sign in</a><a href="/login">Citizen sign in</a></div>
+</div>
+</body>
+</html>
