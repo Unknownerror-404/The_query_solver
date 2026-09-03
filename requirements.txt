@@ -1,0 +1,7 @@
+Pillow>=10.0
+sentence-transformers>=3.0
+opencv-python-headless>=4.8
+mysql-connector-python>=9.0
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9

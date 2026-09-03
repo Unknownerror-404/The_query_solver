@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Problem Solution Flow · Civic Map</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-4">
+  <div class="bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-xl p-6 shadow-sm max-w-4xl mx-auto">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-[var(--border)] pb-4 mb-6">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-[var(--accent)]">System Architecture & Flow</span>
+        <h2 class="text-2xl font-bold text-[var(--foreground)] mt-1">Civic Problem-Solution Workflow</h2>
+        <p class="text-sm text-[var(--muted-foreground)]">Complete Lifecycle: Citizen Report → Government Review → University Assignment → Public Solution</p>
+      </div>
+      <div class="bg-[var(--primary)] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">
+        SIH 2026 Governance Model
+      </div>
+    </div>
+
+    <!-- Interactive Stepper -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      
+      <!-- Stage 1 -->
+      <div class="border border-[var(--border)] rounded-xl p-4 bg-[var(--background)] relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-orange-500"></div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-orange-500">Stage 1</span>
+          <span class="text-lg font-bold text-[var(--muted-foreground)]">01</span>
+        </div>
+        <h3 class="font-bold text-base text-[var(--foreground)] mb-1">Citizen Issue Report</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mb-3">Citizens report local civic issues (roads, water, waste) with GPS map location & photo proof.</p>
+        <div class="text-[11px] bg-orange-50 dark:bg-orange-950/40 text-orange-800 dark:text-orange-200 p-2.5 rounded-lg border border-orange-200 dark:border-orange-900">
+          <strong>Actor:</strong> Citizens & Community<br>
+          <strong>Output:</strong> Geotagged Issue Entry
+        </div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="border border-[var(--border)] rounded-xl p-4 bg-[var(--background)] relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-600"></div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Stage 2</span>
+          <span class="text-lg font-bold text-[var(--muted-foreground)]">02</span>
+        </div>
+        <h3 class="font-bold text-base text-[var(--foreground)] mb-1">Government Moderation</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mb-3">Gov admin reviews reports, approves genuine entries, and routes them to matched universities based on district & domain.</p>
+        <div class="text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 p-2.5 rounded-lg border border-blue-200 dark:border-blue-900">
+          <strong>Actor:</strong> Government Admin<br>
+          <strong>Output:</strong> Approved & Assigned Issue
+        </div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="border border-[var(--border)] rounded-xl p-4 bg-[var(--background)] relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Stage 3</span>
+          <span class="text-lg font-bold text-[var(--muted-foreground)]">03</span>
+        </div>
+        <h3 class="font-bold text-base text-[var(--foreground)] mb-1">University Login & Decision</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mb-3">University logs into <code>/university/login</code>, accepts or rejects request with rationale, transmitting decision back to Government.</p>
+        <div class="text-[11px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900">
+          <strong>Actor:</strong> University Portal<br>
+          <strong>Output:</strong> Accept/Reject Feed to Gov
+        </div>
+      </div>
+
+      <!-- Stage 4 -->
+      <div class="border border-[var(--border)] rounded-xl p-4 bg-[var(--background)] relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-purple-600"></div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-purple-600">Stage 4</span>
+          <span class="text-lg font-bold text-[var(--muted-foreground)]">04</span>
+        </div>
+        <h3 class="font-bold text-base text-[var(--foreground)] mb-1">Faculty & Student Assignment</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mb-3">University assigns an official Faculty Mentor and Student Team members to lead R&D and solution execution.</p>
+        <div class="text-[11px] bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200 p-2.5 rounded-lg border border-purple-200 dark:border-purple-900">
+          <strong>Actor:</strong> Academic Dept / Institution<br>
+          <strong>Output:</strong> Assigned Project Team
+        </div>
+      </div>
+
+      <!-- Stage 5 -->
+      <div class="border border-[var(--border)] rounded-xl p-4 bg-[var(--background)] relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-teal-600"></div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-teal-600">Stage 5</span>
+          <span class="text-lg font-bold text-[var(--muted-foreground)]">05</span>
+        </div>
+        <h3 class="font-bold text-base text-[var(--foreground)] mb-1">Public Report & Solution</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mb-3">University submits formal project reports & solution proposals, stored publicly for all citizens & industry partners to view.</p>
+        <div class="text-[11px] bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 p-2.5 rounded-lg border border-teal-200 dark:border-teal-900">
+          <strong>Actor:</strong> University R&D Team<br>
+          <strong>Output:</strong> Public Project Report
+        </div>
+      </div>
+
+      <!-- Stage 6 -->
+      <div class="border border-[var(--border)] rounded-xl p-4 bg-[var(--background)] relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-600"></div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Stage 6</span>
+          <span class="text-lg font-bold text-[var(--muted-foreground)]">06</span>
+        </div>
+        <h3 class="font-bold text-base text-[var(--foreground)] mb-1">Gov Oversight & Impact</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mb-3">Government dashboard tracks real-time acceptances/rejections, project stages, IP/startup outcomes, and community impact.</p>
+        <div class="text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 p-2.5 rounded-lg border border-amber-200 dark:border-amber-900">
+          <strong>Actor:</strong> Government & Industry<br>
+          <strong>Output:</strong> Deployment & Impact Metrics
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Interactive Data Flow Summary -->
+    <div class="border border-[var(--border)] rounded-xl p-5 bg-[var(--background)]">
+      <h3 class="text-base font-bold text-[var(--foreground)] mb-3">Data Flow & Signal Matrix</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)] uppercase">
+              <th class="py-2 px-3 font-semibold">Action Step</th>
+              <th class="py-2 px-3 font-semibold">Initiator</th>
+              <th class="py-2 px-3 font-semibold">Recipient / Feed</th>
+              <th class="py-2 px-3 font-semibold">Data Transmitted</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--border)] text-[var(--foreground)]">
+            <tr>
+              <td class="py-2.5 px-3 font-medium">1. Institutional Login</td>
+              <td class="py-2.5 px-3">University Administrator</td>
+              <td class="py-2.5 px-3">`/university/login`</td>
+              <td class="py-2.5 px-3 text-[var(--muted-foreground)]">Credentials → Direct Dashboard Redirect</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium">2. Request Accept / Reject</td>
+              <td class="py-2.5 px-3">University Portal</td>
+              <td class="py-2.5 px-3">Government Admin & Dashboard</td>
+              <td class="py-2.5 px-3 text-[var(--muted-foreground)]">Status (Accepted/Rejected) + Official Rationale</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium">3. Faculty & Student Assignment</td>
+              <td class="py-2.5 px-3">University Portal</td>
+              <td class="py-2.5 px-3">Database (`project_teams`)</td>
+              <td class="py-2.5 px-3 text-[var(--muted-foreground)]">Faculty Mentor Email + Assigned Student Emails</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium">4. Project Report Submission</td>
+              <td class="py-2.5 px-3">University R&D Team</td>
+              <td class="py-2.5 px-3">Public Portal (Visible to All)</td>
+              <td class="py-2.5 px-3 text-[var(--muted-foreground)]">Title, Executive Summary, Deliverables, Outcomes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
