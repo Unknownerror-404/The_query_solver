@@ -58,22 +58,36 @@ def nearby_issues(latitude: float | None = None, longitude: float | None = None,
 
 def add_issue(issue: dict) -> dict:
     try:
-        from .AI_model import classify_issue, find_duplicate
+        from .AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, merge_text_and_visual_classification
     except ImportError:
-        from AI_model import classify_issue, find_duplicate
+        from AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, merge_text_and_visual_classification
 
     classification = classify_issue(issue.get("title", ""), issue.get("description", ""), issue.get("category", ""))
-    issue.update(classification)
+    visual = None
+    if issue.get("_video_data"):
+        visual = classify_video_proof(issue["_video_data"])
+        issue["proof_message"] = " ".join(
+            part for part in (issue.get("proof_message", ""), visual.get("message", "")) if part
+        ).strip() or visual.get("message")
+    elif str(issue.get("_proof_type", "")).startswith("image/") and issue.get("_proof_data"):
+        visual = classify_image_problem(issue["_proof_data"])
+    issue.update(merge_text_and_visual_classification(classification, visual))
     if not str(issue.get("category", "")).strip():
-        issue["category"] = classification["predicted_category"]
+        issue["category"] = issue.get("predicted_category") or "Urban Infrastructure"
 
     match = find_duplicate(issue, ISSUES)
     if match and match.decision == "duplicate":
         with ISSUE_LOCK:
             match.issue["supporters"] += 1
-            for field in ("proof_id", "proof_status", "proof_message"):
+            for field in ("proof_id", "proof_status", "proof_message", "video_id", "video_predicted_category", "video_confidence", "video_explanation"):
                 if field in issue:
                     match.issue[field] = issue[field]
+            if issue.get("_proof_data"):
+                match.issue["_proof_type"] = issue.get("_proof_type")
+                match.issue["_proof_data"] = issue.get("_proof_data")
+            if issue.get("_video_data"):
+                match.issue["_video_type"] = issue.get("_video_type")
+                match.issue["_video_data"] = issue.get("_video_data")
             update_issue(match.issue)
             return {"result": "duplicate", "issue": match.issue, "score": match.score}
     if match and match.decision == "possible_duplicate":
@@ -83,6 +97,8 @@ def add_issue(issue: dict) -> dict:
         issue.update(saved_issue)
         issue.pop("_proof_type", None)
         issue.pop("_proof_data", None)
+        issue.pop("_video_type", None)
+        issue.pop("_video_data", None)
         ISSUES.append(issue)
         return {"result": "new", "issue": issue}
 
@@ -249,11 +265,19 @@ def proposed_solutions_markup() -> str:
 
 
 def proof_markup(issue: dict) -> str:
+    parts = []
     proof_id = issue.get("proof_id")
-    if not proof_id:
-        return ""
-    status = "GPS location verified" if issue.get("proof_status") == "verified" else "Location unverified"
-    return f'<p><a href="/proof/{html.escape(proof_id)}">View photo proof</a> · {status}</p>'
+    if proof_id:
+        status = "GPS location verified" if issue.get("proof_status") == "verified" else "Location unverified"
+        label = "View video proof" if str(issue.get("proof_type", "")).startswith("video/") else "View photo proof"
+        parts.append(f'<p><a href="/proof/{html.escape(str(proof_id))}">{label}</a> · {status}</p>')
+    video_id = issue.get("video_id")
+    if video_id:
+        analysis = html.escape(str(issue.get("video_predicted_category") or "supporting evidence"))
+        parts.append(
+            f'<p><a href="/video/{html.escape(str(video_id))}">View video evidence</a> · not geotagged · AI: {analysis}</p>'
+        )
+    return "".join(parts)
 
 
 def render_page(user: str, latitude: float | None = None, longitude: float | None = None) -> str:

@@ -124,7 +124,13 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             "ALTER TABLE issues ADD COLUMN moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending'",
             "ALTER TABLE issues ADD COLUMN moderation_reason TEXT",
             "ALTER TABLE issues ADD COLUMN moderated_by VARCHAR(255)",
-                    "ALTER TABLE issues ADD COLUMN reporter VARCHAR(255)",
+            "ALTER TABLE issues ADD COLUMN reporter VARCHAR(255)",
+            "ALTER TABLE issues ADD COLUMN video_id VARCHAR(100)",
+            "ALTER TABLE issues ADD COLUMN video_type VARCHAR(40)",
+            "ALTER TABLE issues ADD COLUMN video_data LONGBLOB",
+            "ALTER TABLE issues ADD COLUMN video_predicted_category VARCHAR(100)",
+            "ALTER TABLE issues ADD COLUMN video_confidence DECIMAL(4, 2)",
+            "ALTER TABLE issues ADD COLUMN video_explanation TEXT",
         ):
             try:
                 cursor.execute(statement)
@@ -449,13 +455,15 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
 
 
 def _issue(row: tuple[Any, ...]) -> dict[str, Any]:
-    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter")
+    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_type", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter", "video_id", "video_predicted_category", "video_confidence", "video_explanation")
     issue = {key: value for key, value in zip(keys, row) if value is not None}
     for coordinate in ("lat", "lng"):
         if isinstance(issue.get(coordinate), Decimal):
             issue[coordinate] = float(issue[coordinate])
     if isinstance(issue.get("category_confidence"), Decimal):
         issue["category_confidence"] = float(issue["category_confidence"])
+    if isinstance(issue.get("video_confidence"), Decimal):
+        issue["video_confidence"] = float(issue["video_confidence"])
     return issue
 
 
@@ -463,7 +471,7 @@ def load_issues() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter FROM issues ORDER BY id")
+        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter, video_id, video_predicted_category, video_confidence, video_explanation FROM issues ORDER BY id")
         return [_issue(row) for row in cursor.fetchall()]
     finally:
         cursor.close()
@@ -488,15 +496,17 @@ def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
         cursor.execute(
             """
             INSERT INTO issues
-            (title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, reporter)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending', %s)
+            (title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, reporter, video_id, video_type, video_data, video_predicted_category, video_confidence, video_explanation)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending', %s, %s, %s, %s, %s, %s, %s)
             """,
-                (issue["title"], issue["category"], issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""), issue["lat"], issue["lng"], issue.get("description", ""), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("predicted_category"), issue.get("category_confidence"), issue.get("priority_score"), issue.get("priority_label"), issue.get("matching_explanation"), issue.get("reporter")),
+                (issue["title"], issue["category"], issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""), issue["lat"], issue["lng"], issue.get("description", ""), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("predicted_category"), issue.get("category_confidence"), issue.get("priority_score"), issue.get("priority_label"), issue.get("matching_explanation"), issue.get("reporter"), issue.get("video_id"), issue.get("_video_type"), issue.get("_video_data"), issue.get("video_predicted_category"), issue.get("video_confidence"), issue.get("video_explanation")),
         )
         connection.commit()
         saved = dict(issue)
         saved.pop("_proof_type", None)
         saved.pop("_proof_data", None)
+        saved.pop("_video_type", None)
+        saved.pop("_video_data", None)
         saved.update({"id": cursor.lastrowid, "supporters": 1, "age": "just now"})
         return saved
     finally:
@@ -509,8 +519,8 @@ def update_issue(issue: dict[str, Any]) -> None:
     try:
         cursor = connection.cursor()
         cursor.execute(
-            "UPDATE issues SET supporters = %s, proof_id = %s, proof_type = %s, proof_data = %s, proof_status = %s, proof_message = %s WHERE id = %s",
-            (issue.get("supporters", 0), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue["id"]),
+            "UPDATE issues SET supporters = %s, proof_id = %s, proof_type = %s, proof_data = %s, proof_status = %s, proof_message = %s, video_id = %s, video_type = %s, video_data = %s, video_predicted_category = %s, video_confidence = %s, video_explanation = %s WHERE id = %s",
+            (issue.get("supporters", 0), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("video_id"), issue.get("_video_type"), issue.get("_video_data"), issue.get("video_predicted_category"), issue.get("video_confidence"), issue.get("video_explanation"), issue["id"]),
         )
         connection.commit()
     finally:
@@ -542,6 +552,20 @@ def get_proof(proof_id: str) -> tuple[str, bytes] | None:
         if not row or row[1] is None:
             return None
         return row[0] or "application/octet-stream", bytes(row[1])
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def get_video(video_id: str) -> tuple[str, bytes] | None:
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT video_type, video_data FROM issues WHERE video_id = %s", (video_id,))
+        row = cursor.fetchone()
+        if not row or row[1] is None:
+            return None
+        return row[0] or "video/mp4", bytes(row[1])
     finally:
         cursor.close()
         connection.close()

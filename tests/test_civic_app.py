@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from login_users import authenticate, create_account, _hash_password
 from community import distance_km, upvote_issue, ISSUES
-from AI_model import IssueDeduplicator, classify_issue, sanitize_and_reencode_image, inspect_image_proof
+from AI_model import IssueDeduplicator, classify_issue, classify_video_proof, extract_video_frames, merge_text_and_visual_classification, sanitize_and_reencode_image, inspect_image_proof
 from map import industry_match_score
 from storage import create_session_record, get_session_user, delete_session_record, check_rate_limit
 
@@ -75,6 +75,22 @@ class TestImageSanitization(unittest.TestCase):
         dummy_bytes = b"not-a-real-image"
         res = inspect_image_proof(dummy_bytes, 23.3441, 85.3096)
         self.assertEqual(res["status"], "unverified")
+
+    def test_video_proof_skips_gps_and_does_not_crash(self):
+        result = classify_video_proof(b"not-a-real-video")
+        self.assertEqual(result["status"], "unverified")
+        self.assertIn("evidence", result["message"].casefold())
+        self.assertEqual(extract_video_frames(b""), [])
+
+    def test_visual_classification_can_override_weak_text(self):
+        text = classify_issue("Something nearby", "Please look at this")
+        merged = merge_text_and_visual_classification(
+            text,
+            {"predicted_category": "Sanitation", "category_confidence": 0.82, "matching_explanation": "CLIP ViT matched sampled video/photo frames to Sanitation."},
+        )
+        self.assertEqual(merged["predicted_category"], "Sanitation")
+        self.assertEqual(merged["video_predicted_category"], "Sanitation")
+        self.assertIn("CLIP ViT", merged["matching_explanation"])
 
 
 class TestSessionAndRateLimiting(unittest.TestCase):

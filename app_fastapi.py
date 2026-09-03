@@ -27,7 +27,7 @@ from storage import (
     assign_issue, check_rate_limit, create_industry_partner, create_message,
     create_milestone, create_notification, create_session_record,
     create_support_offer, create_team, create_university, create_university_report, delete_session_record,
-    get_proof, get_proposal_visual, get_session_user, insert_proposal,
+    get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal,
     load_industry_partners, load_milestones, load_teams, load_university_assignments, load_universities,
     moderate_issue, update_assignment, update_milestone, update_offer_commitment,
     update_proposal, update_team_outcomes, update_team_status, update_university,
@@ -337,6 +337,13 @@ if FastAPI is not None:
             raise HTTPException(status_code=404, detail="Proof not found")
         return Response(content=proof[1], media_type=proof[0])
 
+    @app.get("/video/{video_id}")
+    async def get_video_evidence(video_id: str):
+        video = get_video(video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        return Response(content=video[1], media_type=video[0])
+
     @app.get("/proposal-visual/{proposal_id}")
     async def get_proposal_visual_image(proposal_id: int):
         visual = get_proposal_visual(proposal_id)
@@ -361,14 +368,20 @@ if FastAPI is not None:
             data["reporter"] = current_user
             encoded_proof = data.pop("proof_image", "")
             proof_type = data.pop("proof_type", "image/jpeg")
+            encoded_video = data.pop("proof_video", "")
+            video_type = data.pop("proof_video_type", "video/mp4")
             allowed_proof_types = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+            allowed_video_types = {"video/mp4", "video/webm"}
             if proof_type not in allowed_proof_types:
                 return JSONResponse(status_code=415, content={"message": "Unsupported proof file type"})
+            if encoded_video and video_type not in allowed_video_types:
+                return JSONResponse(status_code=415, content={"message": "Unsupported video file type"})
             proof_bytes = base64.b64decode(encoded_proof, validate=True) if encoded_proof else b""
+            video_bytes = base64.b64decode(encoded_video, validate=True) if encoded_video else b""
         except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error):
             return JSONResponse(status_code=400, content={"message": "Invalid issue data."})
-        if len(proof_bytes) > 8 * 1024 * 1024:
-            return JSONResponse(status_code=413, content={"message": "Proof image is larger than 8 MB"})
+        if len(proof_bytes) > 25 * 1024 * 1024 or len(video_bytes) > 25 * 1024 * 1024:
+            return JSONResponse(status_code=413, content={"message": "Proof file is larger than 25 MB"})
         if proof_bytes:
             if proof_type.startswith("image/"):
                 proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
@@ -377,10 +390,14 @@ if FastAPI is not None:
                     return JSONResponse(status_code=422, content=proof)
                 data.update({"proof_status": proof["status"], "proof_message": proof["message"]})
             else:
-                data.update({"proof_status": "unverified", "proof_message": "Supporting file uploaded; location verification is available for images."})
+                data.update({"proof_status": "unverified", "proof_message": "Supporting file uploaded; location verification is available for geotagged photos."})
             data["proof_id"] = secrets.token_urlsafe(12)
             data["_proof_type"] = proof_type
             data["_proof_data"] = proof_bytes
+        if video_bytes:
+            data["video_id"] = secrets.token_urlsafe(12)
+            data["_video_type"] = video_type
+            data["_video_data"] = video_bytes
         created = add_issue(data)
         if created.get("result") == "new" and created.get("issue"):
             assignment = auto_assign_issue_to_best_university(created["issue"])
