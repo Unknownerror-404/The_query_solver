@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <meta name="theme-color" content="#f4f0e7"/>
+  <title>
+   Civic Map
+  </title>
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet"/>
+  <style>
+:root{
+  --ink:#173b3b;
+  --ink-2:#234b49;
+  --muted:#687b78;
+  --paper:#f4f0e7;
+  --card:#fffdf8;
+  --white:#ffffff;
+  --line:#e3dfd4;
+  --line-strong:#c9d0ca;
+  --accent:#e95f35;
+  --accent-dark:#cf4723;
+  --accent-soft:#fff0e9;
+  --blue:#2d8495;
+  --blue-soft:#eaf6f7;
+  --gold:#c58a28;
+
+  --sans:"Inter","Segoe UI",Arial,sans-serif;
+  --serif:"Fraunces",Georgia,serif;
+
+  --radius-sm:10px;
+  --radius:14px;
+  --radius-lg:20px;
+
+  --shadow:0 18px 44px -18px rgba(23,59,59,.28);
+  --shadow-soft:0 10px 28px -14px rgba(23,59,59,.22);
+  --shadow-xs:0 2px 8px rgba(23,59,59,.05);
+  --ring-blue:0 0 0 4px rgba(45,132,149,.15);
+  --ring-accent:0 0 0 4px rgba(233,95,53,.18);
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  font-family:var(--sans);
+  background:var(--paper);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+body{
+  overflow:hidden;
+  background:
+    radial-gradient(1100px 520px at 85% -8%,rgba(45,132,149,.07),transparent 60%),
+    radial-gradient(900px 520px at -5% 110%,rgba(233,95,53,.06),transparent 55%),
+    var(--paper);
+}
+
+/* ---------- Header ---------- */
+header{
+  position:relative;
+  z-index:1000;
+  min-height:82px;
+  padding:14px 26px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:auto auto 1fr;
+  align-items:center;
+  gap:22px;
+  background:rgba(255,253,248,.82);
+  backdrop-filter:saturate(140%) blur(14px);
+  -webkit-backdrop-filter:saturate(140%) blur(14px);
+  box-shadow:0 6px 24px -18px rgba(23,59,59,.5);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:13px;
+}
+
+.brand-mark{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  background:linear-gradient(150deg,var(--ink),var(--ink-2));
+  color:#fff;
+  font:800 18px var(--sans);
+  box-shadow:0 10px 22px -8px rgba(23,59,59,.55),inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.brand-name{
+  font:800 15px var(--sans);
+  letter-spacing:-.1px;
+}
+
+.brand-sub{
+  margin-top:4px;
+  color:var(--accent);
+  font:800 8px var(--sans);
+  letter-spacing:1.7px;
+  text-transform:uppercase;
+}
+
+.eyebrow{
+  margin:0 0 5px;
+  color:var(--accent);
+  font:800 10px var(--sans);
+  letter-spacing:1.7px;
+  text-transform:uppercase;
+}
+
+.tagline{
+  color:var(--muted);
+  font:13px var(--sans);
+}
+
+nav{
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.nav-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  padding:8px 14px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:var(--ink-2);
+  text-decoration:none;
+  font:700 11.5px var(--sans);
+  letter-spacing:.1px;
+  transition:transform .18s var(--ease),background .18s var(--ease),color .18s var(--ease),box-shadow .18s var(--ease),border-color .18s var(--ease);
+}
+
+.nav-button:hover{
+  transform:translateY(-1px);
+  background:var(--card);
+  border-color:var(--line);
+  color:var(--ink);
+  box-shadow:var(--shadow-xs);
+}
+
+.nav-button.active{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:#fff;
+  box-shadow:0 10px 20px -10px rgba(23,59,59,.6);
+}
+
+.nav-button:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-blue);
+}
+
+/* ---------- Layout ---------- */
+main{
+  display:grid;
+  grid-template-columns:376px minmax(0,1fr);
+  height:calc(100vh - 82px);
+  min-height:540px;
+}
+
+aside{
+  position:relative;
+  z-index:500;
+  padding:22px 20px 30px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  border-right:1px solid var(--line);
+  background:linear-gradient(180deg,#f8f4ec 0%,#f1ede2 100%);
+  scrollbar-width:thin;
+  scrollbar-color:#c2c9c3 transparent;
+}
+
+aside::-webkit-scrollbar{width:8px}
+aside::-webkit-scrollbar-thumb{
+  background:#c2c9c3;
+  border-radius:99px;
+  border:2px solid transparent;
+  background-clip:padding-box;
+}
+
+/* ---------- Stats ---------- */
+.stat{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:60px;
+  padding:12px 16px;
+  margin-bottom:10px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:linear-gradient(180deg,rgba(255,253,248,.95),rgba(255,253,248,.78));
+  box-shadow:var(--shadow-xs);
+  font:700 12px var(--sans);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease);
+}
+
+.stat:hover{
+  transform:translateY(-2px);
+  border-color:var(--line-strong);
+  box-shadow:var(--shadow-soft);
+}
+
+.stat span{
+  color:var(--muted);
+  letter-spacing:.2px;
+}
+
+.stat strong{
+  min-width:34px;
+  text-align:right;
+  color:var(--ink);
+  font:800 24px var(--sans);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.5px;
+}
+
+aside>h2{
+  margin:24px 2px 12px;
+  color:var(--ink);
+  font:600 19px var(--serif);
+  letter-spacing:-.2px;
+}
+
+/* ---------- Filters ---------- */
+.filters{
+  display:grid;
+  gap:8px;
+}
+
+.filters button{
+  position:relative;
+  width:100%;
+  min-height:42px;
+  padding:10px 14px 10px 17px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,253,248,.72);
+  color:#3e5552;
+  font:700 12px var(--sans);
+  letter-spacing:.1px;
+  text-align:left;
+  cursor:pointer;
+  transition:all .2s var(--ease);
+}
+
+.filters button::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:9px;
+  bottom:9px;
+  width:3px;
+  border-radius:0 4px 4px 0;
+  background:transparent;
+  transition:background .2s var(--ease);
+}
+
+.filters button:hover{
+  padding-left:20px;
+  border-color:var(--line-strong);
+  background:#fff;
+  transform:translateX(3px);
+  box-shadow:var(--shadow-xs);
+}
+
+.filters button:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-blue);
+}
+
+.filters button.active{
+  border-color:var(--ink);
+  background:linear-gradient(150deg,var(--ink),var(--ink-2));
+  color:#fff;
+  box-shadow:0 12px 22px -12px rgba(23,59,59,.65);
+}
+
+.filters button.active::before{
+  background:var(--accent);
+}
+
+/* ---------- Locate ---------- */
+#locate{
+  position:relative;
+  width:100%;
+  min-height:44px;
+  margin-top:14px!important;
+  padding:11px 14px!important;
+  border:1px solid var(--blue)!important;
+  border-radius:12px!important;
+  background:var(--blue-soft)!important;
+  color:var(--blue)!important;
+  font:800 12px var(--sans)!important;
+  letter-spacing:.2px;
+  text-align:center!important;
+  cursor:pointer;
+  transition:all .2s var(--ease);
+}
+
+#locate:hover{
+  background:var(--blue)!important;
+  color:#fff!important;
+  transform:translateY(-2px);
+  box-shadow:0 14px 26px -12px rgba(45,132,149,.7);
+}
+
+#locate:active{transform:translateY(0)}
+
+#locate:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-blue);
+}
+
+/* ---------- Report card ---------- */
+.report{
+  position:relative;
+  margin-top:24px;
+  padding:24px 18px 18px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  background:linear-gradient(180deg,rgba(255,253,248,.96),rgba(255,253,248,.9));
+  box-shadow:var(--shadow-soft);
+  overflow:hidden;
+}
+
+.report::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:5px;
+  background:linear-gradient(90deg,var(--accent),#e89b37,var(--blue));
+}
+
+.report h2{
+  margin:0 0 4px;
+  font:600 23px var(--serif);
+  letter-spacing:-.4px;
+}
+
+.report::after{
+  content:"Report a civic issue";
+  display:block;
+  margin:0 0 18px;
+  color:var(--muted);
+  font:12px var(--sans);
+}
+
+.report label{
+  display:block;
+  margin:15px 0 0;
+  color:#3d5552;
+  font:800 11px var(--sans);
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+
+.report input,
+.report select,
+.report textarea{
+  display:block;
+  width:100%;
+  margin:7px 0 0;
+  padding:12px 13px;
+  border:1px solid var(--line-strong);
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:var(--ink);
+  font:14px var(--sans);
+  box-shadow:inset 0 1px 2px rgba(23,59,59,.03);
+  transition:border-color .2s var(--ease),box-shadow .2s var(--ease),background .2s var(--ease),transform .2s var(--ease);
+}
+
+.report select{
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23687b78' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 13px center;
+  padding-right:38px;
+  cursor:pointer;
+}
+
+.report input::placeholder,
+.report textarea::placeholder{
+  color:#9aa5a1;
+}
+
+.report input:hover,
+.report select:hover,
+.report textarea:hover{
+  border-color:#aebbb5;
+}
+
+.report input:focus,
+.report select:focus,
+.report textarea:focus{
+  border-color:var(--blue);
+  background:#fff;
+  box-shadow:var(--ring-blue);
+}
+
+.report textarea{
+  min-height:96px;
+  resize:vertical;
+  line-height:1.5;
+}
+
+.report input[type="file"]{
+  padding:10px;
+  background:#f7faf8;
+  font-size:11px;
+  cursor:pointer;
+}
+
+.report input[type="file"]::file-selector-button{
+  margin-right:10px;
+  padding:8px 11px;
+  border:0;
+  border-radius:8px;
+  background:linear-gradient(150deg,var(--ink),var(--ink-2));
+  color:#fff;
+  font:700 10px var(--sans);
+  letter-spacing:.2px;
+  cursor:pointer;
+  transition:filter .2s var(--ease),transform .2s var(--ease);
+}
+
+.report input[type="file"]::file-selector-button:hover{
+  filter:brightness(1.12);
+  transform:translateY(-1px);
+}
+
+.report label small{
+  display:block;
+  margin-top:7px;
+  color:#7b8985;
+  font:10px/1.5 var(--sans);
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:500;
+}
+
+.report>p{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin:15px 0 14px!important;
+  padding:11px 12px;
+  border:1px solid #e2ebe5;
+  border-radius:11px;
+  background:#f2f7f4;
+  color:#5b6c68!important;
+  font:600 10.5px/1.4 var(--sans)!important;
+}
+
+.report>p::before{
+  content:"⌖";
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  border-radius:50%;
+  background:#e1eeea;
+  color:var(--blue);
+  font-size:14px;
+}
+
+/* ---------- Submit ---------- */
+.submit{
+  width:100%;
+  min-height:48px;
+  margin-top:4px;
+  padding:13px 16px;
+  border:1px solid var(--accent)!important;
+  border-radius:12px!important;
+  background:linear-gradient(135deg,var(--accent),#f2763d)!important;
+  color:#fff!important;
+  text-align:center!important;
+  font:800 13px var(--sans)!important;
+  letter-spacing:.2px;
+  cursor:pointer;
+  box-shadow:0 14px 26px -12px rgba(233,95,53,.8);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s var(--ease);
+}
+
+.submit:hover{
+  background:linear-gradient(135deg,var(--accent-dark),var(--accent))!important;
+  transform:translateY(-2px);
+  box-shadow:0 18px 30px -12px rgba(233,95,53,.85);
+}
+
+.submit:active{transform:translateY(0)}
+
+.submit:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-accent),0 14px 26px -12px rgba(233,95,53,.8);
+}
+
+/* ---------- Map ---------- */
+#map{
+  position:relative;
+  width:100%;
+  height:100%;
+  min-height:540px;
+  background:#dfe8e3;
+}
+
+#map::after{
+  content:"Click anywhere on the map to place your report pin";
+  position:absolute;
+  z-index:400;
+  left:50%;
+  bottom:20px;
+  transform:translateX(-50%);
+  padding:10px 15px;
+  border:1px solid rgba(255,255,255,.65);
+  border-radius:999px;
+  background:rgba(23,59,59,.9);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  color:#fff;
+  font:700 10.5px var(--sans);
+  letter-spacing:.2px;
+  pointer-events:none;
+  box-shadow:0 12px 26px -10px rgba(23,59,59,.7);
+  opacity:.94;
+}
+
+.leaflet-control-zoom{
+  border:0!important;
+  border-radius:12px!important;
+  overflow:hidden;
+  box-shadow:0 12px 28px -12px rgba(23,59,59,.6)!important;
+}
+
+.leaflet-control-zoom a{
+  color:var(--ink)!important;
+  background:#fffdf8!important;
+  transition:background .18s var(--ease),color .18s var(--ease);
+}
+
+.leaflet-control-zoom a:hover{
+  background:var(--ink)!important;
+  color:#fff!important;
+}
+
+.leaflet-popup-content-wrapper{
+  border-radius:16px!important;
+  box-shadow:0 22px 44px -18px rgba(23,59,59,.55)!important;
+}
+
+.leaflet-popup-content{
+  margin:16px!important;
+}
+
+.popup{
+  min-width:215px;
+}
+
+.popup h3{
+  margin:4px 0 8px;
+  color:var(--ink);
+  font:600 18px var(--serif);
+  letter-spacing:-.2px;
+}
+
+.popup p{
+  margin:6px 0;
+  color:#526561;
+  font:12px/1.5 var(--sans);
+}
+
+.popup .category{
+  color:var(--accent);
+  text-transform:uppercase;
+  font:900 9px var(--sans);
+  letter-spacing:1.2px;
+}
+
+.popup img{
+  width:220px;
+  max-height:150px;
+  object-fit:cover;
+  margin-top:9px;
+  border-radius:10px;
+}
+
+.proof{
+  color:var(--muted);
+  font:10px var(--sans);
+}
+
+/* ---------- Account menu ---------- */
+.account-menu{
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+
+.account-trigger{
+  display:flex!important;
+  align-items:center;
+  gap:10px;
+  min-height:48px;
+  padding:7px 12px 7px 8px!important;
+  border:1px solid var(--line)!important;
+  border-radius:13px!important;
+  background:rgba(255,253,248,.96)!important;
+  color:var(--ink)!important;
+  cursor:pointer;
+  transition:all .2s var(--ease);
+}
+
+.account-trigger:hover{
+  background:#fff!important;
+  border-color:var(--line-strong)!important;
+  box-shadow:var(--shadow-soft);
+  transform:translateY(-1px);
+}
+
+.account-trigger:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-blue);
+}
+
+.account-avatar{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  background:linear-gradient(150deg,var(--ink),var(--ink-2));
+  color:#fff;
+  font:800 13px var(--sans);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.account-info{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  text-align:left;
+  line-height:1.15;
+}
+
+.account-info strong{
+  font:800 10px var(--sans);
+  letter-spacing:.2px;
+}
+
+.account-info small{
+  display:block;
+  max-width:155px;
+  margin-top:3px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--muted);
+  font:10px var(--sans);
+}
+
+.account-chevron{
+  margin-left:4px;
+  color:#52615b;
+  font:800 15px var(--sans);
+  transition:transform .2s var(--ease);
+}
+
+.account-menu.open .account-chevron{
+  transform:rotate(180deg);
+}
+
+.account-dropdown{
+  position:absolute;
+  top:calc(100% + 10px);
+  right:0;
+  z-index:1200;
+  width:264px;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#fff;
+  box-shadow:0 26px 55px -22px rgba(20,42,36,.55);
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(-6px) scale(.98);
+  transform-origin:top right;
+  transition:opacity .2s var(--ease),transform .2s var(--ease),visibility .2s var(--ease);
+}
+
+.account-menu.open .account-dropdown{
+  opacity:1;
+  visibility:visible;
+  transform:translateY(0) scale(1);
+}
+
+.account-dropdown-user{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:11px;
+}
+
+.account-dropdown-user strong{
+  display:block;
+  color:var(--ink);
+  font:800 11px var(--sans);
+}
+
+.account-dropdown-user small{
+  display:block;
+  max-width:195px;
+  margin-top:4px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--muted);
+  font:10px var(--sans);
+}
+
+.account-divider{
+  height:1px;
+  margin:5px 2px;
+  background:var(--line);
+}
+
+.logout-action{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:100%;
+  padding:12px 11px;
+  border-radius:10px;
+  color:var(--accent);
+  font:800 12px var(--sans);
+  text-decoration:none;
+  transition:background .18s var(--ease),color .18s var(--ease);
+}
+
+.logout-action:hover{
+  background:var(--accent-soft);
+  color:#c83d2d;
+}
+
+.logout-icon{
+  display:grid;
+  place-items:center;
+  width:22px;
+  font:800 17px var(--sans);
+}
+
+
+/* ---------- Enhanced Browse + Report UI ---------- */
+aside{
+  padding:24px 18px 34px;
+}
+
+aside>h2{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:26px;
+}
+
+aside>h2::before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 5px var(--accent-soft);
+}
+
+.filters{
+  gap:9px;
+  padding:2px;
+}
+
+.filters button{
+  min-height:45px;
+  padding:11px 14px 11px 18px;
+  border-radius:10px;
+  background:rgba(255,255,255,.58);
+  box-shadow:0 2px 6px rgba(23,59,59,.025);
+}
+
+.filters button::after{
+  content:"›";
+  position:absolute;
+  right:13px;
+  top:50%;
+  transform:translateY(-50%);
+  opacity:.35;
+  font-size:17px;
+  transition:transform .2s ease,opacity .2s ease;
+}
+
+.filters button:hover::after{
+  transform:translate(3px,-50%);
+  opacity:.8;
+}
+
+.filters button.active::after{
+  opacity:1;
+  color:#fff;
+}
+
+#locate{
+  min-height:46px!important;
+  margin-top:15px!important;
+}
+
+.report{
+  margin-top:26px;
+  padding:25px 17px 18px;
+  border-radius:18px;
+}
+
+.report h2{
+  font-size:24px;
+}
+
+.report label{
+  margin-top:16px;
+}
+
+.report input,
+.report select,
+.report textarea{
+  min-height:44px;
+}
+
+.report textarea{
+  min-height:105px;
+}
+
+.report input[type=file]{
+  min-height:46px;
+}
+
+.report>p{
+  min-height:43px;
+}
+
+.submit{
+  min-height:50px;
+}
+
+/* Make every navigation item a consistent rounded rectangle */
+nav .nav-button{
+  min-width:78px;
+  min-height:36px;
+  padding:8px 13px;
+  border:1px solid #b9c5bf;
+  border-radius:9px;
+  background:var(--card);
+}
+
+nav .nav-button:hover{
+  border-color:var(--ink);
+  background:#fff;
+}
+
+nav .nav-button.active{
+  border-color:var(--ink);
+  background:var(--ink);
+}
+
+/* Slightly stronger visual separation between the two sidebar sections */
+.stat + .stat{
+  margin-top:8px;
+}
+
+.report input:valid:not(:placeholder-shown),
+.report textarea:valid:not(:placeholder-shown){
+  border-color:#b9d0c8;
+}
+
+@media(max-width:760px){
+  nav .nav-button{
+    min-width:auto;
+  }
+}
+
+
+/* ---------- Drop a Voice Hover Enhancement ---------- */
+.report{
+  transform:translateY(0);
+  transition:
+    transform .28s cubic-bezier(.22,.61,.36,1),
+    box-shadow .28s cubic-bezier(.22,.61,.36,1),
+    border-color .28s ease,
+    background .28s ease;
+}
+
+.report:hover{
+  transform:translateY(-6px);
+  border-color:#c6d2cc;
+  background:linear-gradient(180deg,#ffffff 0%,#fffdf8 100%);
+  box-shadow:
+    0 28px 55px -22px rgba(23,59,59,.34),
+    0 8px 22px -14px rgba(233,95,53,.24);
+}
+
+.report:hover::before{
+  height:6px;
+  background:linear-gradient(90deg,var(--accent),#f0a33f,var(--blue));
+}
+
+.report h2{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  transition:transform .28s cubic-bezier(.22,.61,.36,1),color .28s ease;
+}
+
+.report h2::before{
+  content:"✦";
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  flex:0 0 30px;
+  border-radius:9px;
+  background:var(--accent-soft);
+  color:var(--accent);
+  font:800 14px var(--sans);
+  transition:
+    transform .28s cubic-bezier(.22,.61,.36,1),
+    background .28s ease,
+    color .28s ease,
+    box-shadow .28s ease;
+}
+
+.report:hover h2{
+  transform:translateX(2px);
+  color:var(--accent-dark);
+}
+
+.report:hover h2::before{
+  transform:rotate(8deg) scale(1.08);
+  background:var(--accent);
+  color:#fff;
+  box-shadow:0 8px 18px -8px rgba(233,95,53,.7);
+}
+
+.report label{
+  transition:transform .22s ease,color .22s ease;
+}
+
+.report label:hover{
+  transform:translateX(2px);
+  color:var(--ink);
+}
+
+.report input,
+.report select,
+.report textarea{
+  transition:
+    border-color .2s ease,
+    box-shadow .2s ease,
+    background .2s ease,
+    transform .2s ease;
+}
+
+.report input:hover,
+.report select:hover,
+.report textarea:hover{
+  border-color:#93aaa1;
+  background:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 5px 14px -10px rgba(23,59,59,.35);
+}
+
+.report input:focus,
+.report select:focus,
+.report textarea:focus{
+  transform:translateY(-1px);
+}
+
+.report input[type="file"]{
+  border:1px dashed #b7c6bf;
+  background:linear-gradient(135deg,#f7faf8,#fbfdfb);
+  transition:
+    border-color .2s ease,
+    background .2s ease,
+    box-shadow .2s ease,
+    transform .2s ease;
+}
+
+.report input[type="file"]:hover{
+  border-color:var(--blue);
+  background:linear-gradient(135deg,#eef8f8,#f8fcfb);
+  box-shadow:0 8px 18px -12px rgba(45,132,149,.45);
+  transform:translateY(-2px);
+}
+
+.report>p{
+  transition:
+    transform .22s ease,
+    border-color .22s ease,
+    background .22s ease,
+    box-shadow .22s ease;
+}
+
+.report:hover>p{
+  border-color:#cfe0d8;
+  background:#edf6f2;
+  box-shadow:0 6px 16px -12px rgba(45,132,149,.4);
+}
+
+.report>p:hover{
+  transform:translateX(2px);
+}
+
+.submit{
+  position:relative;
+  overflow:hidden;
+  transition:
+    transform .25s cubic-bezier(.22,.61,.36,1),
+    box-shadow .25s cubic-bezier(.22,.61,.36,1),
+    background .25s ease,
+    letter-spacing .25s ease;
+}
+
+.submit::after{
+  content:"";
+  position:absolute;
+  top:0;
+  left:-80%;
+  width:45%;
+  height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);
+  transform:skewX(-18deg);
+  transition:left .55s ease;
+  pointer-events:none;
+}
+
+.submit:hover{
+  transform:translateY(-3px) scale(1.01);
+  letter-spacing:.35px;
+  box-shadow:0 20px 34px -13px rgba(233,95,53,.82);
+}
+
+.submit:hover::after{
+  left:135%;
+}
+
+.report:focus-within{
+  border-color:#b9cbc4;
+  box-shadow:
+    0 24px 48px -22px rgba(23,59,59,.30),
+    0 0 0 1px rgba(45,132,149,.08);
+}
+
+@media(prefers-reduced-motion:reduce){
+  .report,
+  .report h2,
+  .report h2::before,
+  .report label,
+  .report input,
+  .report select,
+  .report textarea,
+  .report>p,
+  .submit{
+    transition:none!important;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media(max-width:1100px){
+  header{
+    grid-template-columns:auto 1fr;
+  }
+  .account-menu{justify-self:end}
+  nav{
+    grid-column:1/-1;
+    justify-content:flex-start;
+    padding-top:2px;
+  }
+  main{
+    grid-template-columns:334px minmax(0,1fr);
+    height:calc(100vh - 126px);
+  }
+}
+
+@media(max-width:760px){
+  body{overflow:auto}
+  header{
+    grid-template-columns:1fr auto;
+    min-height:auto;
+    padding:12px 16px;
+  }
+  nav{
+    grid-column:1/-1;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    width:100%;
+    padding-bottom:2px;
+  }
+  .nav-button{flex:0 0 auto}
+  main{
+    display:block;
+    height:auto;
+  }
+  aside{
+    max-height:none;
+    border-right:0;
+  }
+  #map{
+    height:60vh;
+    min-height:420px;
+  }
+  #map::after{
+    display:none;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+  </style>
+ </head>
+ <body>
+  <header>
+   <div class="brand">
+    <div class="brand-mark">
+     C
+    </div>
+    <div>
+     <div class="brand-name">
+      Civic Map
+     </div>
+     <div class="brand-sub">
+      Live Civic Record
+     </div>
+    </div>
+   </div>
+   <div class="account-menu">
+    <button aria-expanded="false" aria-label="Account menu" class="account-trigger" type="button">
+     <span class="account-avatar">
+     </span>
+     <span class="account-info">
+      <strong>
+       Signed in
+      </strong>
+      <small>
+       __USER__
+      </small>
+     </span>
+     <span class="account-chevron">
+      ⌄
+     </span>
+    </button>
+    <div class="account-dropdown">
+     <div class="account-dropdown-user">
+      <span class="account-avatar">
+      </span>
+      <div>
+       <strong>
+        Signed in
+       </strong>
+       <small>
+        __USER__
+       </small>
+      </div>
+     </div>
+     <div class="account-divider">
+     </div>
+     <a class="logout-action" href="/logout">
+      <span class="logout-icon">
+       &rarrhk;
+      </span>
+      <span>
+       Log out
+      </span>
+     </a>
+    </div>
+   </div>
+   <nav class="nav">
+    <a class="nav-button active" href="/">
+     Live Map
+    </a>
+    <a class="nav-button" href="/community">
+     Community
+    </a>
+    <a class="nav-button" href="/proposals">
+     Solutions
+    </a>
+    <a class="nav-button" href="/citizen-dashboard">
+     My Dashboard
+    </a>
+    <a class="nav-button" href="/university-dashboard">
+     University
+    </a>
+    <a class="nav-button" href="/industry-dashboard">
+     Industry
+    </a>
+    <a class="nav-button" href="/government-dashboard">
+     Government
+    </a>
+   </nav>
+  </header>
+  <main>
+   <aside>
+    <div class="stat">
+     <span>
+      Visible voices
+     </span>
+     <strong id="count">
+      0
+     </strong>
+    </div>
+    <div class="stat">
+     <span>
+      People supporting
+     </span>
+     <strong id="supporters">
+      0
+     </strong>
+    </div>
+    <h2>
+     Browse issues
+    </h2>
+    <div class="filters" id="filters">
+    </div>
+    <button id="locate" style="margin-top:18px;width:100%;text-align:center">
+     Use my location
+    </button>
+    <form class="report" id="report">
+     <h2>
+      Drop a voice
+     </h2>
+     <label>
+      Issue title
+      <input name="title" placeholder="What needs attention?" required=""/>
+     </label>
+     <label>
+      Category
+      <select name="category">
+       <option>
+        Roads
+       </option>
+       <option>
+        Waste
+       </option>
+       <option>
+        Water
+       </option>
+       <option>
+        Streetlights
+       </option>
+       <option>
+        Footpaths
+       </option>
+       <option>
+        Environment
+       </option>
+       <option>
+        Other
+       </option>
+      </select>
+     </label>
+     <label>
+      District
+      <select name="district">
+       <option>
+        Bokaro
+       </option>
+       <option>
+        Chatra
+       </option>
+       <option>
+        Deoghar
+       </option>
+       <option>
+        Dhanbad
+       </option>
+       <option>
+        Dumka
+       </option>
+       <option>
+        East Singhbhum
+       </option>
+       <option>
+        Garhwa
+       </option>
+       <option>
+        Giridih
+       </option>
+       <option>
+        Godda
+       </option>
+       <option>
+        Gumla
+       </option>
+       <option>
+        Hazaribagh
+       </option>
+       <option>
+        Jamtara
+       </option>
+       <option>
+        Khunti
+       </option>
+       <option>
+        Koderma
+       </option>
+       <option>
+        Latehar
+       </option>
+       <option>
+        Lohardaga
+       </option>
+       <option>
+        Pakur
+       </option>
+       <option>
+        Palamu
+       </option>
+       <option>
+        Ramgarh
+       </option>
+       <option>
+        Ranchi
+       </option>
+       <option>
+        Sahibganj
+       </option>
+       <option>
+        Seraikela Kharsawan
+       </option>
+       <option>
+        Simdega
+       </option>
+       <option>
+        West Singhbhum
+       </option>
+      </select>
+     </label>
+     <label>
+      Block or city
+      <input name="block" placeholder="Block, municipality, or ward"/>
+     </label>
+     <label>
+      Details
+      <textarea name="description" placeholder="Add useful context"></textarea>
+     </label>
+     <label>
+      Photo, video, or document proof
+      <input accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf,.doc,.docx" name="proof_image" type="file"/>
+      <small>
+       Geotagged photos receive a location verification badge.
+      </small>
+     </label>
+     <p style="font:12px Arial,sans-serif;color:var(--muted)">
+      Click the map first to choose the location.
+     </p>
+     <button class="submit" type="submit">
+      Report this issue
+     </button>
+    </form>
+   </aside>
+   <section aria-label="Map of civic issues" id="map">
+   </section>
+  </main>
+  
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const report=document.getElementById('report');
+  if(!report)return;
+
+  const fields=[...report.querySelectorAll('input,select,textarea')];
+  const submit=report.querySelector('.submit');
+  const fileInput=report.querySelector('input[type="file"]');
+  const locationNote=report.querySelector('p');
+
+  function updateProgress(){
+    const required=fields.filter(field=>field.required);
+    const completed=required.filter(field=>String(field.value||'').trim()).length;
+    const hasLocation=locationNote&&locationNote.textContent.includes('Pin selected');
+    const total=required.length+1;
+    const done=completed+(hasLocation?1:0);
+    if(submit){
+      submit.textContent=done===total?'✓ Ready to report':`Report this issue · ${Math.round(done/total*100)}%`;
+    }
+  }
+
+  fields.forEach(field=>{
+    field.addEventListener('input',updateProgress);
+    field.addEventListener('change',updateProgress);
+  });
+
+  if(fileInput){
+    fileInput.addEventListener('change',()=>{
+      if(fileInput.files.length){
+        const count=fileInput.files.length;
+        fileInput.title=fileInput.files[0].name;
+        const label=fileInput.closest('label');
+        const small=label?.querySelector('small');
+        if(small){
+          small.textContent=count===1
+            ? `Selected: ${fileInput.files[0].name}`
+            : `${count} files selected`;
+        }
+      }
+      updateProgress();
+    });
+
+    ['dragenter','dragover'].forEach(type=>{
+      fileInput.addEventListener(type,()=>{
+        fileInput.style.borderColor='var(--blue)';
+        fileInput.style.background='#eef8f8';
+      });
+    });
+
+    ['dragleave','drop'].forEach(type=>{
+      fileInput.addEventListener(type,()=>{
+        fileInput.style.borderColor='';
+        fileInput.style.background='';
+      });
+    });
+  }
+
+  updateProgress();
+});
+</script>
+<script>
+   const userEmail='__USER__';const userInitial=userEmail.trim().charAt(0).toUpperCase();document.querySelectorAll('.account-avatar').forEach(avatar=>{avatar.textContent=userInitial||'U'});document.querySelectorAll('.account-menu').forEach(menu=>{const trigger=menu.querySelector('.account-trigger');if(!trigger)return;trigger.addEventListener('click',event=>{event.stopPropagation();const isOpen=menu.classList.toggle('open');trigger.setAttribute('aria-expanded',isOpen?'true':'false')});document.addEventListener('click',event=>{if(!menu.contains(event.target)){menu.classList.remove('open');trigger.setAttribute('aria-expanded','false')}})});
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+  <script>
+   const issues=__ISSUES__;const map=L.map('map').setView([23.3441,85.3096],7);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const markers=L.layerGroup().addTo(map);let selectedCategory='All';let reportLocation=null;let selectedPin=null;const colors={Roads:'#e65f38',Waste:'#657a39',Water:'#317c91',Streetlights:'#c48622',Footpaths:'#785b86',Other:'#4f6560'};function popup(issue){return `<div class="popup"><div class="category">${issue.category} · ${issue.area}</div><h3>${issue.title}</h3><p>${issue.description||''}</p><p><b>${issue.supporters||0} supporters</b> · ${issue.age||'just now'}</p>${issue.proof_id?`<img src="/proof/${issue.proof_id}" alt="Photo proof"><p class="proof">${issue.proof_status==='verified'?'✓ GPS location verified':'Photo proof · location unverified'}</p>`:''}</div>`}function render(){markers.clearLayers();const visible=issues.filter(i=>selectedCategory==='All'||i.category===selectedCategory);visible.forEach(issue=>L.circleMarker([issue.lat,issue.lng],{radius:9,color:'#fff',weight:2,fillColor:colors[issue.category]||colors.Other,fillOpacity:.92}).bindPopup(popup(issue)).addTo(markers));document.getElementById('count').textContent=visible.length;document.getElementById('supporters').textContent=visible.reduce((sum,i)=>sum+(i.supporters||0),0)}function buildFilters(){const categories=['All',...new Set(issues.map(i=>i.category))];const root=document.getElementById('filters');root.replaceChildren();categories.forEach(category=>{const button=document.createElement('button');button.textContent=category;button.className=category==='All'?'active':'';button.onclick=()=>{selectedCategory=category;root.querySelectorAll('button').forEach(b=>b.classList.remove('active'));button.classList.add('active');render()};root.appendChild(button)})}function updatePinLabel(){if(reportLocation)document.querySelector('#report p').textContent=`Pin selected: ${reportLocation.lat.toFixed(5)}, ${reportLocation.lng.toFixed(5)}`}function setReportLocation(latlng){reportLocation=latlng;if(selectedPin)map.removeLayer(selectedPin);selectedPin=L.marker(latlng,{draggable:true}).addTo(map);selectedPin.on('dragend',event=>{reportLocation=event.target.getLatLng();updatePinLabel()});updatePinLabel()}map.on('click',e=>setReportLocation(e.latlng));document.getElementById('locate').onclick=()=>{map.once('locationfound',event=>setReportLocation(event.latlng));map.once('locationerror',()=>alert('Location access was unavailable. Please allow location access or click the map to place a pin.')).locate({setView:true,maxZoom:15})};document.getElementById('report').onsubmit=async event=>{event.preventDefault();if(!reportLocation)return alert('Click the map to choose a location first.');const form=new FormData(event.target);const proofFile=form.get('proof_image');let proofImage='';if(proofFile&&proofFile.size){const bytes=new Uint8Array(await proofFile.arrayBuffer());let binary='';bytes.forEach(byte=>binary+=String.fromCharCode(byte));proofImage=btoa(binary)}const response=await fetch('/api/issues',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:form.get('title'),category:form.get('category'),description:form.get('description'),area:form.get('block')||form.get('district'),district:form.get('district'),block:form.get('block'),lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage,proof_type:proofFile&&proofFile.type||'image/jpeg'})});const result=await response.json();if(result.result==='possible_duplicate'){alert('A similar issue is already reported nearby. Please support the existing issue from the community page.');return}if(!response.ok)return alert(result.message||'The issue could not be submitted.');if(result.result==='duplicate'){alert('This matches an existing issue and was added as support.');return}issues.push(result.issue);buildFilters();render();event.target.reset();reportLocation=null;if(selectedPin){map.removeLayer(selectedPin);selectedPin=null}alert(result.assignment?`Your issue was added and matched with ${result.assignment.university_name}.`:'Your issue was added to the map. AI will match it when a suitable university is available.')};buildFilters();render();const districtCoords={"Bokaro":[23.6693,85.9563],"Chatra":[24.2120,84.8715],"Deoghar":[24.4826,86.6966],"Dhanbad":[23.7957,86.4304],"Dumka":[24.2676,87.2497],"East Singhbhum":[22.8046,86.2029],"Garhwa":[24.1624,83.8073],"Giridih":[24.1868,86.3050],"Godda":[24.8267,87.2132],"Gumla":[23.0448,84.5422],"Hazaribagh":[23.9925,85.3637],"Jamtara":[23.9629,86.8000],"Khunti":[23.0763,85.2787],"Koderma":[24.4678,85.5938],"Latehar":[23.7454,84.4632],"Lohardaga":[23.4377,84.6806],"Pakur":[24.6341,87.8488],"Palamu":[24.0326,84.0722],"Ramgarh":[23.6288,85.5173],"Ranchi":[23.3441,85.3096],"Sahibganj":[25.2425,87.6419],"Seraikela Kharsawan":[22.7001,85.9298],"Simdega":[22.6148,84.5074],"West Singhbhum":[22.5694,85.8115]};document.addEventListener('change',e=>{if(e.target&&e.target.name==='district'){const c=districtCoords[e.target.value];if(c)map.flyTo(c,11,{duration:1.5})}});
+  </script>
+ </body>
+</html>

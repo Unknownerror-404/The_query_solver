@@ -504,124 +504,478 @@ form button{margin-top:5px}
   .chart-axis{margin-left:123px}
   .moderation-alert{align-items:flex-start;flex-direction:column}
 }
-
-
-.account-menu{position:relative;flex-shrink:0}
-.account-trigger{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  min-height:48px;
-  padding:6px 11px 6px 7px;
-  border:1px solid rgba(23,43,40,.18);
-  border-radius:14px;
-  background:rgba(255,253,248,.96);
-  color:var(--ink);
-  cursor:pointer;
-  box-shadow:0 4px 14px rgba(23,43,40,.06);
-  transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .18s ease;
-}
-.account-trigger:hover,.account-menu.open .account-trigger{
-  background:#fff;
-  border-color:rgba(23,43,40,.34);
-  box-shadow:0 8px 20px rgba(23,43,40,.11);
-  transform:translateY(-1px);
-}
-.account-avatar{
-  width:34px;
-  height:34px;
-  display:grid;
-  place-items:center;
-  flex:0 0 34px;
-  border-radius:10px;
-  background:var(--ink);
-  color:#fff;
-  font:700 13px Arial,sans-serif;
-  text-transform:uppercase;
-}
-.account-info{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  min-width:0;
-  line-height:1.15;
-}
-.account-info strong,.account-dropdown-user strong{
-  font:700 11px Arial,sans-serif;
-  letter-spacing:.2px;
-}
-.account-info small,.account-dropdown-user small{
-  max-width:190px;
-  margin-top:3px;
-  color:var(--muted);
-  font:11px Arial,sans-serif;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.account-chevron{
-  margin-left:3px;
-  color:var(--muted);
-  font:700 17px Arial,sans-serif;
-  line-height:1;
-  transition:transform .2s ease;
-}
-.account-menu.open .account-chevron{transform:rotate(180deg)}
-.account-dropdown{
-  position:absolute;
-  top:calc(100% + 9px);
-  right:0;
-  z-index:100;
-  width:230px;
-  padding:8px;
-  border:1px solid var(--line);
-  border-radius:15px;
-  background:var(--card);
-  box-shadow:0 18px 40px rgba(23,43,40,.15);
-  opacity:0;
-  visibility:hidden;
-  transform:translateY(-6px) scale(.98);
-  transform-origin:top right;
-  transition:opacity .16s ease,visibility .16s ease,transform .16s ease;
-}
-.account-menu.open .account-dropdown{
-  opacity:1;
-  visibility:visible;
-  transform:translateY(0) scale(1);
-}
-.account-dropdown-user{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:8px;
-}
-.account-dropdown-user .account-avatar{width:36px;height:36px;flex-basis:36px}
-.account-divider{height:1px;background:var(--line);margin:7px 3px}
-.logout-action{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  min-height:40px;
-  padding:9px 10px;
-  border-radius:10px;
-  color:var(--ink);
-  text-decoration:none;
-  font:700 12px Arial,sans-serif;
-  transition:background .18s ease,color .18s ease;
-}
-.logout-action:hover{background:#f8ece7;color:var(--accent)}
-.logout-icon{font-size:16px;line-height:1}
-
-@media(max-width:850px){
-  .account-menu{order:2}
-}
-@media(max-width:600px){
-  .account-trigger{min-height:44px;padding-right:8px}
-  .account-info{display:none}
-  .account-dropdown{right:0}
-}
 </style>
 <link rel="stylesheet" href="/templates/shared.css">
+<style id="government-page-overrides">
+/* GOVERNMENT DASHBOARD — FINAL PAGE-SPECIFIC UI LAYER */
+:root{
+  --gov-bg:#f1eee5;
+  --gov-surface:#fffdf8;
+  --gov-surface-2:#f7f5ee;
+  --gov-ink:#102d28;
+  --gov-muted:#6d7b76;
+  --gov-line:#d8d7ce;
+  --gov-orange:#e65f38;
+  --gov-blue:#317c91;
+  --gov-green:#2d8a70;
+  --gov-gold:#c48622;
+  --gov-purple:#7561b8;
+  --gov-shadow:0 16px 42px rgba(16,45,40,.10);
+  --gov-shadow-sm:0 7px 20px rgba(16,45,40,.06);
+}
+
+html,body{
+  background:
+    radial-gradient(circle at 88% 8%,rgba(49,124,145,.08),transparent 24%),
+    radial-gradient(circle at 5% 45%,rgba(196,134,34,.06),transparent 22%),
+    var(--gov-bg)!important;
+  color:var(--gov-ink)!important;
+}
+
+body{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
+}
+
+header{
+  padding:12px 24px!important;
+  background:rgba(255,253,248,.88)!important;
+  border-bottom:1px solid rgba(216,215,206,.85)!important;
+  box-shadow:0 5px 22px rgba(16,45,40,.05);
+  backdrop-filter:blur(18px);
+}
+
+.brand-mark{
+  width:40px!important;
+  height:40px!important;
+  border-radius:11px!important;
+  background:var(--gov-ink)!important;
+  box-shadow:0 7px 18px rgba(16,45,40,.16)!important;
+}
+
+.brand-name{font-weight:850!important}
+.brand-sub{color:var(--gov-orange)!important}
+
+.nav{gap:6px!important}
+
+.nav-button{
+  min-height:36px!important;
+  padding:8px 12px!important;
+  border-radius:9px!important;
+  border-color:#c9cdc7!important;
+  background:rgba(255,255,255,.75)!important;
+  font-size:10px!important;
+}
+
+.nav-button:hover{
+  background:var(--gov-ink)!important;
+  border-color:var(--gov-ink)!important;
+  color:#fff!important;
+  transform:translateY(-2px)!important;
+  box-shadow:0 8px 18px rgba(16,45,40,.13)!important;
+}
+
+.nav-button.active{
+  background:var(--gov-ink)!important;
+  border-color:var(--gov-ink)!important;
+  color:#fff!important;
+}
+
+main{
+  width:min(1280px,calc(100% - 48px))!important;
+  max-width:none!important;
+  margin:0 auto!important;
+  padding:34px 0 72px!important;
+}
+
+.banner{
+  min-height:220px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  padding:38px 44px!important;
+  margin-bottom:24px!important;
+  border:1px solid var(--gov-line)!important;
+  border-radius:20px!important;
+  background:
+    linear-gradient(120deg,rgba(255,253,248,.98),rgba(248,250,247,.96))!important;
+  box-shadow:var(--gov-shadow)!important;
+}
+
+.banner:before{
+  height:5px!important;
+  background:linear-gradient(90deg,var(--gov-orange),var(--gov-gold),var(--gov-blue))!important;
+}
+
+.banner h1{
+  max-width:780px!important;
+  margin:5px 0 12px!important;
+  font:500 clamp(34px,4.4vw,56px)/1.02 Georgia,serif!important;
+  letter-spacing:-2px!important;
+}
+
+.banner p:not(.eyebrow){
+  max-width:790px!important;
+  color:var(--gov-muted)!important;
+  font-size:13px!important;
+  line-height:1.7!important;
+}
+
+.eyebrow{
+  color:var(--gov-orange)!important;
+  font-size:9px!important;
+  letter-spacing:1.7px!important;
+}
+
+/* Make injected dashboard sections feel like a real admin console. */
+main>section,
+main>.section-card{
+  border:1px solid var(--gov-line)!important;
+  border-radius:17px!important;
+  background:rgba(255,253,248,.94)!important;
+  box-shadow:var(--gov-shadow-sm)!important;
+  padding:24px!important;
+  margin-bottom:18px!important;
+}
+
+main>section:hover,
+main>.section-card:hover{
+  transform:translateY(-2px)!important;
+  box-shadow:var(--gov-shadow)!important;
+}
+
+/* Totals becomes the visual command-center card. */
+main>section:first-of-type,
+main>.section-card:first-of-type{
+  background:var(--gov-ink)!important;
+  color:#fff!important;
+  border-color:var(--gov-ink)!important;
+}
+
+main>section:first-of-type h2,
+main>.section-card:first-of-type h2{
+  color:#fff!important;
+}
+
+main>section:first-of-type h2:before,
+main>.section-card:first-of-type h2:before{
+  background:var(--gov-orange)!important;
+}
+
+/* Give dashboard sections a distinct colored edge. */
+main>section:nth-of-type(2):before{background:var(--gov-gold)!important}
+main>section:nth-of-type(3):before{background:var(--gov-orange)!important}
+main>section:nth-of-type(4):before{background:var(--gov-blue)!important}
+main>section:nth-of-type(5):before{background:var(--gov-green)!important}
+
+/* KPI chart */
+.kpi-section{
+  padding:24px 26px 28px!important;
+}
+
+.kpi-chart{
+  min-height:260px!important;
+  padding:20px 12px 0!important;
+  border:1px solid rgba(216,215,206,.65);
+  background:
+    linear-gradient(to bottom,transparent 24.5%,rgba(16,45,40,.055) 25%,transparent 25.5%),
+    linear-gradient(to bottom,transparent 49.5%,rgba(16,45,40,.055) 50%,transparent 50.5%),
+    linear-gradient(to bottom,transparent 74.5%,rgba(16,45,40,.055) 75%,transparent 75.5%),
+    var(--gov-surface-2)!important;
+}
+
+.kpi-item{height:230px!important}
+
+.kpi-value{
+  font-size:24px!important;
+  font-weight:900!important;
+}
+
+.kpi-track{
+  height:165px!important;
+  max-width:74px!important;
+  border-bottom:1px solid #bfc7c2!important;
+}
+
+.kpi-bar{
+  width:68%!important;
+  border-radius:8px 8px 3px 3px!important;
+  box-shadow:0 8px 20px rgba(16,45,40,.12)!important;
+}
+
+.kpi-label{
+  font-size:9px!important;
+  line-height:1.35!important;
+  font-weight:850!important;
+}
+
+/* Distribution */
+.dist-row{
+  padding:10px 0!important;
+  grid-template-columns:minmax(170px,1.1fr) minmax(220px,3fr) 42px!important;
+}
+
+.dist-track{
+  height:12px!important;
+  background:#e5e5dc!important;
+}
+
+.dist-bar{
+  box-shadow:0 4px 10px rgba(16,45,40,.08);
+}
+
+.dist-value{
+  font-size:12px!important;
+  font-weight:900!important;
+}
+
+/* Lists become compact admin records rather than plain text. */
+main section li{
+  border:1px solid #e1e1d9!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  margin:7px 0!important;
+  padding:12px 14px!important;
+  box-shadow:0 3px 10px rgba(16,45,40,.035);
+  transition:.18s ease!important;
+}
+
+main section li:hover{
+  transform:translateX(3px);
+  border-color:#c8cec9!important;
+  box-shadow:0 6px 15px rgba(16,45,40,.07);
+}
+
+/* Buttons */
+main button{
+  min-height:40px!important;
+  border-radius:9px!important;
+  padding:9px 14px!important;
+  font-size:10px!important;
+  font-weight:850!important;
+}
+
+main button:hover{
+  transform:translateY(-2px)!important;
+}
+
+/* Forms / decision controls */
+main input,
+main select,
+main textarea{
+  border:1px solid #d2d4cc!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  color:var(--gov-ink)!important;
+}
+
+main input:focus,
+main select:focus,
+main textarea:focus{
+  border-color:var(--gov-blue)!important;
+  box-shadow:0 0 0 4px rgba(49,124,145,.10)!important;
+}
+
+/* Empty project state */
+.empty-state{
+  border:1px dashed #c8cec8!important;
+  background:linear-gradient(135deg,#f5faf8,#fffaf3)!important;
+}
+
+/* Moderation */
+.moderation-alert{
+  border:1px solid #efc8ae!important;
+  background:linear-gradient(120deg,#fff5ec,#fffdf8)!important;
+  box-shadow:var(--gov-shadow-sm);
+}
+
+/* Data list control */
+.data-list-toggle,
+.action-chip{
+  min-height:38px!important;
+  border-radius:9px!important;
+}
+
+.data-list-content{
+  border:1px solid var(--gov-line)!important;
+  border-radius:11px!important;
+  background:var(--gov-surface-2)!important;
+}
+
+/* On large screens, pair content into a two-column administration grid
+   when the existing markup contains consecutive dashboard sections. */
+@media(min-width:1050px){
+  main>section:nth-of-type(3),
+  main>.section-card:nth-of-type(3){
+    margin-top:0;
+  }
+}
+
+@media(max-width:900px){
+  main{
+    width:calc(100% - 28px)!important;
+    padding-top:24px!important;
+  }
+  .banner{
+    padding:30px 26px!important;
+  }
+  .banner h1{letter-spacing:-1px!important}
+}
+
+@media(max-width:600px){
+  header{
+    padding:10px 14px!important;
+  }
+  .tagline{
+    width:100%;
+    order:3;
+  }
+  .nav{
+    width:100%;
+    overflow-x:auto;
+    flex-wrap:nowrap!important;
+    justify-content:flex-start!important;
+  }
+  .nav-button{flex:0 0 auto}
+  main{
+    width:calc(100% - 20px)!important;
+    padding-top:16px!important;
+  }
+  .banner{
+    min-height:0!important;
+    padding:26px 20px!important;
+  }
+  .banner h1{font-size:34px!important}
+  main>section,
+  main>.section-card{
+    padding:19px!important;
+  }
+  .kpi-chart{
+    min-width:650px!important;
+  }
+}
+
+/* FINAL MODERATION + DISTRIBUTION VISUAL UPGRADE */
+.moderation-alert{
+  position:relative;
+  min-height:142px;
+  padding:24px 26px!important;
+  border:1px solid #efd3c2!important;
+  border-radius:16px!important;
+  background:linear-gradient(120deg,#fff7f0 0%,#fffdf8 58%,#f7fbfa 100%)!important;
+  box-shadow:0 10px 25px rgba(16,45,40,.07)!important;
+  overflow:hidden;
+}
+.moderation-alert:after{
+  content:"";
+  position:absolute;
+  width:230px;height:230px;
+  right:-100px;bottom:-165px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(230,95,56,.13),transparent 68%);
+  pointer-events:none;
+}
+.moderation-icon{
+  width:54px;height:54px;
+  display:grid;place-items:center;
+  flex:0 0 54px;
+  border-radius:50%;
+  background:#fff0e8;
+  color:#ef5d31;
+  font:900 25px Arial,sans-serif;
+  box-shadow:inset 0 0 0 7px rgba(255,255,255,.65);
+}
+.moderation-copy strong{font-size:16px!important;color:var(--gov-ink)!important}
+.moderation-copy span{font-size:13px!important;line-height:1.5}
+.moderation-count{
+  min-width:68px;
+  color:#ed2b23!important;
+  font:900 48px/1 Arial,sans-serif!important;
+  text-align:center;
+}
+.moderation-meta{
+  display:flex;align-items:center;gap:12px;
+  padding-left:20px;
+  border-left:1px solid #e5d9d0;
+}
+.moderation-clock{
+  width:43px;height:43px;
+  display:grid;place-items:center;
+  border:3px solid #f07846;
+  border-radius:50%;
+  color:#f07846;
+  font:700 20px Arial,sans-serif;
+}
+.moderation-meta strong{display:block;font:800 14px Arial,sans-serif;color:var(--gov-ink)}
+.moderation-meta span{display:block;margin-top:3px;color:var(--gov-muted);font:12px Arial,sans-serif}
+.moderation-review{
+  position:relative;z-index:2;
+  min-height:46px!important;
+  padding:12px 20px!important;
+  border-radius:11px!important;
+  background:linear-gradient(135deg,#f46334,#ed4e27)!important;
+  border-color:#ed4e27!important;
+  color:#fff!important;
+  font-size:12px!important;
+  box-shadow:0 9px 20px rgba(237,78,39,.22)!important;
+}
+.moderation-review:hover{transform:translateY(-2px)!important;box-shadow:0 13px 25px rgba(237,78,39,.3)!important}
+.distribution-chart{
+  margin-top:8px!important;
+  padding:12px 14px 8px;
+  border-radius:14px;
+  background:linear-gradient(180deg,#fbfaf6,#fffdf9);
+  border:1px solid #ebe7dd;
+}
+.dist-row{
+  position:relative;
+  min-height:46px;
+  padding:7px 4px!important;
+  border-radius:10px;
+  transition:background .18s ease,transform .18s ease;
+}
+.dist-row:hover{background:#f5f7f3;transform:translateX(3px)}
+.dist-label{
+  display:flex;align-items:center;gap:9px;
+  font-size:12px!important;font-weight:750;
+}
+.dist-label:before{
+  content:"";width:9px;height:9px;flex:0 0 9px;
+  border-radius:50%;background:var(--bar-color,var(--gov-blue));
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--bar-color,var(--gov-blue)) 12%,transparent);
+}
+.dist-track{height:17px!important;background:#ece9e1!important;border-radius:999px!important}
+.dist-bar{height:100%!important;border-radius:999px!important;box-shadow:0 4px 10px rgba(16,45,40,.1)!important}
+.dist-value{font-size:13px!important;font-weight:900!important}
+.distribution-controls{display:flex;justify-content:flex-end;gap:10px;margin:0 0 14px}
+.distribution-select{min-width:145px;padding:10px 12px!important;border:1px solid #d8d9d1!important;border-radius:10px!important;background:#fff!important;font:700 11px Arial,sans-serif!important;color:var(--gov-ink)!important}
+.distribution-select:focus{border-color:var(--gov-blue)!important;box-shadow:0 0 0 4px rgba(49,124,145,.09)!important}
+.distribution-summary{display:flex;align-items:center;justify-content:space-between;margin:14px 3px 0;color:var(--gov-muted);font:11px Arial,sans-serif}
+.distribution-summary strong{color:var(--gov-ink);font-size:13px}
+.distribution-view{
+  display:flex!important;align-items:center!important;gap:8px;
+  margin-top:14px!important;
+  border:0!important;
+  background:var(--gov-ink)!important;
+  color:#fff!important;
+  border-radius:10px!important;
+  padding:11px 15px!important;
+}
+.distribution-view:hover{background:#0b3835!important}
+@media(max-width:700px){
+  .moderation-alert{padding:20px!important}
+  .moderation-layout{display:grid!important;grid-template-columns:54px 1fr!important}
+  .moderation-meta{border-left:0;padding-left:0;margin-top:14px}
+  .moderation-actions{grid-column:1/-1!important;margin-top:14px}
+  .distribution-controls{justify-content:stretch;flex-direction:column}
+  .distribution-select{width:100%}
+  .dist-row{grid-template-columns:1fr 38px!important}
+  .dist-label{grid-column:1/-1}
+  .dist-track{grid-column:1}
+  .dist-value{grid-column:2}
+}
+
+</style>
+
 </head>
 <body>
 <header>
@@ -632,20 +986,8 @@ form button{margin-top:5px}
       <div class="brand-sub">Government Administration</div>
     </div>
   </div>
-  <div class="account-menu">
-    <button class="account-trigger" type="button" aria-expanded="false" aria-label="Account menu">
-      <span class="account-avatar"></span>
-      <span class="account-info"><strong>Signed in</strong><small>__USER__</small></span>
-      <span class="account-chevron">⌄</span>
-    </button>
-    <div class="account-dropdown">
-      <div class="account-dropdown-user">
-        <span class="account-avatar"></span>
-        <div><strong>Signed in</strong><small>__USER__</small></div>
-      </div>
-      <div class="account-divider"></div>
-      <a href="/logout" class="logout-action"><span class="logout-icon">↪</span><span>Log out</span></a>
-    </div>
+  <div class="tagline">
+    Government Portal · <a href="/logout" style="color:var(--muted)">Log out</a>
   </div>
   <nav class="nav">
     <a class="nav-button" href="/">Live Map</a>
@@ -665,31 +1007,6 @@ form button{margin-top:5px}
   </div>
   __CONTENT__
 </main>
-<script>
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('.account-menu').forEach(menu=>{
-    const trigger=menu.querySelector('.account-trigger');
-    if(!trigger)return;
-    const email=menu.querySelector('.account-info small')?.textContent.trim()||'';
-    menu.querySelectorAll('.account-avatar').forEach(avatar=>{
-      avatar.textContent=email.charAt(0).toUpperCase()||'U';
-    });
-    trigger.addEventListener('click',event=>{
-      event.stopPropagation();
-      const isOpen=menu.classList.toggle('open');
-      trigger.setAttribute('aria-expanded',isOpen?'true':'false');
-    });
-  });
-  document.addEventListener('click',event=>{
-    document.querySelectorAll('.account-menu.open').forEach(menu=>{
-      if(!menu.contains(event.target)){
-        menu.classList.remove('open');
-        menu.querySelector('.account-trigger')?.setAttribute('aria-expanded','false');
-      }
-    });
-  });
-});
-</script>
 <script>
 function findSectionByHeading(text){
   const wanted=text.toLowerCase();
@@ -755,26 +1072,66 @@ function makeDistributionChart(){
   });
   if(!candidates.length)return;
   const max=Math.max(1,...candidates.map(x=>x.value));
+  const colors=['#2d9f8a','#3f8fe0','#f0ad38','#7255bd','#18a8ca','#e65f7a'];
+  const controls=document.createElement('div');
+  controls.className='distribution-controls';
+  controls.innerHTML='<select class="distribution-select" id="govDistrictFilter"><option value="all">All Districts</option></select><select class="distribution-select" id="govDomainFilter"><option value="all">All Domains</option></select>';
+  const districtSet=new Set(),domainSet=new Set();
+  candidates.forEach(item=>{
+    const parts=item.label.split(/\s*[·•-]\s*/);
+    if(parts.length>1){districtSet.add(parts[0].trim());domainSet.add(parts.slice(1).join(' · ').trim())}
+  });
+  const districtSelect=controls.querySelector('#govDistrictFilter');
+  const domainSelect=controls.querySelector('#govDomainFilter');
+  [...districtSet].sort().forEach(v=>districtSelect.insertAdjacentHTML('beforeend','<option value="'+v.replace(/"/g,'&quot;')+'">'+v+'</option>'));
+  [...domainSet].sort().forEach(v=>domainSelect.insertAdjacentHTML('beforeend','<option value="'+v.replace(/"/g,'&quot;')+'">'+v+'</option>'));
+  heading.after(controls);
   const chart=document.createElement('div');
   chart.className='distribution-chart';
-  const colors=['#2d9f8a','#4d9fe8','#ef9d2d','#7561b8','#e65f7a','#317c91'];
   candidates.forEach((item,index)=>{
+    const parts=item.label.split(/\s*[·•-]\s*/);
+    const district=parts.length>1?parts[0].trim():'';
+    const domain=parts.length>1?parts.slice(1).join(' · ').trim():item.label;
     const row=document.createElement('div');
     row.className='dist-row';
-    row.innerHTML=
-      '<div class="dist-label" title="'+item.label.replace(/"/g,'&quot;')+'">'+item.label+'</div>'+
-      '<div class="dist-track"><div class="dist-bar" style="--width:'+((item.value/max)*100)+'%;--bar-color:'+colors[index%colors.length]+'"></div></div>'+
-      '<div class="dist-value">'+item.value+'</div>';
+    row.dataset.district=district;
+    row.dataset.domain=domain;
+    row.innerHTML='<div class="dist-label" title="'+item.label.replace(/"/g,'&quot;')+'" style="--bar-color:'+colors[index%colors.length]+'">'+item.label+'</div><div class="dist-track"><div class="dist-bar" style="--width:'+((item.value/max)*100)+'%;--bar-color:'+colors[index%colors.length]+'"></div></div><div class="dist-value">'+item.value+'</div>';
     chart.appendChild(row);
     item.source.style.display='none';
   });
-  const existingBars=[...section.querySelectorAll('[style*="width"],[style*="flex"]')].filter(el=>el.closest('li'));
-  existingBars.forEach(el=>{if(!el.closest('.dist-row'))el.style.display='none'});
+  heading.parentElement&&heading.parentElement.classList.add('distribution-section');
   heading.after(chart);
-  const axis=document.createElement('div');
-  axis.className='chart-axis';
-  axis.innerHTML='<span>0</span><span>0.25</span><span>0.50</span><span>0.75</span><span>'+max+'</span>';
-  chart.after(axis);
+  const summary=document.createElement('div');
+  summary.className='distribution-summary';
+  summary.innerHTML='<span>Showing <strong>'+candidates.length+'</strong> district-domain records</span><span>Total issues: <strong>'+candidates.reduce((a,b)=>a+b.value,0)+'</strong></span>';
+  chart.after(summary);
+  const button=document.createElement('button');
+  button.type='button';
+  button.className='distribution-view';
+  button.textContent='▣  View data list';
+  button.addEventListener('click',()=>{
+    const old=section.querySelector('.data-list-toggle');
+    if(old)old.click();
+  });
+  summary.after(button);
+  const applyFilters=()=>{
+    let visible=0,total=0;
+    chart.querySelectorAll('.dist-row').forEach(row=>{
+      const okDistrict=districtSelect.value==='all'||row.dataset.district===districtSelect.value;
+      const okDomain=domainSelect.value==='all'||row.dataset.domain===domainSelect.value;
+      row.style.display=okDistrict&&okDomain?'grid':'none';
+      if(okDistrict&&okDomain){visible++;total+=Number(row.querySelector('.dist-value').textContent||0)}
+    });
+    summary.innerHTML='<span>Showing <strong>'+visible+'</strong> district-domain records</span><span>Total issues: <strong>'+total+'</strong></span>';
+  };
+  districtSelect.addEventListener('change',applyFilters);
+  domainSelect.addEventListener('change',applyFilters);
+  requestAnimationFrame(()=>chart.querySelectorAll('.dist-bar').forEach((bar,i)=>{
+    const width=bar.style.getPropertyValue('--width');
+    bar.style.width='0%';
+    setTimeout(()=>bar.style.width=width,i*70);
+  }));
   addDataListToggle(section);
 }
 
@@ -832,11 +1189,13 @@ function improveModeration(){
   const alertBox=document.createElement('div');
   alertBox.className='moderation-alert';
   alertBox.innerHTML=
-    '<div style="display:flex;align-items:center;gap:14px">'+
-      '<div class="empty-icon" style="color:var(--accent);background:rgba(230,95,56,.10)">!</div>'+
-      '<div class="moderation-copy"><strong>Pending issues</strong><span>'+pending+' issue'+(pending===1?' is':'s are')+' waiting for moderation.</span></div>'+
-    '</div>'+
-    '<div style="display:flex;align-items:center;gap:15px"><div class="moderation-count">'+pending+'</div><a class="action-chip primary-action" href="/government-dashboard">Review Now →</a></div>';
+    '<div class="moderation-layout" style="display:flex;align-items:center;gap:16px;position:relative;z-index:2">'+
+      '<div class="moderation-icon">!</div>'+
+      '<div class="moderation-copy" style="flex:1"><strong>Pending issues</strong><span>'+pending+' issue'+(pending===1?' is':'s are')+' waiting for moderation.</span></div>'+
+      '<div class="moderation-meta"><div class="moderation-clock">◷</div><div><strong>Require review</strong><span>Keep reports accurate and safe.</span></div></div>'+
+      '<div class="moderation-count">'+pending+'</div>'+
+      '<div class="moderation-actions"><a class="action-chip moderation-review" href="/government-dashboard">Review Now →</a></div>'+
+    '</div>';
   heading.after(alertBox);
 }
 
