@@ -6,16 +6,22 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Iterable
 
 import mysql.connector
+from dotenv import load_dotenv
 from mysql.connector import Error, IntegrityError
+
+
+load_dotenv(Path(__file__).resolve().with_name(".env"))
+
 
 MYSQL_CONFIG = {
     "host": os.getenv("CIVIC_MAP_DB_HOST", "127.0.0.1"),
     "port": int(os.getenv("CIVIC_MAP_DB_PORT", "3306")),
     "user": os.getenv("CIVIC_MAP_DB_USER", "root"),
-    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", "Aniket@061006"),
+    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", ""),
     "database": os.getenv("CIVIC_MAP_DB_NAME", "sih26"),
 }
 

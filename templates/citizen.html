@@ -20,6 +20,27 @@ header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;j
 .nav-button:hover,.nav-button.active{background:var(--ink);color:white}
 .nav-button.primary{background:var(--accent);border-color:var(--accent);color:white}
 .nav-button.primary:hover{background:#d44d27}
+
+.account-menu{position:relative;display:flex;align-items:center}
+.account-trigger{display:flex;align-items:center;gap:10px;min-height:48px;padding:7px 12px 7px 8px;border:1px solid #c9cec9;border-radius:10px;background:rgba(255,253,248,.95);color:var(--ink);cursor:pointer;transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .15s ease}
+.account-trigger:hover{background:#fff;border-color:var(--ink);box-shadow:0 5px 16px rgba(23,43,40,.1)}
+.account-trigger:active{transform:translateY(1px)}
+.account-avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:8px;background:var(--ink);color:#fff;font:700 13px Arial,sans-serif}
+.account-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.15}
+.account-info strong{font:700 11px Arial,sans-serif;color:var(--ink)}
+.account-info small{display:block;max-width:175px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:10px Arial,sans-serif}
+.account-chevron{margin-left:5px;color:#52615b;font:700 16px Arial,sans-serif;line-height:1;transition:transform .2s ease}
+.account-menu.open .account-chevron{transform:rotate(180deg)}
+.account-dropdown{position:absolute;top:calc(100% + 9px);right:0;z-index:1000;width:270px;padding:8px;border:1px solid #d9ddd8;border-radius:12px;background:#fff;box-shadow:0 18px 45px rgba(20,42,36,.16);opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .18s ease,visibility .18s ease,transform .18s ease}
+.account-menu.open .account-dropdown{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.account-dropdown-user{display:flex;align-items:center;gap:10px;padding:10px}
+.account-dropdown-user strong{display:block;color:var(--ink);font:700 12px Arial,sans-serif}
+.account-dropdown-user small{display:block;max-width:205px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:10px Arial,sans-serif}
+.account-divider{height:1px;margin:5px 2px;background:#e8ebe7}
+.logout-action{display:flex;align-items:center;gap:10px;width:100%;padding:11px 10px;border-radius:8px;color:var(--accent);font:700 13px Arial,sans-serif;text-decoration:none;transition:background .18s ease,color .18s ease}
+.logout-action:hover{background:#fff1ee;color:#c83d2d}
+.logout-icon{display:grid;place-items:center;width:22px;font:700 18px Arial,sans-serif;line-height:1}
+
 main{max-width:1100px;margin:0 auto;padding:34px 24px 50px}
 .banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
 .banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
@@ -41,7 +62,13 @@ main{max-width:1100px;margin:0 auto;padding:34px 24px 50px}
 .issue-meta strong{color:var(--ink)}
 .empty-state{padding:48px 24px;text-align:center;background:var(--card);border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
 .empty-state h3{font-size:22px;color:var(--ink);margin-bottom:8px}
-@media(max-width:760px){header{align-items:start;flex-direction:column;gap:12px}}
+
+@media(max-width:760px){
+header{align-items:start;flex-direction:column;gap:12px}
+.account-info{display:none}
+.account-chevron{display:none}
+.account-dropdown{right:auto;left:0}
+}
 </style>
 <link rel="stylesheet" href="/templates/shared.css">
 </head>
@@ -55,9 +82,35 @@ main{max-width:1100px;margin:0 auto;padding:34px 24px 50px}
       <div class="brand-sub">Citizen Issue Tracking</div>
     </div>
   </div>
-  <div class="tagline">
-    Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a>
+
+  <div class="account-menu">
+    <button class="account-trigger" type="button" aria-expanded="false" aria-label="Account menu">
+      <span class="account-avatar"></span>
+      <span class="account-info">
+        <strong>Signed in</strong>
+        <small>__USER__</small>
+      </span>
+      <span class="account-chevron">⌄</span>
+    </button>
+
+    <div class="account-dropdown">
+      <div class="account-dropdown-user">
+        <span class="account-avatar"></span>
+        <div>
+          <strong>Signed in</strong>
+          <small>__USER__</small>
+        </div>
+      </div>
+
+      <div class="account-divider"></div>
+
+      <a href="/logout" class="logout-action">
+        <span class="logout-icon">↪</span>
+        <span>Log out</span>
+      </a>
+    </div>
   </div>
+
   <nav class="nav">
     <a class="nav-button" href="/">Live Map</a>
     <a class="nav-button" href="/community">Community</a>
@@ -82,6 +135,32 @@ main{max-width:1100px;margin:0 auto;padding:34px 24px 50px}
     __ISSUES__
   </div>
 </main>
+
+<script>
+const userEmail = '__USER__';
+const userInitial = userEmail.trim().charAt(0).toUpperCase();
+
+document.querySelectorAll('.account-avatar').forEach(avatar => {
+    avatar.textContent = userInitial || 'U';
+});
+
+document.querySelectorAll('.account-menu').forEach(menu => {
+    const trigger = menu.querySelector('.account-trigger');
+
+    trigger.addEventListener('click', event => {
+        event.stopPropagation();
+        const isOpen = menu.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', event => {
+        if (!menu.contains(event.target)) {
+            menu.classList.remove('open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+    });
+});
+</script>
 
 </body>
 </html>

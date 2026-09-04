@@ -3,63 +3,119 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Civic Map · Solution Proposals</title>
+<title>Civic Map · Community Voices</title>
 <style>
 :root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
-header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
+header{padding:16px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
 .brand{display:flex;align-items:center;gap:12px}
 .brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
 .brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
-.brand-sub{margin-top:2px;color:var(--gold);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
-.eyebrow{margin:0 0 6px;color:var(--gold);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
+.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.eyebrow{margin:0 0 6px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
 .tagline{color:var(--muted);font:14px Arial,sans-serif}
 .nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
 .nav-button:hover,.nav-button.active{background:var(--ink);color:white}
+.nav-button.primary{background:var(--accent);border-color:var(--accent);color:white}
+.nav-button.primary:hover{background:#d44d27}
+
+.account-menu{position:relative;display:flex;align-items:center}
+.account-trigger{display:flex;align-items:center;gap:10px;min-height:48px;padding:7px 12px 7px 8px;border:1px solid #c9cec9;border-radius:10px;background:rgba(255,253,248,.95);color:var(--ink);cursor:pointer;transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .15s ease}
+.account-trigger:hover{background:#fff;border-color:var(--ink);box-shadow:0 5px 16px rgba(23,43,40,.1)}
+.account-trigger:active{transform:translateY(1px)}
+.account-avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:8px;background:var(--ink);color:#fff;font:700 13px Arial,sans-serif}
+.account-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.15}
+.account-info strong{font:700 11px Arial,sans-serif;color:var(--ink)}
+.account-info small{display:block;max-width:175px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:10px Arial,sans-serif}
+.account-chevron{margin-left:5px;color:#52615b;font:700 16px Arial,sans-serif;line-height:1;transition:transform .2s ease}
+.account-menu.open .account-chevron{transform:rotate(180deg)}
+.account-dropdown{position:absolute;top:calc(100% + 9px);right:0;z-index:1000;width:270px;padding:8px;border:1px solid #d9ddd8;border-radius:12px;background:#fff;box-shadow:0 18px 45px rgba(20,42,36,.16);opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .18s ease,visibility .18s ease,transform .18s ease}
+.account-menu.open .account-dropdown{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.account-dropdown-user{display:flex;align-items:center;gap:10px;padding:10px}
+.account-dropdown-user strong{display:block;color:var(--ink);font:700 12px Arial,sans-serif}
+.account-dropdown-user small{display:block;max-width:205px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:10px Arial,sans-serif}
+.account-divider{height:1px;margin:5px 2px;background:#e8ebe7}
+.logout-action{display:flex;align-items:center;gap:10px;width:100%;padding:11px 10px;border-radius:8px;color:var(--accent);font:700 13px Arial,sans-serif;text-decoration:none;transition:background .18s ease,color .18s ease}
+.logout-action:hover{background:#fff1ee;color:#c83d2d}
+.logout-icon{display:grid;place-items:center;width:22px;font:700 18px Arial,sans-serif;line-height:1}
+
 main{max-width:1150px;margin:0 auto;padding:34px 24px 50px}
 .banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
-.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--blue))}
+.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
 .banner h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}
-.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:750px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,400px);gap:24px;margin-bottom:32px}
+.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:700px}
+
+.sections{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:24px}
 .section-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:0 6px 18px rgba(23,43,40,.06);overflow:hidden}
-.section-card:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--gold),var(--accent))}
-.section-card h2{margin:6px 0 16px;font-size:24px;font-weight:500;letter-spacing:-0.5px}
-.issue-item,.proposal-item{position:relative;border-top:1px solid var(--line);padding:16px 0}
-.issue-item:first-of-type,.proposal-item:first-of-type{border-top:0;padding-top:4px}
-.issue-item h3,.proposal-item h2{margin:4px 0 6px;font-size:18px;font-weight:500}
-.issue-item p,.proposal-item p{color:var(--muted);font:14px/1.5 Arial,sans-serif;margin:4px 0}
-label{display:block;margin-top:14px;color:var(--ink);font:700 11px Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase}
-input,select,textarea{display:block;width:100%;font:13px Arial,sans-serif;padding:11px 13px;margin-top:6px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.9);outline:none}
-input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(196,134,34,.12)}
-textarea{min-height:90px;resize:vertical}
-button.submit{width:100%;margin-top:20px;background:var(--ink);color:white;border:0;border-radius:8px;padding:12px 16px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s,background .2s}
-button.submit:hover{background:#24413c;transform:translateY(-1px)}
-button.solution-vote{background:var(--card);border:1px solid var(--ink);color:var(--ink);padding:6px 12px;border-radius:6px;font:700 11px Arial,sans-serif;cursor:pointer}
-button.solution-vote:hover{background:var(--ink);color:white}
-@media(max-width:850px){header,.layout{align-items:start;flex-direction:column} .layout{display:flex}}
+.section-card:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
+.section-card h2{margin:6px 0 16px;font-size:24px;font-weight:500;letter-spacing:-.5px}
+.issue,.proposal{position:relative;border-top:1px solid var(--line);padding:18px 0}
+.issue:first-of-type,.proposal:first-of-type{border-top:0;padding-top:4px}
+.issue h2,.proposal h2{margin:6px 0 4px;font-size:19px;font-weight:500}
+.issue p,.proposal p{color:var(--muted);font:14px/1.5 Arial,sans-serif;margin:6px 0}
+.issue-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;font:12px Arial,sans-serif;color:var(--muted)}
+button{background:var(--ink);color:white;border:0;border-radius:8px;padding:8px 12px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s ease,background .2s ease}
+button:hover{background:#24413c;transform:translateY(-1px)}
+button.upvote.supported{background:var(--accent)}
+a.link-action{color:var(--accent);font:700 13px Arial,sans-serif;text-decoration:none}
+a.link-action:hover{text-decoration:underline}
+
+@media(max-width:800px){
+header,.sections{align-items:start;flex-direction:column}
+.sections{display:flex;width:100%}
+.account-menu{order:2}
+.nav{width:100%}
+.account-info{display:none}
+.account-chevron{display:none}
+.account-dropdown{right:auto;left:0}
+}
 </style>
 <link rel="stylesheet" href="/templates/shared.css">
 </head>
 <body>
-
 <header>
   <div class="brand">
-    <div class="brand-mark">S</div>
+    <div class="brand-mark">C</div>
     <div>
       <div class="brand-name">Civic Map</div>
-      <div class="brand-sub">Solution Proposals</div>
+      <div class="brand-sub">Community Voices</div>
     </div>
   </div>
-  <div class="tagline">
-    Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a>
+
+  <div class="account-menu">
+    <button class="account-trigger" type="button" aria-expanded="false" aria-label="Account menu">
+      <span class="account-avatar"></span>
+      <span class="account-info">
+        <strong>Signed in</strong>
+        <small>__USER__</small>
+      </span>
+      <span class="account-chevron">⌄</span>
+    </button>
+
+    <div class="account-dropdown">
+      <div class="account-dropdown-user">
+        <span class="account-avatar"></span>
+        <div>
+          <strong>Signed in</strong>
+          <small>__USER__</small>
+        </div>
+      </div>
+
+      <div class="account-divider"></div>
+
+      <a href="/logout" class="logout-action">
+        <span class="logout-icon">↪</span>
+        <span>Log out</span>
+      </a>
+    </div>
   </div>
+
   <nav class="nav">
     <a class="nav-button" href="/">Live Map</a>
-    <a class="nav-button" href="/community">Community</a>
-    <a class="nav-button active" href="/proposals">Solutions</a>
+    <a class="nav-button active" href="/community">Community</a>
+    <a class="nav-button" href="/proposals">Solutions</a>
     <a class="nav-button" href="/citizen-dashboard">My Dashboard</a>
     <a class="nav-button" href="/university-dashboard">University</a>
     <a class="nav-button" href="/industry-dashboard">Industry</a>
@@ -69,85 +125,65 @@ button.solution-vote:hover{background:var(--ink);color:white}
 
 <main>
   <div class="banner">
-    <p class="eyebrow">Community solutions</p>
-    <h1>Practical ideas for public problems.</h1>
-    <p>Attach a proposal to a supported civic issue. Solutions are reviewed by community members, verified professionals, and university teams.</p>
+    <p class="eyebrow">Collective action</p>
+    <h1>Local community voices.</h1>
+    <p>__LOCATION__</p>
   </div>
 
-  __MESSAGE__
-
-  <div class="layout">
+  <div class="sections">
     <section class="section-card">
-      <p class="eyebrow">Top civic challenges</p>
-      <h2>Select an issue</h2>
+      <p class="eyebrow">Civic Problems</p>
+      <h2>Community Support</h2>
       __ISSUES__
     </section>
 
-    <aside class="section-card">
-      <p class="eyebrow">Add an idea</p>
-      <h2>Propose a solution</h2>
-      <form method="post" action="/api/proposals" enctype="application/json" id="proposal-form">
-        <label>
-          Problem
-          <select name="issue_id" required>
-            __OPTIONS__
-          </select>
-        </label>
-        <label>
-          Title
-          <input name="title" required maxlength="120" placeholder="A clear name for your idea">
-        </label>
-        <label>
-          Description
-          <textarea name="description" required maxlength="3000" placeholder="What should change, and why might it help?"></textarea>
-        </label>
-        <label>
-          Visual (optional)
-          <input name="visual" type="file" accept="image/jpeg,image/png,image/webp">
-        </label>
-        <button class="submit" type="submit">Publish solution proposal</button>
-      </form>
-    </aside>
+    <section class="section-card">
+      <p class="eyebrow">Proposed Solutions</p>
+      <h2>Ideas for Change</h2>
+      __PROPOSALS__
+      <p style="margin-top:16px;"><a class="link-action" href="/proposals">Open full solution proposal portal →</a></p>
+    </section>
   </div>
-
-  <section class="section-card">
-    <p class="eyebrow">Submitted proposals</p>
-    <h2>Community ideas gallery</h2>
-    __PROPOSALS__
-  </section>
 </main>
 
 <script>
-const form = document.getElementById('proposal-form');
-form.onsubmit = async event => {
-    event.preventDefault();
-    const data = new FormData(form);
-    const file = data.get('visual');
-    let visual = '';
-    if (file && file.size) {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        let binary = '';
-        bytes.forEach(byte => binary += String.fromCharCode(byte));
-        visual = btoa(binary);
-    }
-    const response = await fetch('/api/proposals', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            issue_id:Number(data.get('issue_id')),
-            title:data.get('title'),
-            description:data.get('description'),
-            visual,
-            visual_type:file && file.type || ''
-        })
+const userEmail = '__USER__';
+const userInitial = userEmail.trim().charAt(0).toUpperCase();
+
+document.querySelectorAll('.account-avatar').forEach(avatar => {
+    avatar.textContent = userInitial || 'U';
+});
+
+document.querySelectorAll('.account-menu').forEach(menu => {
+    const trigger = menu.querySelector('.account-trigger');
+
+    trigger.addEventListener('click', event => {
+        event.stopPropagation();
+        const isOpen = menu.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     });
-    const result = await response.json();
-    if (!response.ok) {
-        alert(result.message || 'The proposal could not be submitted.');
-        return;
+
+    document.addEventListener('click', event => {
+        if (!menu.contains(event.target)) {
+            menu.classList.remove('open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+    });
+});
+
+document.querySelectorAll('.upvote').forEach(button => button.onclick = async () => {
+    const response = await fetch('/api/issues/' + button.dataset.id + '/upvote', {method:'POST'});
+    const data = await response.json();
+    if (response.ok) {
+        button.classList.add('supported');
+        button.textContent = '▲ Supported · ' + data.supporters;
+    } else if (response.status === 409) {
+        button.textContent = '▲ Supported · ' + data.supporters;
+    } else {
+        alert(data.message || 'Support could not be recorded.');
     }
-    window.location.reload();
-};
+});
+
 document.querySelectorAll('.solution-vote').forEach(button => button.onclick = async () => {
     const response = await fetch('/api/proposals/' + button.dataset.id + '/vote', {method:'POST'});
     const result = await response.json();
@@ -156,5 +192,6 @@ document.querySelectorAll('.solution-vote').forEach(button => button.onclick = a
     button.textContent = result.result === 'changed' ? 'Vote changed' : 'Voted';
 });
 </script>
+
 </body>
 </html>
