@@ -5,109 +5,94 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Civic Map · Community Voices</title>
 <style>
-:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
-*{box-sizing:border-box}
-html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}
-header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}
-.brand{display:flex;align-items:center;gap:12px}
-.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}
-.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}
-.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}
-.eyebrow{margin:0 0 6px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
-.tagline{color:var(--muted);font:14px Arial,sans-serif}
-.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}
-.nav-button:hover,.nav-button.active{background:var(--ink);color:white}
-.nav-button.primary{background:var(--accent);border-color:var(--accent);color:white}
-.nav-button.primary:hover{background:#d44d27}
-main{max-width:1150px;margin:0 auto;padding:34px 24px 50px}
-.banner{position:relative;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 30px rgba(23,43,40,.08);overflow:hidden;margin-bottom:32px}
-.banner:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
-.banner h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500;letter-spacing:-1.5px}
-.banner p{color:var(--muted);font:14px/1.6 Arial,sans-serif;max-width:700px}
-.sections{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:24px}
-.section-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:0 6px 18px rgba(23,43,40,.06);overflow:hidden}
-.section-card:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
-.section-card h2{margin:6px 0 16px;font-size:24px;font-weight:500;letter-spacing:-0.5px}
-.issue,.proposal{position:relative;border-top:1px solid var(--line);padding:18px 0}
-.issue:first-of-type,.proposal:first-of-type{border-top:0;padding-top:4px}
-.issue h2,.proposal h2{margin:6px 0 4px;font-size:19px;font-weight:500}
-.issue p,.proposal p{color:var(--muted);font:14px/1.5 Arial,sans-serif;margin:6px 0}
-.issue-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;font:12px Arial,sans-serif;color:var(--muted)}
-button{background:var(--ink);color:white;border:0;border-radius:8px;padding:8px 12px;font:700 12px Arial,sans-serif;cursor:pointer;transition:transform .15s,background .2s}
-button:hover{background:#24413c;transform:translateY(-1px)}
-button.upvote.supported{background:var(--accent)}
-a.link-action{color:var(--accent);font:700 13px Arial,sans-serif;text-decoration:none}
-a.link-action:hover{text-decoration:underline}
-@media(max-width:800px){header,.sections{align-items:start;flex-direction:column} .sections{display:flex}}
+:root{--ink:#123b37;--ink-2:#285a54;--muted:#6c7f7b;--paper:#f4f5f1;--card:#fffdfa;--accent:#ef6037;--accent-dark:#d94b27;--blue:#2d8998;--green:#19856f;--gold:#d99a27;--line:#dce4df;--line-strong:#c9d4cf;--shadow:0 12px 34px rgba(18,59,55,.08);--shadow-lg:0 20px 55px rgba(18,59,55,.12)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);background:radial-gradient(circle at 90% 12%,rgba(45,137,152,.08),transparent 26rem),radial-gradient(circle at 8% 60%,rgba(239,96,55,.045),transparent 22rem),var(--paper);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+a{color:inherit}button{font:inherit}
+header{position:sticky;top:0;z-index:100;min-height:76px;padding:12px 54px;display:flex;align-items:center;gap:24px;background:rgba(255,255,255,.91);border-bottom:1px solid rgba(201,212,207,.85);backdrop-filter:blur(18px)}
+.brand{display:flex;align-items:center;gap:14px;min-width:230px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:var(--ink);color:#fff;font:800 19px/1 Georgia,serif}.brand-name{font:800 17px/1 Inter,Arial,sans-serif}.brand-sub{margin-top:5px;color:var(--accent);font:800 9px/1 Inter,Arial,sans-serif;letter-spacing:1.4px;text-transform:uppercase}
+.nav{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;flex-wrap:wrap}.nav-button{min-height:40px;padding:9px 14px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-decoration:none;font:750 11px/1 Inter,Arial,sans-serif;transition:.18s ease}.nav-button:hover{transform:translateY(-1px);border-color:var(--blue);box-shadow:0 6px 16px rgba(45,137,152,.12)}.nav-button.active{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:0 7px 18px rgba(18,59,55,.16)}
+.account-menu{position:relative;display:flex;align-items:center}.account-trigger{display:flex;align-items:center;gap:10px;min-height:48px;padding:7px 11px 7px 8px;border:1px solid var(--line-strong);border-radius:11px;background:#fff;color:var(--ink);cursor:pointer}.account-trigger:hover{border-color:var(--ink);box-shadow:0 7px 18px rgba(18,59,55,.09)}.account-avatar{width:34px;height:34px;display:grid;place-items:center;flex:0 0 34px;border-radius:9px;background:var(--ink);color:#fff;font:800 13px/1 Inter,Arial,sans-serif}.account-info{display:flex;flex-direction:column;align-items:flex-start;text-align:left}.account-info strong{font:750 10px/1.2 Inter,Arial,sans-serif}.account-info small{margin-top:3px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:10px/1.2 Inter,Arial,sans-serif}.account-chevron{font-size:14px;margin-left:2px;transition:.18s}.account-menu.open .account-chevron{transform:rotate(180deg)}
+.account-dropdown{position:absolute;right:0;top:calc(100% + 9px);width:250px;padding:8px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transform:translateY(-5px);transition:.18s}.account-menu.open .account-dropdown{opacity:1;visibility:visible;transform:none}.account-dropdown-user{display:flex;align-items:center;gap:10px;padding:9px}.account-divider{height:1px;margin:5px 2px;background:#e8ece9}.logout-action{display:flex;align-items:center;gap:9px;padding:11px 10px;border-radius:9px;text-decoration:none;color:var(--accent);font:750 12px/1 Inter,Arial,sans-serif}.logout-action:hover{background:#fff1ec}
+main{width:min(1380px,100%);margin:auto;padding:32px 40px 72px}.banner{position:relative;overflow:hidden;padding:40px 48px;margin-bottom:32px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(135deg,#fffefa 0%,#f8faf7 65%,#eef7f3 100%);box-shadow:var(--shadow)}.banner:before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}.banner h1{position:relative;z-index:1;margin:0 0 10px;font:500 clamp(38px,4.8vw,58px)/1.02 Georgia,"Times New Roman",serif;letter-spacing:-2px}.eyebrow{margin:0 0 9px;color:var(--accent);font:800 10px/1.2 Inter,Arial,sans-serif;letter-spacing:2px;text-transform:uppercase}.banner p:last-child{position:relative;z-index:1;max-width:850px;margin:0;color:var(--muted);font:15px/1.65 Inter,Arial,sans-serif}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}.section-card{position:relative;min-width:0;padding:24px;border:1px solid var(--line);border-radius:16px;background:rgba(255,253,250,.96);box-shadow:var(--shadow)}.section-card:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;border-radius:16px 16px 0 0;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
+.section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:20px}.section-heading h2{margin:0;font:500 29px/1.15 Georgia,"Times New Roman",serif;letter-spacing:-.8px}.section-heading p{margin:6px 0 0;color:var(--muted);font-size:13px}.issue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.issue{position:relative;min-width:0;padding:20px;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 5px 18px rgba(18,59,55,.045);transition:.18s ease}.issue:hover{transform:translateY(-3px);border-color:#b9c9c3;box-shadow:0 14px 28px rgba(18,59,55,.09)}.issue-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}.issue-rank{color:var(--muted);font:750 10px/1 Inter,Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase}.issue-category{display:inline-flex;padding:6px 9px;border-radius:999px;background:#edf6f3;color:var(--green);font:750 10px/1 Inter,Arial,sans-serif}.issue h2{margin:0 0 9px;font:650 21px/1.18 Inter,Arial,sans-serif;letter-spacing:-.5px}.issue>p{margin:0 0 14px;color:#62736f;font-size:13px;line-height:1.6}.issue-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:13px;border-top:1px solid #e7ece9}.supporters{font:800 12px/1 Inter,Arial,sans-serif;color:var(--ink);white-space:nowrap}.supporters:before{content:"♥";margin-right:6px;color:var(--accent);font-size:14px}.location{color:var(--muted);font-size:10px;text-align:right}
+.upvote{width:100%;min-height:40px;margin-top:12px;padding:9px 13px;border:1px solid var(--ink);border-radius:9px;background:var(--ink);color:#fff;cursor:pointer;font:800 11px/1 Inter,Arial,sans-serif;transition:.18s}.upvote:hover{background:var(--ink-2);transform:translateY(-1px)}.upvote:disabled{cursor:wait;opacity:.72;transform:none}.upvote.supported{background:var(--accent);border-color:var(--accent)}.upvote.already-supported{background:#eef5f2;border-color:#c9dcd5;color:var(--green);cursor:default}
+.proposals .proposal{padding:18px 0;border-top:1px solid var(--line)}.proposals .proposal:first-child{border-top:0;padding-top:0}.proposal h2{margin:5px 0 7px;font:600 19px/1.25 Inter,Arial,sans-serif}.proposal p{margin:6px 0;color:var(--muted);font-size:12px;line-height:1.55}.proposal .status{display:inline-flex;margin-top:8px;padding:5px 9px;border-radius:999px;background:#eef5f2;color:var(--green);font:750 10px/1 Inter,Arial,sans-serif}.solution-vote{min-height:36px;margin-top:10px;padding:8px 12px;border:1px solid var(--ink);border-radius:9px;background:var(--ink);color:#fff;cursor:pointer;font:750 10px/1 Inter,Arial,sans-serif}.link-action{color:var(--accent);font:700 12px Inter,Arial,sans-serif;text-decoration:none}.link-action:hover{text-decoration:underline}.empty{padding:18px;border:1px dashed var(--line-strong);border-radius:12px;color:var(--muted);font-size:13px}.final-report{margin:10px 0;padding:10px 12px;border:1px solid #dce7e1;border-radius:10px;background:#f7faf8;color:var(--muted);font-size:11px}.final-report summary{cursor:pointer;color:var(--ink);font-weight:700}.proof-link{margin:8px 0;color:var(--muted);font-size:11px!important}.proof-link a{color:var(--accent);font-weight:700;text-decoration:none}
+@media(max-width:1050px){header{padding:12px 24px}.layout{grid-template-columns:1fr}.nav{order:3;width:100%}.account-menu{margin-left:auto}}@media(max-width:760px){header{padding:12px 16px;flex-wrap:wrap}.brand{min-width:0}.account-info{display:none}.nav{justify-content:flex-start}main{padding:24px 16px 56px}.banner{padding:32px 24px}.issue-grid{grid-template-columns:1fr}}@media(max-width:520px){.nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.nav-button{width:100%}.section-card{padding:20px}.issue-meta{align-items:flex-start;flex-direction:column}.location{text-align:left}}
 </style>
 <link rel="stylesheet" href="/templates/shared.css">
 </head>
 <body>
-
 <header>
-  <div class="brand">
-    <div class="brand-mark">C</div>
-    <div>
-      <div class="brand-name">Civic Map</div>
-      <div class="brand-sub">Community Voices</div>
-    </div>
-  </div>
-  <div class="tagline">
-    Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a>
-  </div>
+  <div class="brand"><div class="brand-mark">C</div><div><div class="brand-name">Civic Map</div><div class="brand-sub">Community Voices</div></div></div>
   <nav class="nav">
-    <a class="nav-button" href="/">Live Map</a>
-    <a class="nav-button active" href="/community">Community</a>
-    <a class="nav-button" href="/proposals">Solutions</a>
-    <a class="nav-button" href="/citizen-dashboard">My Dashboard</a>
-    <a class="nav-button" href="/university-dashboard">University</a>
-    <a class="nav-button" href="/industry-dashboard">Industry</a>
-    <a class="nav-button" href="/government-dashboard">Government</a>
+    <a class="nav-button" href="/">Live Map</a><a class="nav-button active" href="/community">Community</a><a class="nav-button" href="/proposals">Solutions</a><a class="nav-button" href="/citizen-dashboard">My Dashboard</a><a class="nav-button" href="/university-dashboard">University</a><a class="nav-button" href="/industry-dashboard">Industry</a><a class="nav-button" href="/government-dashboard">Government</a>
   </nav>
-</header>
-
-<main>
-  <div class="banner">
-    <p class="eyebrow">Collective action</p>
-    <h1>Local community voices.</h1>
-    <p>__LOCATION__</p>
+  <div class="account-menu">
+    <button class="account-trigger" type="button" aria-expanded="false" aria-label="Account menu"><span class="account-avatar"></span><span class="account-info"><strong>Signed in</strong><small>__USER__</small></span><span class="account-chevron">⌄</span></button>
+    <div class="account-dropdown"><div class="account-dropdown-user"><span class="account-avatar"></span><div><strong>Signed in</strong><small>__USER__</small></div></div><div class="account-divider"></div><a href="/logout" class="logout-action"><span>↪</span><span>Log out</span></a></div>
   </div>
-
-  <div class="sections">
+</header>
+<main>
+  <div class="banner"><p class="eyebrow">Collective action</p><h1>Local community voices.</h1><p>__LOCATION__ · Support the problems that matter to your neighbourhood and help move the most important issues forward.</p></div>
+  <div class="layout">
     <section class="section-card">
-      <p class="eyebrow">Civic Problems</p>
-      <h2>Community Support</h2>
-      __ISSUES__
+      <div class="section-heading"><div><p class="eyebrow">Civic Problems</p><h2>Community Support</h2><p>Every support adds weight to a real local issue.</p></div></div>
+      <div class="issue-grid">__ISSUES__</div>
     </section>
-    <section class="section-card">
-      <p class="eyebrow">Proposed Solutions</p>
-      <h2>Ideas for Change</h2>
+    <aside class="section-card proposals">
+      <div class="section-heading"><div><p class="eyebrow">Proposed Solutions</p><h2>Ideas for Change</h2><p>See what the community is proposing next.</p></div></div>
       __PROPOSALS__
-      <p style="margin-top:16px;"><a class="link-action" href="/proposals">Open full solution proposal portal →</a></p>
-    </section>
+      <p style="margin-top:16px"><a class="link-action" href="/proposals">Open full solution proposal portal →</a></p>
+    </aside>
   </div>
 </main>
-
 <script>
-document.querySelectorAll('.upvote').forEach(button => button.onclick = async () => {
-    const response = await fetch('/api/issues/' + button.dataset.id + '/upvote', {method:'POST'});
-    const data = await response.json();
-    if (response.ok) {
-        button.classList.add('supported');
-        button.textContent = '▲ Supported · ' + data.supporters;
-    } else if (response.status === 409) {
-        button.textContent = '▲ Supported · ' + data.supporters;
-    } else {
-        alert(data.message || 'Support could not be recorded.');
-    }
-});
-document.querySelectorAll('.solution-vote').forEach(button => button.onclick = async () => {
-    const response = await fetch('/api/proposals/' + button.dataset.id + '/vote', {method:'POST'});
-    const result = await response.json();
-    if (!response.ok) { alert(result.message || 'You must support this issue before voting.'); return; }
-    button.parentElement.querySelector('b').textContent = result.votes + ' solution votes';
-    button.textContent = result.result === 'changed' ? 'Vote changed' : 'Voted';
+document.addEventListener('DOMContentLoaded',()=>{
+  const userEmail='__USER__';
+  document.querySelectorAll('.account-avatar').forEach(a=>a.textContent=userEmail.trim().charAt(0).toUpperCase()||'U');
+  document.querySelectorAll('.account-menu').forEach(menu=>{
+    const trigger=menu.querySelector('.account-trigger');
+    trigger.addEventListener('click',e=>{e.stopPropagation();const open=menu.classList.toggle('open');trigger.setAttribute('aria-expanded',open?'true':'false');});
+  });
+  document.addEventListener('click',e=>document.querySelectorAll('.account-menu.open').forEach(menu=>{if(!menu.contains(e.target)){menu.classList.remove('open');menu.querySelector('.account-trigger')?.setAttribute('aria-expanded','false');}}));
+
+  document.querySelectorAll('.upvote').forEach(button=>button.addEventListener('click',async()=>{
+    if(button.disabled||button.classList.contains('already-supported')) return;
+    const original=button.textContent.trim();
+    button.disabled=true;button.textContent='Supporting…';
+    try{
+      const response=await fetch('/api/issues/'+encodeURIComponent(button.dataset.id)+'/upvote',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json'}});
+      const type=response.headers.get('content-type')||'';const data=type.includes('application/json')?await response.json():{};
+      const count=Number(data.supporters??data.count??0);
+      if(response.ok){
+        const label=button.closest('.issue')?.querySelector('.supporters');
+        if(label&&Number.isFinite(count)) label.textContent=count+' supporters';
+        button.classList.add('supported');button.textContent='✓ Supported · '+count;button.setAttribute('aria-pressed','true');
+      }else if(response.status===409){
+        button.classList.add('already-supported');button.textContent='✓ Already supported'+(Number.isFinite(count)?' · '+count:'');
+      }else if(response.status===401||response.status===403){
+        button.textContent=original;alert(data.message||'Please sign in again before supporting an issue.');
+      }else{
+        button.textContent=original;alert(data.message||'Support could not be recorded.');
+      }
+    }catch(error){console.error('Issue support failed:',error);button.textContent=original;alert('Could not reach the support service. Please refresh and try again.');}
+    finally{button.disabled=false;}
+  }));
+
+  document.querySelectorAll('.solution-vote').forEach(button=>button.addEventListener('click',async()=>{
+    if(button.disabled)return;button.disabled=true;
+    try{
+      const response=await fetch('/api/proposals/'+encodeURIComponent(button.dataset.id)+'/vote',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json'}});
+      const result=await response.json();
+      if(!response.ok){alert(result.message||'You must support this issue before voting.');return;}
+      const counter=button.parentElement.querySelector('b');if(counter)counter.textContent=result.votes+' solution votes';
+      button.textContent=result.result==='changed'?'Vote changed':'Voted';
+    }catch(error){console.error('Solution vote failed:',error);alert('Could not record that vote. Please try again.');}
+    finally{button.disabled=false;}
+  }));
 });
 </script>
 </body>

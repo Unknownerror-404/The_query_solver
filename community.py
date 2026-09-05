@@ -104,14 +104,29 @@ def add_issue(issue: dict) -> dict:
 
 
 def upvote_issue(issue_id: int, user: str) -> tuple[bool, int]:
+    user = str(user or "").strip().lower()
+    if not user:
+        return False, 0
+
+    # The database is the source of truth for one-vote-per-user.
+    # Do not hold ISSUE_LOCK while doing database I/O.
     with ISSUE_LOCK:
-        for issue in ISSUES:
-            if issue["id"] == issue_id:
-                supported, count = add_issue_support(issue_id, user)
-                if supported:
-                    issue["supporters"] = count
-                return supported, count
-    return False, 0
+        issue = next((item for item in ISSUES if item["id"] == issue_id), None)
+
+    if issue is None:
+        return False, 0
+
+    supported, count = add_issue_support(issue_id, user)
+
+    with ISSUE_LOCK:
+        issue = next((item for item in ISSUES if item["id"] == issue_id), None)
+        if issue is not None:
+            issue["supporters"] = count
+
+    if supported:
+        ISSUE_SUPPORTERS.setdefault(issue_id, set()).add(user)
+
+    return supported, count
 
 
 def top_issues(limit: int = 5) -> list[dict]:
@@ -285,13 +300,17 @@ def render_page(user: str, latitude: float | None = None, longitude: float | Non
     reports = load_university_reports()
     location_label = "Showing all civic voices" if latitude is None or longitude is None else "Showing voices within 2 km of your location"
     cards = "".join(
-        f'<article class="issue"><div class="meta">{html.escape(issue["category"])} · {html.escape(issue["area"])}</div>'
-        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
-        f'{public_report_markup(issue["id"], reports)}'
-        f'{proof_markup(issue)}'
-        f'<div class="issue-footer"><span>{issue["supporters"]} supporters · {html.escape(issue["age"])}</span>'
-        f'<button class="upvote" data-id="{issue["id"]}">▲ Support this voice</button></div></article>'
-        for issue in issues
+        f'<article class="issue">'
+        f'<div class="issue-top"><span class="issue-rank">Civic issue #{index}</span>'
+        f'<span class="issue-category">{html.escape(issue.get("category", "Community"))}</span></div>'
+        f'<h2>{html.escape(issue["title"])}</h2>'
+        f'<p>{html.escape(issue.get("description", ""))}</p>'
+        f'{public_report_markup(issue["id"], reports)}{proof_markup(issue)}'
+        f'<div class="issue-meta"><span class="supporters">{issue.get("supporters", 0)} supporters</span>'
+        f'<span class="location">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("age", ""))}</span></div>'
+        f'<button class="upvote" data-id="{issue["id"]}" type="button">▲ Support this issue</button>'
+        f'</article>'
+        for index, issue in enumerate(issues, 1)
     ) or '<p class="empty">No civic issues were found in this area yet.</p>'
     template = Path(__file__).with_name("templates").joinpath("community.html").read_text(encoding="utf-8")
     return (template.replace("__USER__", html.escape(user)).replace("__LOCATION__", html.escape(location_label))
