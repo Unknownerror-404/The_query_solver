@@ -195,6 +195,18 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS proposal_votes (
+                issue_id INT NOT NULL,
+                user_email VARCHAR(255) NOT NULL,
+                proposal_id INT NOT NULL,
+                PRIMARY KEY (issue_id, user_email),
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+                FOREIGN KEY (proposal_id) REFERENCES proposals(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS universities (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(255) NOT NULL,
@@ -668,6 +680,43 @@ def update_proposal(proposal: dict[str, Any]) -> None:
             (proposal.get("votes", 0), proposal.get("status", "Submitted"), review.get("decision"), review.get("explanation"), review.get("reviewer"), proposal["id"]),
         )
         connection.commit()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def cast_proposal_vote(proposal_id: int, user_email: str) -> tuple[str, int, int | None]:
+    """Record one active solution choice per supporter and issue."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT issue_id FROM proposals WHERE id = %s", (proposal_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return "missing", 0, None
+        issue_id = int(row[0])
+        cursor.execute("SELECT 1 FROM issue_supporters WHERE issue_id = %s AND user_email = %s", (issue_id, user_email))
+        if cursor.fetchone() is None:
+            return "ineligible", 0, None
+        cursor.execute("SELECT proposal_id FROM proposal_votes WHERE issue_id = %s AND user_email = %s FOR UPDATE", (issue_id, user_email))
+        previous = cursor.fetchone()
+        previous_proposal_id = int(previous[0]) if previous else None
+        if previous_proposal_id == proposal_id:
+            cursor.execute("SELECT votes FROM proposals WHERE id = %s", (proposal_id,))
+            count = cursor.fetchone()
+            return "already_voted", int(count[0]) if count else 0, previous_proposal_id
+        if previous_proposal_id is None:
+            cursor.execute("INSERT INTO proposal_votes (issue_id, user_email, proposal_id) VALUES (%s, %s, %s)", (issue_id, user_email, proposal_id))
+            result = "voted"
+        else:
+            cursor.execute("UPDATE proposals SET votes = GREATEST(votes - 1, 0) WHERE id = %s", (previous_proposal_id,))
+            cursor.execute("UPDATE proposal_votes SET proposal_id = %s WHERE issue_id = %s AND user_email = %s", (proposal_id, issue_id, user_email))
+            result = "changed"
+        cursor.execute("UPDATE proposals SET votes = votes + 1 WHERE id = %s", (proposal_id,))
+        cursor.execute("SELECT votes FROM proposals WHERE id = %s", (proposal_id,))
+        count = cursor.fetchone()
+        connection.commit()
+        return result, int(count[0]) if count else 0, previous_proposal_id
     finally:
         cursor.close()
         connection.close()

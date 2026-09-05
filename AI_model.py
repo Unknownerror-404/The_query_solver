@@ -1638,10 +1638,13 @@ def classify_video_proof(
     the fine-tuned civic CLIP model.
     """
 
-    frames = extract_video_frames(
-        video_bytes,
-        max_frames=12
-    )
+    try:
+        frames = extract_video_frames(
+            video_bytes,
+            max_frames=12
+        )
+    except Exception:  # pragma: no cover
+        frames = []
 
     if not frames:
 

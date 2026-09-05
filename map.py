@@ -32,13 +32,13 @@ MAIN_MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from .storage import assign_issue, cast_proposal_vote, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from storage import assign_issue, cast_proposal_vote, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
 HOST = "127.0.0.1"
@@ -1519,9 +1519,22 @@ class MapHandler(BaseHTTPRequestHandler):
             if proposal is None:
                 self.send_json({"message":"Proposal not found."},status=404)
                 return
-            proposal["votes"] += 1
-            update_proposal(proposal)
-            self.send_json({"votes":proposal["votes"],"result":"voted"})
+            result, votes, previous_proposal_id = cast_proposal_vote(proposal_id, self.session_user() or "")
+            if result == "missing":
+                self.send_json({"message": "Proposal not found."}, status=404)
+                return
+            if result == "ineligible":
+                self.send_json({"message": "Support the related issue before voting."}, status=403)
+                return
+            if result == "already_voted":
+                self.send_json({"votes": votes, "result": result}, status=409)
+                return
+            proposal["votes"] = votes
+            if previous_proposal_id is not None:
+                previous = next((item for item in PROPOSALS if item["id"] == previous_proposal_id), None)
+                if previous is not None:
+                    previous["votes"] = max(0, previous["votes"] - 1)
+            self.send_json({"votes": votes, "result": result})
             return
         if path.startswith("/api/proposals/") and path.endswith("/review"):
             user = self.session_user()
