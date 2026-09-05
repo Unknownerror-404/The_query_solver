@@ -86,7 +86,7 @@ header,.sections{align-items:start;flex-direction:column}
 
   <div class="account-menu">
     <button class="account-trigger" type="button" aria-expanded="false" aria-label="Account menu">
-      <span class="account-avatar"></span>
+      <span class="account-avatar">C</span>
       <span class="account-info">
         <strong>Signed in</strong>
         <small>__USER__</small>
@@ -96,7 +96,7 @@ header,.sections{align-items:start;flex-direction:column}
 
     <div class="account-dropdown">
       <div class="account-dropdown-user">
-        <span class="account-avatar"></span>
+        <span class="account-avatar">C</span>
         <div>
           <strong>Signed in</strong>
           <small>__USER__</small>
@@ -147,13 +147,6 @@ header,.sections{align-items:start;flex-direction:column}
 </main>
 
 <script>
-const userEmail = '__USER__';
-const userInitial = userEmail.trim().charAt(0).toUpperCase();
-
-document.querySelectorAll('.account-avatar').forEach(avatar => {
-    avatar.textContent = userInitial || 'U';
-});
-
 document.querySelectorAll('.account-menu').forEach(menu => {
     const trigger = menu.querySelector('.account-trigger');
 
@@ -172,15 +165,29 @@ document.querySelectorAll('.account-menu').forEach(menu => {
 });
 
 document.querySelectorAll('.upvote').forEach(button => button.onclick = async () => {
-    const response = await fetch('/api/issues/' + button.dataset.id + '/upvote', {method:'POST'});
-    const data = await response.json();
-    if (response.ok) {
-        button.classList.add('supported');
-        button.textContent = '▲ Supported · ' + data.supporters;
-    } else if (response.status === 409) {
-        button.textContent = '▲ Supported · ' + data.supporters;
-    } else {
-        alert(data.message || 'Support could not be recorded.');
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Supporting...';
+    try {
+        const response = await fetch('/api/issues/' + button.dataset.id + '/upvote', {method:'POST'});
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json') ? await response.json() : {message: await response.text()};
+        if (response.ok) {
+            button.classList.add('supported');
+            button.textContent = '▲ Supported · ' + data.supporters;
+        } else if (response.status === 409) {
+            button.classList.add('supported');
+            button.textContent = '▲ Supported · ' + data.supporters;
+        } else {
+            button.textContent = originalText;
+            alert(data.message || 'Support could not be recorded.');
+        }
+    } catch (error) {
+        button.textContent = originalText;
+        alert('Could not connect to the server. Make sure map.py is running.');
+        console.error('Support request failed:', error);
+    } finally {
+        button.disabled = false;
     }
 });
 

@@ -479,35 +479,61 @@ def load_user_issues(reporter: str) -> list[dict[str, Any]]:
 
 def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
     connection = connect()
-
     try:
         cursor = connection.cursor()
-
         cursor.execute(
             """
             INSERT INTO issues
             (title, category, ai_category, ai_confidence, category_mismatch, ai_tags, tagging_model, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, predicted_category, priority_score, priority_label, matching_explanation, moderation_status, reporter)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending', %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending', %s)
             """,
-            (issue["title"], issue["category"], issue.get("problem_type"), issue.get("tag_confidence"), issue.get("category_mismatch", False), issue.get("problem_tags"), issue.get("tag_version"), issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""), issue["lat"], issue["lng"], issue.get("description", ""), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("predicted_category"), issue.get("priority_score"), issue.get("priority_label"), issue.get("matching_explanation"), issue.get("reporter")),
+            (
+                issue["title"],
+                issue["category"],
+                issue.get("problem_type"),
+                issue.get("tag_confidence"),
+                issue.get("category_mismatch", False),
+                issue.get("problem_tags"),
+                issue.get("tag_version"),
+                issue.get("area", ""),
+                issue.get("district", "Ranchi"),
+                issue.get("block", ""),
+                issue["lat"],
+                issue["lng"],
+                issue.get("description", ""),
+                issue.get("proof_id"),
+                issue.get("_proof_type"),
+                issue.get("_proof_data"),
+                issue.get("proof_status"),
+                issue.get("proof_message"),
+                issue.get("predicted_category"),
+                issue.get("priority_score"),
+                issue.get("priority_label"),
+                issue.get("matching_explanation"),
+                issue.get("reporter"),
+            ),
         )
+
+        issue_id = cursor.lastrowid
+        reporter = str(issue.get("reporter", "")).strip()
+
+        if reporter:
+            cursor.execute(
+                "INSERT INTO issue_supporters (issue_id, user_email) VALUES (%s, %s)",
+                (issue_id, reporter),
+            )
 
         connection.commit()
 
         saved = dict(issue)
-
-        # Don't return raw proof data to the application
         saved.pop("_proof_type", None)
         saved.pop("_proof_data", None)
-
         saved.update({
-            "id": cursor.lastrowid,
+            "id": issue_id,
             "supporters": 1,
             "age": "just now",
         })
-
         return saved
-
     finally:
         cursor.close()
         connection.close()
