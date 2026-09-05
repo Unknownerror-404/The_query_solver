@@ -9,6 +9,7 @@ import threading
 import webbrowser
 import base64
 import html
+import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 from pathlib import Path
@@ -46,6 +47,9 @@ PORT = 8000
 SESSIONS: dict[str, str] = {}
 PROPOSALS: list[dict] = load_proposals()
 NEXT_PROPOSAL_ID = max((proposal["id"] for proposal in PROPOSALS), default=0) + 1
+UNIVERSITY_CACHE = None
+CACHE_LOCK = threading.Lock()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s', filename='app.log')
 def load_login_page(error=""):
     page = LOGIN_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
@@ -156,7 +160,6 @@ def industry_match_markup(partner, issue):
         f"</div>"
     )
 
-
 def best_university_for_issue(issue, universities):
     universities = [university for university in universities if university.get("approval_status", "Active") == "Active"]
     ranked = sorted(
@@ -172,6 +175,7 @@ def best_university_for_issue(issue, universities):
         return None, 0
     score = university_issue_score(ranked[0], issue)
     return (ranked[0], score) if score > 0 else (None, 0)
+
 def auto_assign_tasks_to_university(university, assigned_by="ai-assignment"):
     assignments = load_assignments()
     universities = load_universities()
@@ -184,10 +188,22 @@ def auto_assign_tasks_to_university(university, assigned_by="ai-assignment"):
             if assign_issue(issue["id"], university["id"], assigned_by):
                 assigned.append({"issue": issue, "score": score})
     return assigned
+
+def _cached_universities() -> list[dict]:
+    global UNIVERSITY_CACHE
+    with CACHE_LOCK:
+        if UNIVERSITY_CACHE is None:
+            UNIVERSITY_CACHE = [u for u in load_universities() if u.get("approval_status") == "Active"]
+        return UNIVERSITY_CACHE
+
 def auto_assign_issue_to_best_university(issue, assigned_by="ai-assignment"):
     if issue.get("id") in load_assignments():
         return None
-    recommended, score = best_university_for_issue(issue, load_universities())
+    try:
+        recommended, score = best_university_for_issue(issue, _cached_universities())
+    except Exception as exc:
+        logging.error(f"Ranking failed for issue {issue.get('id')}: {exc}")
+        return None
     if not recommended:
         return None
     if not assign_issue(issue["id"], recommended["id"], assigned_by):
