@@ -158,6 +158,13 @@ def issue_consideration_status(index: int) -> str:
 
 
 def vote_for_proposal(proposal_id: int, user: str) -> tuple[str, int]:
+    # Keep solution-vote eligibility consistent with issue support.
+    # Issue support normalises account identifiers before storing them, so
+    # proposal voting must use the same canonical form when checking support.
+    user = str(user or "").strip().lower()
+    if not user:
+        return "ineligible", 0
+
     with PROPOSAL_LOCK:
         proposal = next((item for item in PROPOSALS if item["id"] == proposal_id), None)
         if proposal is None:
