@@ -1851,3 +1851,316 @@ def merge_text_and_visual_classification(
         ] = explanations
 
     return merged
+
+DEFAULT_RESEARCH_MODEL_PATH = (
+    BASE_DIR
+    / "models"
+    / "research_institute"
+    / "jharkhand_research_institute_recommender_v3.joblib"
+)
+
+# Backward-compatible fallback for the model previously generated beside
+# the Python script.
+LEGACY_RESEARCH_MODEL_PATH = (
+    BASE_DIR
+    / "jharkhand_research_institute_recommender_v3.joblib"
+)
+
+RESEARCH_INSTITUTE_MODEL_PATH = Path(
+    os.environ.get(
+        "RESEARCH_INSTITUTE_MODEL_PATH",
+        str(DEFAULT_RESEARCH_MODEL_PATH),
+    )
+)
+
+_RESEARCH_MODEL: dict[str, Any] | None = None
+_RESEARCH_MODEL_LOADED = False
+
+
+def _resolve_research_model_path() -> Path:
+    """Resolve the research recommender model path."""
+    configured = RESEARCH_INSTITUTE_MODEL_PATH
+
+    if configured.exists():
+        return configured
+
+    if (
+        "RESEARCH_INSTITUTE_MODEL_PATH" not in os.environ
+        and LEGACY_RESEARCH_MODEL_PATH.exists()
+    ):
+        return LEGACY_RESEARCH_MODEL_PATH
+
+    return configured
+
+
+def _load_research_institute_model() -> dict[str, Any] | None:
+    """
+    Lazily load the saved V3 research-institute model.
+
+    Lazy loading keeps startup fast and means the existing civic AI does not
+    require the research-model dependencies until this feature is used.
+    """
+    global _RESEARCH_MODEL
+    global _RESEARCH_MODEL_LOADED
+
+    if _RESEARCH_MODEL_LOADED:
+        return _RESEARCH_MODEL
+
+    _RESEARCH_MODEL_LOADED = True
+
+    model_path = _resolve_research_model_path()
+
+    if not model_path.exists():
+        print(
+            "[AI_model] Research institute model not found at "
+            f"{model_path}"
+        )
+        return None
+
+    try:
+        import joblib
+
+        model = joblib.load(model_path)
+
+        required_keys = {
+            "word_vectorizer",
+            "char_vectorizer",
+            "classifier",
+            "experience_prior",
+            "experience_weight",
+            "eligible_institutes",
+        }
+
+        missing = required_keys.difference(model.keys())
+
+        if missing:
+            raise ValueError(
+                "Saved research model is missing required fields: "
+                + ", ".join(sorted(missing))
+            )
+
+        _RESEARCH_MODEL = model
+
+        print(
+            "[AI_model] Loaded research institute recommender: "
+            f"{model_path}"
+        )
+
+        return _RESEARCH_MODEL
+
+    except (
+        ImportError,
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+    ) as exc:
+        print(
+            "[AI_model] Could not load research institute model: "
+            f"{exc}"
+        )
+        _RESEARCH_MODEL = None
+        return None
+
+
+def research_institute_model_available() -> bool:
+    """Return True when the saved V3 recommender can be loaded."""
+    return _load_research_institute_model() is not None
+
+
+def recommend_research_institutes(
+    project_title: str,
+    research_area: str = "",
+    research_keywords: str = "",
+    top_k: int = 5,
+) -> list[dict[str, Any]]:
+    """
+    Recommend Jharkhand research/technical institutes for a new project.
+
+    Parameters
+    ----------
+    project_title:
+        Title or short description of the proposed research project.
+
+    research_area:
+        Optional research area/domain.
+
+    research_keywords:
+        Optional semicolon- or comma-separated research keywords.
+
+    top_k:
+        Maximum number of ranked institutes to return.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Each result contains:
+            institution
+            final_score
+            content_score
+            experience_score
+
+        Scores are ranking scores, NOT probabilities.
+
+    Notes
+    -----
+    The V3 model uses content as the dominant signal and experience only as
+    a small prior. Institutes with insufficient project records were not
+    included as supervised classes in V3.
+    """
+    title = str(project_title or "").strip()
+    area = str(research_area or "").strip()
+    keywords = str(research_keywords or "").strip()
+
+    if not title and not area and not keywords:
+        return []
+
+    try:
+        top_k = int(top_k)
+    except (TypeError, ValueError):
+        top_k = 5
+
+    top_k = max(1, min(top_k, 20))
+
+    model = _load_research_institute_model()
+
+    if model is None:
+        return []
+
+    try:
+        from scipy.sparse import hstack
+
+        word_vectorizer = model["word_vectorizer"]
+        char_vectorizer = model["char_vectorizer"]
+        classifier = model["classifier"]
+
+        # Keep this feature construction EXACTLY aligned with V3:
+        # title + area twice + keywords twice.
+        text = (
+            f"{title} "
+            f"{area} {area} "
+            f"{keywords} {keywords}"
+        )
+
+        X = hstack([
+            word_vectorizer.transform([text]),
+            char_vectorizer.transform([text]),
+        ])
+
+        raw_scores = classifier.decision_function(X)
+
+        # LinearSVC is binary/multiclass. The V3 model currently has four
+        # supervised institute classes, but keep this compatible with either
+        # binary or multiclass decision output.
+        if getattr(raw_scores, "ndim", 1) == 1:
+            raw_scores = [
+                [-float(raw_scores[0]), float(raw_scores[0])]
+            ]
+
+        row_scores = raw_scores[0]
+        classes = classifier.classes_
+
+        # V3 normalization: convert margins to a 0..1 ranking scale.
+        minimum = min(float(score) for score in row_scores)
+        maximum = max(float(score) for score in row_scores)
+
+        if maximum == minimum:
+            content_scores = [0.5] * len(row_scores)
+        else:
+            content_scores = [
+                (float(score) - minimum) / (maximum - minimum)
+                for score in row_scores
+            ]
+
+        experience_prior = model["experience_prior"]
+        experience_weight = float(model["experience_weight"])
+
+        experience_scores = [
+            float(experience_prior.get(institute, 0.0))
+            for institute in classes
+        ]
+
+        final_scores = [
+            (
+                (1.0 - experience_weight) * content
+                + experience_weight * experience
+            )
+            for content, experience in zip(
+                content_scores,
+                experience_scores,
+            )
+        ]
+
+        ranked_indices = sorted(
+            range(len(final_scores)),
+            key=lambda index: final_scores[index],
+            reverse=True,
+        )
+
+        results = []
+
+        for index in ranked_indices[:top_k]:
+            results.append({
+                "institution": str(classes[index]),
+                "final_score": round(
+                    float(final_scores[index]), 4
+                ),
+                "content_score": round(
+                    float(content_scores[index]), 4
+                ),
+                "experience_score": round(
+                    float(experience_scores[index]), 4
+                ),
+            })
+
+        return results
+
+    except (
+        ImportError,
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+    ) as exc:
+        print(
+            "[AI_model] Research institute recommendation failed: "
+            f"{exc}"
+        )
+        return []
+
+
+def get_research_institute_model_info() -> dict[str, Any]:
+    """
+    Return metadata useful to the application/UI.
+
+    This does not expose internal model objects.
+    """
+    model = _load_research_institute_model()
+
+    if model is None:
+        return {
+            "available": False,
+            "model_path": str(_resolve_research_model_path()),
+        }
+
+    return {
+        "available": True,
+        "model_path": str(_resolve_research_model_path()),
+        "experience_weight": float(
+            model["experience_weight"]
+        ),
+        "eligible_institutes": list(
+            model["eligible_institutes"]
+        ),
+        "excluded_low_data_institutes": list(
+            model.get(
+                "excluded_low_data_institutes",
+                [],
+            )
+        ),
+        "experience_definition": (
+            "Observed project records in the dataset; "
+            "not a verified completed-project count."
+        ),
+    }
