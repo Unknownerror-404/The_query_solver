@@ -11,7 +11,7 @@
 html,body{margin:0;min-height:100%;font-family:Georgia,serif}
 body{min-height:100vh;background:var(--paper);color:var(--ink);overflow:hidden}
 .page{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(420px,.75fr)}
-.map-side{position:relative;min-height:100vh;overflow:hidden;background:#dfe8df;border-right:1px solid var(--line)}
+.map-side{position:relative;min-height:100vh;overflow:hidden;background:#dfe8df;border-right:0}
 #login-map{position:absolute;inset:0;z-index:0}
 .map-side:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(245,241,232,.70) 0%,rgba(245,241,232,.30) 40%,rgba(245,241,232,.04) 72%,rgba(245,241,232,0) 100%)}
 .brand{position:absolute;top:28px;left:34px;z-index:5;display:flex;align-items:center;gap:12px}
@@ -40,10 +40,10 @@ body{min-height:100vh;background:var(--paper);color:var(--ink);overflow:hidden}
 .light .issue-marker{background:#d75b47}
 .map-caption{position:absolute;bottom:25px;left:34px;z-index:5;color:var(--muted);font:10px Arial,sans-serif}
 .map-caption span{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--accent)}
-.login-side{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:34px;overflow:hidden;background:#dfe8df}
+.login-side{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:34px;overflow:hidden;background:transparent}
 #login-panel-map{position:absolute;inset:0;z-index:0}
-.login-side:before{content:"";position:absolute;inset:0;z-index:1;background:rgba(245,241,232,.25);pointer-events:none}
-.login{position:relative;z-index:3;width:min(470px,100%);padding:43px;background:rgba(255,253,248,.82);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);border:1px solid rgba(217,215,205,.95);border-radius:18px;box-shadow:0 24px 60px rgba(23,43,40,.18),0 4px 12px rgba(23,43,40,.08);overflow:hidden}
+.login-side:before{content:"";position:absolute;inset:0;z-index:1;background:rgba(245,241,232,.10);pointer-events:none}
+.login{position:relative;z-index:3;width:min(470px,100%);padding:43px;background:rgba(255,253,248,.88);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:1px solid rgba(217,215,205,.95);border-radius:18px;box-shadow:0 24px 60px rgba(23,43,40,.18),0 4px 12px rgba(23,43,40,.08);overflow:hidden}
 .login:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}
 .login-brand{display:flex;align-items:center;gap:10px;margin-bottom:27px}
 .login-brand-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:var(--ink);color:white;font:700 14px Arial,sans-serif}
@@ -209,3 +209,6 @@ syncMaps(loginMap,panelMap);
 </script>
 </body>
 </html>
+
+
+
