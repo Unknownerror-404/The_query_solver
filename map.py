@@ -26,6 +26,7 @@ UNIVERSITY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "university_register.ht
 INDUSTRY_DASHBOARD_FILE = BASE_DIR / "templates" / "industry.html"
 INDUSTRY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "industry_login.html"
 INDUSTRY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "industry_register.html"
+INDUSTRY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "industry_admin.html"
 GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
 ADMIN_PAGE_FILE = BASE_DIR / "templates" / "admin.html"
 MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
@@ -703,7 +704,10 @@ class MapHandler(BaseHTTPRequestHandler):
             if user is None or not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(f"<!doctype html><html><head><link rel='stylesheet' href='/templates/shared.css'></head><body><main>{render_industry_admin()}</main><script>document.querySelector('.industry-create').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/industry-partners',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')}};document.querySelectorAll('.offer-update').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/offer-commitments',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Commitment update failed')}});document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Approval update failed')}})</script></body></html>")
+            template = INDUSTRY_ADMIN_PAGE_FILE.read_text(encoding="utf-8")
+            template = template.replace("__USER__", html.escape(user))
+            self.send_html(template)
+            return
             return
         if path == "/universities":
             user = self.session_user()
