@@ -15,7 +15,7 @@ MYSQL_CONFIG = {
     "host": os.getenv("CIVIC_MAP_DB_HOST", "127.0.0.1"),
     "port": int(os.getenv("CIVIC_MAP_DB_PORT", "3306")),
     "user": os.getenv("CIVIC_MAP_DB_USER", "root"),
-    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", "Mi123456#"),
+            "password": os.getenv("CIVIC_MAP_DB_PASSWORD", "1q-2w-3e-4r-5t"),
     "database": os.getenv("CIVIC_MAP_DB_NAME", "sih26"),
 }
 
@@ -406,6 +406,76 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS contractors (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                company_name VARCHAR(255) NOT NULL,
+                owner_name VARCHAR(255) NOT NULL,
+                license_no VARCHAR(100) NOT NULL UNIQUE,
+                district VARCHAR(100) NOT NULL,
+                specializations TEXT NOT NULL,
+                contact_email VARCHAR(255) NOT NULL UNIQUE,
+                phone VARCHAR(20) NOT NULL,
+                approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+                performance_score INT NOT NULL DEFAULT 0,
+                complaint_count INT NOT NULL DEFAULT 0,
+                completed_projects INT NOT NULL DEFAULT 0,
+                block_reason TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        try:
+            cursor.execute("ALTER TABLE contractors ADD COLUMN block_reason TEXT")
+        except Error as error:
+            if error.errno != 1060:
+                raise
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS contractor_assignments (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                contractor_id INT NOT NULL,
+                assigned_by VARCHAR(255) NOT NULL,
+                status VARCHAR(30) NOT NULL DEFAULT 'Assigned',
+                completion_note TEXT,
+                progress_image_type VARCHAR(50),
+                progress_image_data LONGBLOB,
+                assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP NULL,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+                FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
+            )
+            """
+        )
+        for statement in (
+            "ALTER TABLE contractor_assignments ADD COLUMN progress_image_type VARCHAR(50)",
+            "ALTER TABLE contractor_assignments ADD COLUMN progress_image_data LONGBLOB",
+        ):
+            try:
+                cursor.execute(statement)
+            except Error as error:
+                if error.errno != 1060:
+                    raise
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS contractor_complaints (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                contractor_id INT NOT NULL,
+                issue_id INT NOT NULL,
+                filed_by VARCHAR(255) NOT NULL,
+                complaint_type VARCHAR(50) NOT NULL,
+                description TEXT NOT NULL,
+                status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+                reviewed_by VARCHAR(255),
+                reviewed_at TIMESTAMP NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+            )
+            """
+        )
         connection.commit()
     finally:
         cursor.close()
@@ -438,7 +508,7 @@ def load_user_issues(reporter: str) -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT i.id, i.title, i.description, i.district, i.block, i.category, i.moderation_status, i.moderation_reason, a.status AS assignment_status, u.name AS university_name, t.id AS team_id, t.name AS team_name, t.status AS team_status FROM issues i LEFT JOIN issue_assignments a ON a.issue_id = i.id LEFT JOIN universities u ON u.id = a.university_id LEFT JOIN project_teams t ON t.issue_id = i.id AND t.university_id = a.university_id WHERE LOWER(i.reporter) = LOWER(%s) ORDER BY i.id DESC", (reporter,))
+        cursor.execute("SELECT i.id, i.title, i.description, i.district, i.block, i.category, i.moderation_status, i.moderation_reason, a.status AS assignment_status, u.name AS university_name, t.id AS team_id, t.name AS team_name, t.status AS team_status, ca.id AS contractor_assignment_id, ca.contractor_id, c.company_name AS contractor_name, ca.status AS contractor_assignment_status, ca.completion_note AS contractor_completion_note, ca.progress_image_type AS contractor_progress_image_type FROM issues i LEFT JOIN issue_assignments a ON a.issue_id = i.id LEFT JOIN universities u ON u.id = a.university_id LEFT JOIN project_teams t ON t.issue_id = i.id AND t.university_id = a.university_id LEFT JOIN contractor_assignments ca ON ca.issue_id = i.id LEFT JOIN contractors c ON c.id = ca.contractor_id WHERE LOWER(i.reporter) = LOWER(%s) ORDER BY i.id DESC", (reporter,))
         return cursor.fetchall()
     finally:
         cursor.close()
@@ -927,8 +997,15 @@ def create_industry_partner(name: str, partner_type: str, district: str, domains
 
 
 def update_institution_approval(kind: str, institution_id: int, status: str) -> bool:
-    table = "universities" if kind == "university" else "industry_partners" if kind == "industry" else ""
-    if not table or status not in {"Active", "Rejected", "Pending"}:
+    if kind == "university":
+        table = "universities"
+    elif kind == "industry":
+        table = "industry_partners"
+    elif kind == "contractor":
+        table = "contractors"
+    else:
+        return False
+    if status not in {"Active", "Rejected", "Pending", "Blocked"}:
         return False
     connection = connect()
     try:
@@ -938,6 +1015,423 @@ def update_institution_approval(kind: str, institution_id: int, status: str) -> 
         cursor.execute(f"SELECT approval_status FROM {table} WHERE id = %s", (institution_id,))
         row = cursor.fetchone()
         return bool(row and row[0] == status)
+    finally:
+        cursor.close()
+        connection.close()
+
+
+# ---------------------------------------------------------------------------
+# Contractor CRUD functions
+# ---------------------------------------------------------------------------
+
+def create_contractor(
+    company_name: str,
+    owner_name: str,
+    license_no: str,
+    district: str,
+    specializations: str,
+    contact_email: str,
+    phone: str,
+) -> dict[str, Any]:
+    """Insert a new contractor and return the created record."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO contractors
+            (company_name, owner_name, license_no, district, specializations, contact_email, phone, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'Pending')
+            """,
+            (company_name, owner_name, license_no, district, specializations, contact_email, phone),
+        )
+        connection.commit()
+        return {
+            "id": cursor.lastrowid,
+            "company_name": company_name,
+            "owner_name": owner_name,
+            "license_no": license_no,
+            "district": district,
+            "specializations": specializations,
+            "contact_email": contact_email,
+            "phone": phone,
+            "approval_status": "Pending",
+            "performance_score": 0,
+            "complaint_count": 0,
+            "completed_projects": 0,
+        }
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_contractors() -> list[dict[str, Any]]:
+    """Return all contractors ordered by performance score descending."""
+    refresh_contractor_metrics()
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT id, company_name, owner_name, license_no, district, specializations, "
+            "contact_email, phone, approval_status, performance_score, complaint_count, "
+            "completed_projects, block_reason, created_at "
+            "FROM contractors ORDER BY performance_score DESC, completed_projects DESC"
+        )
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def contractor_for_user(contact_email: str) -> dict[str, Any] | None:
+    """Return contractor record for a given email, or None if not found/not active."""
+    refresh_contractor_metrics()
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT id, company_name, owner_name, license_no, district, specializations, "
+            "contact_email, phone, approval_status, performance_score, complaint_count, "
+            "completed_projects, block_reason "
+            "FROM contractors WHERE LOWER(contact_email) = LOWER(%s)",
+            (contact_email,),
+        )
+        return cursor.fetchone()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_contractor_assignments(contractor_id: int) -> list[dict[str, Any]]:
+    """Return all assignments for a given contractor with issue details."""
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT ca.id, ca.issue_id, ca.contractor_id, ca.assigned_by, ca.status,
+                     ca.completion_note, ca.progress_image_type, ca.assigned_at, ca.completed_at,
+                   i.title AS issue_title, i.description AS issue_description,
+                   i.district, i.block, i.category, i.area
+            FROM contractor_assignments ca
+            JOIN issues i ON i.id = ca.issue_id
+            WHERE ca.contractor_id = %s
+            ORDER BY ca.assigned_at DESC
+            """,
+            (contractor_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_all_contractor_assignments() -> list[dict[str, Any]]:
+    """Return all contractor assignments with contractor and issue details (for admin)."""
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT ca.id, ca.issue_id, ca.contractor_id, ca.assigned_by, ca.status,
+                     ca.completion_note, ca.progress_image_type, ca.assigned_at, ca.completed_at,
+                   i.title AS issue_title, i.district, i.category,
+                   c.company_name, c.contact_email AS contractor_email,
+                   c.performance_score, c.approval_status AS contractor_status
+            FROM contractor_assignments ca
+            JOIN issues i ON i.id = ca.issue_id
+            JOIN contractors c ON c.id = ca.contractor_id
+            ORDER BY ca.assigned_at DESC
+            """
+        )
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def assign_issue_to_contractor(issue_id: int, contractor_id: int, assigned_by: str) -> bool:
+    """Assign an issue to a contractor. Returns True on success."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO contractor_assignments (issue_id, contractor_id, assigned_by, status)
+            VALUES (%s, %s, %s, 'Assigned')
+            ON DUPLICATE KEY UPDATE
+                contractor_id = VALUES(contractor_id),
+                assigned_by = VALUES(assigned_by),
+                status = 'Assigned',
+                assigned_at = CURRENT_TIMESTAMP,
+                completed_at = NULL
+            """,
+            (issue_id, contractor_id, assigned_by),
+        )
+        connection.commit()
+        return True
+    except Exception:
+        return False
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def update_contractor_assignment(assignment_id: int, status: str, note: str = "", progress_image_type: str = "", progress_image_data: bytes = b"") -> bool:
+    """Update contractor assignment status and optionally set completion timestamp."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        if progress_image_type and progress_image_data:
+            image_columns = ", progress_image_type = %s, progress_image_data = %s"
+            image_values = (progress_image_type, progress_image_data)
+        else:
+            image_columns = ""
+            image_values = ()
+        completed_column = ", completed_at = CURRENT_TIMESTAMP" if status == "Completed" else ""
+        cursor.execute(
+            f"UPDATE contractor_assignments SET status = %s, completion_note = %s{image_columns}{completed_column} WHERE id = %s",
+            (status, note, *image_values, assignment_id),
+        )
+        connection.commit()
+        updated = cursor.rowcount > 0
+        if status == "Completed":
+            cursor.execute("SELECT contractor_id FROM contractor_assignments WHERE id = %s", (assignment_id,))
+            row = cursor.fetchone()
+            if row:
+                recalculate_contractor_score(row[0])
+        return updated
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def get_contractor_progress_image(assignment_id: int) -> tuple[str, bytes] | None:
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT progress_image_type, progress_image_data FROM contractor_assignments WHERE id = %s", (assignment_id,))
+        row = cursor.fetchone()
+        if not row or row[1] is None:
+            return None
+        return row[0] or "application/octet-stream", bytes(row[1])
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_contractor_complaint(
+    contractor_id: int,
+    issue_id: int,
+    filed_by: str,
+    complaint_type: str,
+    description: str,
+) -> dict[str, Any]:
+    """File a quality complaint against a contractor."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO contractor_complaints
+            (contractor_id, issue_id, filed_by, complaint_type, description, status)
+            VALUES (%s, %s, %s, %s, %s, 'Pending')
+            """,
+            (contractor_id, issue_id, filed_by, complaint_type, description),
+        )
+        complaint_id = cursor.lastrowid
+        cursor.execute(
+            "UPDATE contractors SET complaint_count = complaint_count + 1 WHERE id = %s",
+            (contractor_id,),
+        )
+        connection.commit()
+        recalculate_contractor_score(contractor_id)
+        return {
+            "id": complaint_id,
+            "contractor_id": contractor_id,
+            "issue_id": issue_id,
+            "filed_by": filed_by,
+            "complaint_type": complaint_type,
+            "description": description,
+            "status": "Pending",
+        }
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_contractor_complaints(contractor_id: int | None = None) -> list[dict[str, Any]]:
+    """Return complaints, optionally filtered to a single contractor."""
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        base = (
+            "SELECT cc.id, cc.contractor_id, cc.issue_id, cc.filed_by, cc.complaint_type, "
+            "cc.description, cc.status, cc.reviewed_by, cc.reviewed_at, cc.created_at, "
+            "c.company_name, i.title AS issue_title "
+            "FROM contractor_complaints cc "
+            "JOIN contractors c ON c.id = cc.contractor_id "
+            "JOIN issues i ON i.id = cc.issue_id"
+        )
+        if contractor_id is not None:
+            cursor.execute(base + " WHERE cc.contractor_id = %s ORDER BY cc.created_at DESC", (contractor_id,))
+        else:
+            cursor.execute(base + " ORDER BY cc.created_at DESC")
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def review_contractor_complaint(complaint_id: int, status: str, reviewed_by: str) -> bool:
+    """Mark a complaint as Reviewed or Dismissed by an admin."""
+    if status not in {"Reviewed", "Dismissed"}:
+        return False
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT contractor_id FROM contractor_complaints WHERE id = %s", (complaint_id,))
+        complaint = cursor.fetchone()
+        if not complaint:
+            return False
+        cursor.execute(
+            "UPDATE contractor_complaints SET status = %s, reviewed_by = %s, reviewed_at = CURRENT_TIMESTAMP WHERE id = %s",
+            (status, reviewed_by, complaint_id),
+        )
+        connection.commit()
+        contractor_id = complaint[0]
+    finally:
+        cursor.close()
+        connection.close()
+    recalculate_contractor_score(contractor_id)
+    return True
+
+
+def update_contractor_status(contractor_id: int, status: str, reason: str = "") -> bool:
+    """Block or activate a contractor."""
+    if status not in {"Active", "Blocked", "Pending"}:
+        return False
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT id FROM contractors WHERE id = %s", (contractor_id,))
+        if not cursor.fetchone():
+            return False
+        cursor.execute(
+            "UPDATE contractors SET approval_status = %s, block_reason = %s WHERE id = %s",
+            (status, reason if status == "Blocked" else None, contractor_id),
+        )
+        connection.commit()
+        return True
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def recalculate_contractor_score(contractor_id: int) -> None:
+    """
+    Recalculate and persist performance score.
+    Score = completed_projects * 10 - confirmed_complaints * 5
+    Also auto-blocks contractors with >= 3 confirmed (Reviewed) complaints.
+    """
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT completed_projects FROM contractors WHERE id = %s", (contractor_id,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return
+        completed = row["completed_projects"]
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM contractor_assignments WHERE contractor_id = %s AND status = 'Completed'",
+            (contractor_id,),
+        )
+        completed = cursor.fetchone()["cnt"]
+        cursor.execute(
+            "UPDATE contractors SET completed_projects = %s WHERE id = %s",
+            (completed, contractor_id),
+        )
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM contractor_complaints WHERE contractor_id = %s AND status = 'Reviewed'",
+            (contractor_id,),
+        )
+        confirmed_complaints = cursor.fetchone()["cnt"]
+        score = completed * 10 - confirmed_complaints * 5
+        cursor.execute(
+            "UPDATE contractors SET performance_score = %s, complaint_count = %s WHERE id = %s",
+            (score, confirmed_complaints, contractor_id),
+        )
+        connection.commit()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def refresh_contractor_metrics() -> None:
+    """Rebuild cached contractor totals from assignments and reviewed complaints."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE contractors c
+            SET completed_projects = (
+                    SELECT COUNT(*) FROM contractor_assignments ca
+                    WHERE ca.contractor_id = c.id AND ca.status = 'Completed'
+                ),
+                complaint_count = (
+                    SELECT COUNT(*) FROM contractor_complaints cc
+                    WHERE cc.contractor_id = c.id AND cc.status = 'Reviewed'
+                ),
+                performance_score = (
+                    (SELECT COUNT(*) FROM contractor_assignments ca
+                     WHERE ca.contractor_id = c.id AND ca.status = 'Completed') * 10
+                    - (SELECT COUNT(*) FROM contractor_complaints cc
+                       WHERE cc.contractor_id = c.id AND cc.status = 'Reviewed') * 5
+                )
+            """
+        )
+        connection.commit()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_contractor_leaderboard() -> list[dict[str, Any]]:
+    """Return one leaderboard entry per contractor identity, sorted by score."""
+    refresh_contractor_metrics()
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT id, company_name, owner_name, license_no, district, specializations, "
+            "performance_score, complaint_count, completed_projects, approval_status, block_reason "
+            "FROM contractors "
+            "ORDER BY CASE WHEN approval_status = 'Blocked' THEN 1 ELSE 0 END, "
+            "performance_score DESC, completed_projects DESC"
+        )
+        contractors = cursor.fetchall()
+        unique_contractors = {}
+        for contractor in contractors:
+            identity = (
+                str(contractor.get("company_name") or "").strip().casefold(),
+                str(contractor.get("owner_name") or "").strip().casefold(),
+                str(contractor.get("district") or "").strip().casefold(),
+            )
+            existing = unique_contractors.get(identity)
+            if existing is None or contractor["id"] > existing["id"]:
+                unique_contractors[identity] = contractor
+        return sorted(
+            unique_contractors.values(),
+            key=lambda contractor: (
+                contractor.get("approval_status") == "Blocked",
+                -(contractor.get("performance_score") or 0),
+                -(contractor.get("completed_projects") or 0),
+                contractor.get("company_name") or "",
+            ),
+        )
     finally:
         cursor.close()
         connection.close()
@@ -1025,7 +1519,11 @@ def import_account(email: str, password_hash: str, salt: str) -> None:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("INSERT IGNORE INTO accounts (email, password_hash, salt) VALUES (%s, %s, %s)", (email, password_hash, salt))
+        cursor.execute(
+            "INSERT INTO accounts (email, password_hash, salt) VALUES (%s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), salt = VALUES(salt)",
+            (email, password_hash, salt),
+        )
         connection.commit()
     finally:
         cursor.close()

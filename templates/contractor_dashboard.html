@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contractor Dashboard · Civic Map</title>
+<meta name="description" content="View your assigned government projects, update work status, and track your performance score.">
+<link rel="stylesheet" href="/templates/shared.css">
+<style>
+body { font-family: Georgia, serif; background: var(--paper); color: var(--ink); }
+header { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+main { max-width: 1150px; }
+
+/* Score banner */
+.score-banner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  padding: 28px 32px;
+  margin-bottom: 28px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(23,43,40,.08);
+  position: relative;
+  overflow: hidden;
+}
+.score-banner::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--gold), var(--blue));
+}
+.score-number {
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -2px;
+}
+.score-number.negative { color: var(--danger); }
+.score-info h2 { margin: 0 0 4px; font-size: 22px; font-weight: 500; }
+.score-info p { margin: 0; color: var(--muted); font: 13px/1.5 Arial, sans-serif; }
+.stat-chips { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.stat-chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  font: 700 11px Arial, sans-serif;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.chip-green { background: #e6f4ea; color: var(--success); }
+.chip-red { background: #fce8e6; color: var(--danger); }
+.chip-blue { background: #e3f1f6; color: var(--blue); }
+.chip-blocked { background: #2d1818; color: #ff9999; }
+
+/* Section headings */
+.section-title {
+  margin: 32px 0 14px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -.4px;
+}
+.section-title span {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 10px;
+  background: var(--ink);
+  color: white;
+  font: 700 11px Arial, sans-serif;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* Project cards */
+.project-grid { display: grid; gap: 14px; }
+.project-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 14px rgba(23,43,40,.06);
+  transition: box-shadow .2s, transform .2s;
+}
+.project-card:hover { box-shadow: 0 8px 22px rgba(23,43,40,.1); transform: translateY(-1px); }
+.project-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0; width: 4px;
+}
+.project-card.assigned::before { background: var(--gold); }
+.project-card.in-progress::before { background: var(--blue); }
+.project-card.completed::before { background: var(--success); }
+.project-card.rejected::before { background: var(--danger); }
+
+.project-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.project-title { margin: 0; font-size: 17px; font-weight: 500; }
+.status-badge {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font: 700 10px Arial, sans-serif;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+.badge-assigned { background: #fff4d6; color: #8a6414; }
+.badge-in-progress { background: #e3f1f6; color: var(--blue); }
+.badge-completed { background: #e6f4ea; color: var(--success); }
+.badge-rejected { background: #fce8e6; color: var(--danger); }
+
+.project-meta { margin: 6px 0 12px; color: var(--muted); font: 12px Arial, sans-serif; }
+.project-desc { font: 13px/1.55 Arial, sans-serif; color: var(--ink-soft); margin-bottom: 14px; }
+
+.action-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.action-row select, .action-row textarea {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px Arial, sans-serif;
+  background: rgba(255,255,255,.9);
+  color: var(--ink);
+}
+.action-row select { min-width: 160px; }
+.action-row textarea { width: 100%; min-height: 60px; resize: vertical; }
+.action-btn {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font: 700 12px Arial, sans-serif;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+}
+.action-btn:hover { background: var(--accent-dark); transform: translateY(-1px); }
+.action-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Complaints */
+.complaint-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+.complaint-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
+.complaint-card p { margin: 4px 0; color: var(--muted); font: 13px Arial, sans-serif; }
+.complaint-card .ctype {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #fce8e6;
+  color: var(--danger);
+  border-radius: 999px;
+  font: 700 10px Arial, sans-serif;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.empty-state {
+  padding: 32px;
+  text-align: center;
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+  font: 14px Arial, sans-serif;
+}
+.empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+
+@media(max-width:760px) {
+  header { align-items: flex-start; flex-direction: column; }
+  .nav { width: 100%; }
+  .nav-button { flex: 1 1 auto; text-align: center; }
+  .score-banner { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .score-number { font-size: 48px; }
+  .project-header { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-mark">C</div>
+    <div>
+      <div class="brand-name">Civic Map</div>
+      <div class="brand-sub">Contractor Portal</div>
+    </div>
+  </div>
+  <div class="tagline">Contractor workspace · <a href="/logout" style="color:var(--muted)">Log out</a></div>
+  <nav class="nav">
+    <a class="nav-button active" href="/contractor-dashboard">My Projects</a>
+    <a class="nav-button" href="/">Live Map</a>
+    <a class="nav-button" href="/community">Community</a>
+  </nav>
+</header>
+<main>
+  __CONTENT__
+</main>
+<script>
+document.querySelectorAll('.update-form').forEach(form => {
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const data = new FormData(this);
+      const resp = await fetch('/api/contractor/assignment-status', {
+        method: 'POST',
+        body: data
+      });
+      if (resp.ok) {
+        location.reload();
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Update Status';
+        const err = await resp.json().catch(() => ({}));
+        alert(err.message || err.detail || 'Update failed');
+      }
+    } catch (error) {
+      btn.disabled = false;
+      btn.textContent = 'Update Status';
+      alert('Update request failed. Please try again.');
+    }
+  });
+});
+</script>
+</body>
+</html>

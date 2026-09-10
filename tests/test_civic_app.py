@@ -10,7 +10,7 @@ import sys
 # Ensure parent directory is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from login_users import authenticate, create_account, _hash_password
+from login_users import authenticate, create_account, is_admin, _hash_password
 from community import distance_km, upvote_issue, ISSUES
 from AI_model import IssueDeduplicator, classify_issue, sanitize_and_reencode_image, inspect_image_proof
 from map import industry_match_score
@@ -18,6 +18,10 @@ from storage import create_session_record, get_session_user, delete_session_reco
 
 
 class TestAuthentication(unittest.TestCase):
+    def test_demo_admin_account(self):
+        self.assertTrue(authenticate("admin@jharkhand.gov.in", "admin12345"))
+        self.assertTrue(is_admin("admin@jharkhand.gov.in"))
+
     def test_password_hashing(self):
         hash1, salt1 = _hash_password("mysecretpassword")
         hash2, salt2 = _hash_password("mysecretpassword", salt=salt1)
@@ -113,6 +117,38 @@ class TestDashboardTemplates(unittest.TestCase):
         self.assertIn('action="/industry/register"', register)
         self.assertIn('href="/industry/register"', login)
         self.assertIn('href="/industry/login"', register)
+
+
+class TestAutoBan(unittest.TestCase):
+    def test_auto_ban_recurring_issues(self):
+        from storage import create_contractor, assign_issue_to_contractor, update_contractor_assignment, load_contractors
+        from community import ISSUES, add_issue
+        
+        # 1. Create a dummy contractor and activate it
+        import uuid
+        uid = uuid.uuid4().hex[:8]
+        c = create_contractor("AutoBan Builders", "Owner X", f"LIC-{uid}", "Ranchi", "Roads", f"autoban_{uid}@test.com", "1234")
+        cid = c["id"]
+        from storage import update_contractor_status
+        update_contractor_status(cid, "Active", "Approved by admin")
+        
+        # 2. Add an original issue and assign to contractor, then complete it
+        orig_issue = {"title": "Build a road", "category": "Roads", "lat": 23.0, "lng": 85.0}
+        orig = add_issue(orig_issue)
+        assign_issue_to_contractor(orig["issue"]["id"], cid, "admin")
+        from storage import load_contractor_assignments
+        assignments = load_contractor_assignments(cid)
+        update_contractor_assignment(assignments[0]["id"], "Completed", "Done")
+        
+        # 3. Simulate 3 new recurring issues at the exact same location
+        for i in range(3):
+            new_issue = {"title": f"Pothole {i}", "category": "Roads", "lat": 23.0, "lng": 85.0}
+            add_issue(new_issue)
+            
+        # 4. Automatic blocking is disabled; contractor administration decides.
+        contractors = load_contractors()
+        c_updated = next(c for c in contractors if c["id"] == cid)
+        self.assertEqual(c_updated["approval_status"], "Active")
 
 
 if __name__ == "__main__":
