@@ -256,6 +256,21 @@ def render_dashboard_team(team):
     history_markup = "".join(f"<p>History: {html.escape(item['status'])} · {html.escape(item['changed_by'])} · {html.escape(str(item['changed_at']))}</p>" for item in history)
     return f"<p><strong>{html.escape(team['name'])}</strong> · Mentor: <em>{html.escape(team['faculty_mentor'])}</em> · Stage: {html.escape(team['status'])} · Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
 def render_university_dashboard(user):
+    page = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
+
+    def render_shell(content, hero):
+        return (
+            page.replace("__USER__", html.escape(user))
+            .replace("__UNIVERSITY_HERO__", hero)
+            .replace("__METRICS_BAR__", "")
+            .replace("__CHALLENGES_CONTENT__", content)
+            .replace("__TEAMS_CONTENT__", "")
+            .replace("__MILESTONES_CONTENT__", "")
+            .replace("__OFFERS_CONTENT__", "")
+            .replace("__MESSAGES_CONTENT__", "")
+            .replace("__PROFILE_CONTENT__", "")
+        )
+
     university = university_for_user(user)
     if university is None:
         error_hero = f"""
@@ -268,13 +283,20 @@ def render_university_dashboard(user):
           </div>
         </div>
         """
-        return error_hero
+        return render_shell("", error_hero)
 
     assignments = load_university_assignments(user)
     teams = load_teams()
     reports = load_university_reports()
+    hero = f"""
+    <section class='hero-card'>
+      <span class='hero-eyebrow'>University project workspace</span>
+      <h1 class='hero-title'>{html.escape(university['name'])}</h1>
+      <p class='hero-desc'>Coordinate assigned civic challenges, student teams, milestones, reports, and industry collaboration from one workspace.</p>
+    </section>
+    """
     if not assignments:
-        return f"<h1>{html.escape(university['name'])}</h1><p>No issues have been assigned to this university yet.</p>"
+        return render_shell("<div class='empty-state'><h2>No assigned challenges yet</h2><p>No issues have been assigned to this university yet.</p></div>", hero)
     cards = []
     for assignment in assignments:
         issue_id = assignment["issue_id"]
@@ -343,7 +365,7 @@ def render_university_dashboard(user):
             f"</form>"
             f"</article>"
         )
-    return f"<h1>{html.escape(university['name'])} Dashboard</h1><h2>Assigned Challenges</h2>" + "".join(cards)
+    return render_shell("".join(cards), hero)
 def industry_for_user(user):
     return next((partner for partner in load_industry_partners() if partner.get("approval_status", "Active") == "Active" and str(partner.get("contact_email", "")).casefold() == user.casefold()), None)
 def render_industry_dashboard(user):
