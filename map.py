@@ -268,15 +268,7 @@ def render_university_dashboard(user):
           </div>
         </div>
         """
-        return template.replace("__USER__", html.escape(user))\
-                       .replace("__UNIVERSITY_HERO__", error_hero)\
-                       .replace("__METRICS_BAR__", "")\
-                       .replace("__CHALLENGES_CONTENT__", "")\
-                       .replace("__TEAMS_CONTENT__", "")\
-                       .replace("__MILESTONES_CONTENT__", "")\
-                       .replace("__OFFERS_CONTENT__", "")\
-                       .replace("__MESSAGES_CONTENT__", "")\
-                       .replace("__PROFILE_CONTENT__", "")
+        return error_hero
 
     assignments = load_university_assignments(user)
     teams = load_teams()
@@ -320,7 +312,7 @@ def render_university_dashboard(user):
             f"<input name='reason' placeholder='Reason for government record' required style='width:60%;'>"
             f"<button type='submit'>Save & Transmit Decision to Government</button>"
             f"</form>"
-            f"<h3>2. Assign Faculty Mentor & Student Team Members</h3>"
+            f"<h3>2. Student Project Teams</h3>"
             f"{team_markup}"
             f"<form class='team' data-endpoint='/api/university/teams' style='margin-top:12px;background:#fffdf8;padding:16px;border:1px solid #dedbd1;border-radius:10px;'>"
             f"<h4>Assign Project Team</h4>"
@@ -331,7 +323,8 @@ def render_university_dashboard(user):
             f"<input name='members' placeholder='Assigned Student Emails (comma separated: student1@bitmesra.ac.in, student2@bitmesra.ac.in)' required style='width:98%;'><br>"
             f"<button type='submit' style='margin-top:8px;'>Assign Faculty & Students</button>"
             f"</form>"
-            f"<h3>3. Submit University Project Report (Visible to All)</h3>"
+            f"<h3>3. Milestones & Testing</h3>"
+            f"<h3>4. Submit University Project Report (Visible to All)</h3>"
             f"{reports_markup}"
             f"<form class='report-form' data-endpoint='/api/university/reports' style='margin-top:12px;background:#fffdf8;padding:16px;border:1px solid #dedbd1;border-radius:10px;'>"
             f"<h4>Submit Public Project Report</h4>"
@@ -341,7 +334,7 @@ def render_university_dashboard(user):
             f"<textarea name='deliverables' placeholder='Project Deliverables, Prototypes, & Outcomes' style='width:98%;min-height:50px;'></textarea><br>"
             f"<button type='submit' style='margin-top:8px;'>Submit Report to Public Record</button>"
             f"</form>"
-            f"<h3>4. Solution Proposals</h3>"
+            f"<h3>5. Solution Proposals</h3>"
             f"<form data-endpoint='/api/proposals'>"
             f"<input type='hidden' name='issue_id' value='{issue_id}'>"
             f"<input name='title' placeholder='Solution Proposal Title' required style='width:98%;'><br>"
@@ -350,13 +343,13 @@ def render_university_dashboard(user):
             f"</form>"
             f"</article>"
         )
-    return f"<h1>{html.escape(university['name'])} Dashboard</h1>" + "".join(cards)
+    return f"<h1>{html.escape(university['name'])} Dashboard</h1><h2>Assigned Challenges</h2>" + "".join(cards)
 def industry_for_user(user):
     return next((partner for partner in load_industry_partners() if partner.get("approval_status", "Active") == "Active" and str(partner.get("contact_email", "")).casefold() == user.casefold()), None)
 def render_industry_dashboard(user):
     partner = industry_for_user(user)
     if partner is None:
-        return "<div class='section-card'><h1>Industry Account Required</h1><p>This account is not linked to a registered industry partner profile.</p></div>"
+        return "<div class='section-card'><h1>Industry Partner Account Required</h1><p>This account is not linked to a registered industry partner profile.</p></div>"
     
     offers = load_partner_offers(user)
     assignments = load_assignments()
@@ -480,7 +473,7 @@ def render_industry_dashboard(user):
             f"{academic_info}"
             f"{reports_markup}"
             f"<details style='margin-top:14px;background:#fff;border:1px solid #e0ded6;border-radius:10px;padding:14px;'>"
-            f"<summary style='cursor:pointer;font-weight:bold;color:#172b28;font-size:14px;'>+ Pledge Support & Co-Development for this Challenge</summary>"
+            f"<summary style='cursor:pointer;font-weight:bold;color:#172b28;font-size:14px;'>+ Submit Support Offer: Pledge Support & Co-Development for this Challenge</summary>"
             f"<form data-endpoint='/api/industry/offers' style='margin-top:14px;display:grid;gap:10px;'>"
             f"<input type='hidden' name='issue_id' value='{issue_id}'>"
             f"<div style='display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;'>"
@@ -508,7 +501,8 @@ def render_industry_dashboard(user):
         f"{offers_feed}"
         f"</section>"
         f"<section class='section-card'>"
-        f"<h2>2. Societal Challenges & University R&D Explorer</h2>"
+        f"<h2>2. Explore Challenges</h2>"
+        f"<h3>University Innovations & Prototypes</h3>"
         f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Browse citizen challenges validated by government moderation and paired with university student/faculty teams ready for industry partnership.</p>"
         f"{challenges_feed}"
         f"</section>"
@@ -523,16 +517,47 @@ def render_government_dashboard():
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])
     distribution = "".join(f"<li>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}: {row['total']}</li>" for row in metrics["district_domains"])
     stages = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["project_stages"])
-    max_distribution = max((row["total"] for row in metrics["district_domains"]), default=1)
-    distribution_chart = "".join(
-        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_distribution * 100))}%;background:#317c91'></div></div></div>"
-        for row in metrics["district_domains"]
+    district_totals = {}
+    domain_totals = {}
+    for row in metrics["district_domains"]:
+        district = str(row.get("district") or "Unknown")
+        domain = str(row.get("category") or "General")
+        total = int(row.get("total", 0))
+        district_totals[district] = district_totals.get(district, 0) + total
+        domain_totals[domain] = domain_totals.get(domain, 0) + total
+
+    def chart_rows(totals, color):
+        maximum = max(totals.values(), default=0)
+        return "".join(
+            f"<div class='chart-row'><div class='chart-label'><span>{html.escape(label)}</span><strong>{total}</strong></div><div class='chart-track'><span class='chart-bar' style='width:{(total / maximum * 100) if maximum else 0:.1f}%;background:{color}'></span></div></div>"
+            for label, total in sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+        ) or "<p class='chart-empty'>No data</p>"
+
+    def pie_chart(totals):
+        ordered = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+        total = sum(totals.values())
+        if not total:
+            return "<p class='chart-empty'>No data</p>"
+        colors = ["#e65f38", "#317c91", "#c48622", "#4b8f67", "#8b6f9f", "#d75b47", "#5d7891"]
+        segments = []
+        legend = []
+        start = 0.0
+        for index, (label, count) in enumerate(ordered):
+            end = start + (count / total * 100)
+            color = colors[index % len(colors)]
+            segments.append(f"{color} {start:.2f}% {end:.2f}%")
+            legend.append(f"<div class='pie-legend-row'><span class='pie-swatch' style='background:{color}'></span><span>{html.escape(label)}</span><strong>{count} ({count / total * 100:.0f}%)</strong></div>")
+            start = end
+        return f"<div class='pie-layout'><div class='pie-chart' style=\"background:conic-gradient({', '.join(segments)})\"></div><div class='pie-legend'>{''.join(legend)}</div></div>"
+
+    distribution_chart = (
+        "<div class='chart-grid'>"
+        f"<div class='chart-panel'><h3>Issues by district</h3>{chart_rows(district_totals, 'var(--blue)')}</div>"
+        f"<div class='chart-panel'><h3>Issues by domain</h3>{pie_chart(domain_totals)}</div>"
+        "</div>"
     )
-    max_stages = max((row["total"] for row in metrics["project_stages"]), default=1)
-    stages_chart = "".join(
-        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['status']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_stages * 100))}%;background:#e65f38'></div></div></div>"
-        for row in metrics["project_stages"]
-    )
+    stage_totals = {str(row.get("status") or "Unknown"): int(row.get("total", 0)) for row in metrics["project_stages"]}
+    stages_chart = f"<div class='chart-panel'><h3>Teams by project stage</h3>{chart_rows(stage_totals, 'var(--gold)')}</div>"
     responses = load_university_assignment_responses()
     response_items = []
     for resp in responses:
