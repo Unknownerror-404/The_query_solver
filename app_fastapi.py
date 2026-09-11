@@ -104,10 +104,16 @@ if FastAPI is not None:
         form = await request.form()
         email = str(form.get("email", "")).strip().lower()
         password = str(form.get("password", ""))
+        portal_role = str(form.get("portal_role", "citizen"))
         if not authenticate(email, password):
             return HTMLResponse(content=load_login_page('<p class="error">Email or password is incorrect.</p>'), status_code=401)
         session_id = create_session_record(email)
-        response = RedirectResponse(url="/", status_code=303)
+        destination = {
+            "government": "/government-dashboard",
+            "university": "/university-dashboard",
+            "industry": "/industry-dashboard",
+        }.get(portal_role, "/")
+        response = RedirectResponse(url=destination, status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
         return response
 
@@ -258,6 +264,12 @@ if FastAPI is not None:
             return RedirectResponse(url="/login", status_code=303)
         return HTMLResponse(content=build_proposals_page(current_user))
 
+    @app.get("/universities", response_class=HTMLResponse)
+    async def universities(current_user: Optional[str] = Depends(get_current_user)):
+        if not current_user or not is_admin(current_user):
+            raise HTTPException(status_code=403, detail="Admin authorization required")
+        return HTMLResponse(content=UNIVERSITY_PAGE.replace("__ISSUES__", render_university_issues()))
+
     @app.get("/professionals", response_class=HTMLResponse)
     async def professionals(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user:
@@ -276,20 +288,18 @@ if FastAPI is not None:
     async def university_dashboard(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user or university_for_user(current_user) is None:
             raise HTTPException(status_code=403, detail="University account required")
-        template = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
-        return HTMLResponse(content=template.replace("__ASSIGNMENTS__", render_university_dashboard(current_user)))
+        return HTMLResponse(content=render_university_dashboard(current_user))
 
     @app.get("/industry-dashboard", response_class=HTMLResponse)
     async def industry_dashboard(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user or industry_for_user(current_user) is None:
             raise HTTPException(status_code=403, detail="Industry account required")
-        template = INDUSTRY_DASHBOARD_FILE.read_text(encoding="utf-8")
-        return HTMLResponse(content=template.replace("__CONTENT__", render_industry_dashboard(current_user)))
+        return HTMLResponse(content=render_industry_dashboard(current_user))
 
     @app.get("/government-dashboard", response_class=HTMLResponse)
     async def government_dashboard(current_user: Optional[str] = Depends(get_current_user)):
-        if not current_user or not is_admin(current_user):
-            raise HTTPException(status_code=403, detail="Admin authorization required")
+        if not current_user or (not is_admin(current_user) and industry_for_user(current_user) is None):
+            raise HTTPException(status_code=403, detail="Government or industry account required")
         template = GOVERNMENT_DASHBOARD_FILE.read_text(encoding="utf-8")
         return HTMLResponse(content=template.replace("__CONTENT__", render_government_dashboard()))
 

@@ -100,6 +100,22 @@ def load_proposals_page():
     return PROPOSALS_PAGE_FILE.read_text(encoding="utf-8")
 def load_professionals_page():
     return PROFESSIONALS_PAGE_FILE.read_text(encoding="utf-8")
+def known_recipients() -> set[str]:
+    recipients = {"admin@jharkhand.gov.in", "innovation@bitmesra.ac.in", "partner@jin.example", "citizen@example.com"}
+    for u in load_universities():
+        if u.get("contact_email"):
+            recipients.add(u["contact_email"].strip().lower())
+    for p in load_industry_partners():
+        if p.get("contact_email"):
+            recipients.add(p["contact_email"].strip().lower())
+    for t in load_teams():
+        if t.get("faculty_mentor"):
+            recipients.add(t["faculty_mentor"].strip().lower())
+        for m in t.get("members", []):
+            recipients.add(m.strip().lower())
+    return recipients
+
+
 def university_for_user(user):
     return next((university for university in load_universities() if university.get("approval_status", "Active") == "Active" and str(university.get("contact_email", "")).casefold() == user.casefold()), None)
 DISTRICT_COORDS = {
@@ -242,7 +258,26 @@ def render_dashboard_team(team):
 def render_university_dashboard(user):
     university = university_for_user(user)
     if university is None:
-        return "<h1>University account required</h1><p>This account is not linked to a university profile.</p>"
+        error_hero = f"""
+        <div class="hero-card">
+          <span class="hero-eyebrow">Authentication Required</span>
+          <h1 class="hero-title">University Account Required</h1>
+          <p class="hero-desc">The signed-in account (<strong>{html.escape(user)}</strong>) is not associated with an accredited university or institution. Please log in with a registered university contact email (e.g. <code>innovation@bitmesra.ac.in</code>, <code>innovation@cuj.ac.in</code>, or <code>innovation@nitjsr.ac.in</code>) or contact the portal administrator.</p>
+          <div style="margin-top:20px;">
+            <a href="/logout" class="btn btn-accent">Sign In with University Account</a>
+          </div>
+        </div>
+        """
+        return template.replace("__USER__", html.escape(user))\
+                       .replace("__UNIVERSITY_HERO__", error_hero)\
+                       .replace("__METRICS_BAR__", "")\
+                       .replace("__CHALLENGES_CONTENT__", "")\
+                       .replace("__TEAMS_CONTENT__", "")\
+                       .replace("__MILESTONES_CONTENT__", "")\
+                       .replace("__OFFERS_CONTENT__", "")\
+                       .replace("__MESSAGES_CONTENT__", "")\
+                       .replace("__PROFILE_CONTENT__", "")
+
     assignments = load_university_assignments(user)
     teams = load_teams()
     reports = load_university_reports()
@@ -859,8 +894,7 @@ class MapHandler(BaseHTTPRequestHandler):
             if university_for_user(user) is None:
                 self.send_error(403)
                 return
-            template = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__ASSIGNMENTS__", render_university_dashboard(user)))
+            self.send_html(render_university_dashboard(user))
             return
         if path == "/industry-dashboard":
             user = self.session_user()
@@ -870,15 +904,14 @@ class MapHandler(BaseHTTPRequestHandler):
             if industry_for_user(user) is None:
                 self.send_error(403)
                 return
-            template = INDUSTRY_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__CONTENT__", render_industry_dashboard(user)))
+            self.send_html(render_industry_dashboard(user))
             return
         if path == "/government-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
-            if not is_admin(user):
+            if not is_admin(user) and industry_for_user(user) is None:
                 self.send_error(403)
                 return
             template = GOVERNMENT_DASHBOARD_FILE.read_text(encoding="utf-8")
@@ -1620,6 +1653,7 @@ class MapHandler(BaseHTTPRequestHandler):
         form = parse_qs(self.rfile.read(length).decode("utf-8"))
         email = form.get("email",[""])[0].strip().lower()
         password = form.get("password",[""])[0]
+        portal_role = form.get("portal_role", ["citizen"])[0]
         if path == "/register":
             if password != form.get("confirm_password",[""])[0]:
                 self.send_html(load_register_page('<p class="error">Passwords do not match.</p>'),status=400)
@@ -1635,7 +1669,12 @@ class MapHandler(BaseHTTPRequestHandler):
             return
         session_id = secrets.token_urlsafe(32)
         SESSIONS[session_id] = email
-        self.redirect("/",f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
+        destination = {
+          "government": "/government-dashboard",
+          "university": "/university-dashboard",
+          "industry": "/industry-dashboard",
+        }.get(portal_role, "/")
+        self.redirect(destination,f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
     def send_html(self,page,status=200):
         self.send_payload(page.encode("utf-8"),status)
     def send_json(self,data,status=200):
