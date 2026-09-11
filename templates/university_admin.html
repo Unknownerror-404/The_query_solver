@@ -560,6 +560,18 @@ button:disabled {
   .university-create, .university-profile, .team, .report-form {
     grid-template-columns: 1fr;
   }
+
+/* Decorative detail retained from Backup_V3 */
+.admin-intro::after {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  right: -120px;
+  top: -190px;
+  border-radius: 50%;
+  border: 1px solid rgba(49, 127, 147, 0.14);
+}
   .team input[name=members],
   .report-form input[name=title],
   .report-form textarea[name=summary],

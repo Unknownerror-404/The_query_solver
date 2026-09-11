@@ -89,22 +89,36 @@ def check_and_penalize_recurring_issues(new_issue: dict) -> None:
 
 def add_issue(issue: dict) -> dict:
     try:
-        from .AI_model import classify_issue, find_duplicate
+        from .AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, merge_text_and_visual_classification
     except ImportError:
-        from AI_model import classify_issue, find_duplicate
+        from AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, merge_text_and_visual_classification
 
     classification = classify_issue(issue.get("title", ""), issue.get("description", ""), issue.get("category", ""))
-    issue.update(classification)
+    visual = None
+    if issue.get("_video_data"):
+        visual = classify_video_proof(issue["_video_data"])
+        issue["proof_message"] = " ".join(
+            part for part in (issue.get("proof_message", ""), visual.get("message", "")) if part
+        ).strip() or visual.get("message")
+    elif str(issue.get("_proof_type", "")).startswith("image/") and issue.get("_proof_data"):
+        visual = classify_image_problem(issue["_proof_data"])
+    issue.update(merge_text_and_visual_classification(classification, visual))
     if not str(issue.get("category", "")).strip():
-        issue["category"] = classification["predicted_category"]
+        issue["category"] = issue.get("predicted_category") or "Urban Infrastructure"
 
     match = find_duplicate(issue, ISSUES)
     if match and match.decision == "duplicate":
         with ISSUE_LOCK:
             match.issue["supporters"] += 1
-            for field in ("proof_id", "proof_status", "proof_message"):
+            for field in ("proof_id", "proof_status", "proof_message", "video_id", "video_predicted_category", "video_confidence", "video_explanation"):
                 if field in issue:
                     match.issue[field] = issue[field]
+            if issue.get("_proof_data"):
+                match.issue["_proof_type"] = issue.get("_proof_type")
+                match.issue["_proof_data"] = issue.get("_proof_data")
+            if issue.get("_video_data"):
+                match.issue["_video_type"] = issue.get("_video_type")
+                match.issue["_video_data"] = issue.get("_video_data")
             update_issue(match.issue)
             return {"result": "duplicate", "issue": match.issue, "score": match.score}
     if match and match.decision == "possible_duplicate":
@@ -114,6 +128,8 @@ def add_issue(issue: dict) -> dict:
         issue.update(saved_issue)
         issue.pop("_proof_type", None)
         issue.pop("_proof_data", None)
+        issue.pop("_video_type", None)
+        issue.pop("_video_data", None)
         ISSUES.append(issue)
         
     # Run auto-penalize check outside the lock
@@ -123,14 +139,29 @@ def add_issue(issue: dict) -> dict:
 
 
 def upvote_issue(issue_id: int, user: str) -> tuple[bool, int]:
+    user = str(user or "").strip().lower()
+    if not user:
+        return False, 0
+
+    # The database is the source of truth for one-vote-per-user.
+    # Do not hold ISSUE_LOCK while doing database I/O.
     with ISSUE_LOCK:
-        for issue in ISSUES:
-            if issue["id"] == issue_id:
-                supported, count = add_issue_support(issue_id, user)
-                if supported:
-                    issue["supporters"] = count
-                return supported, count
-    return False, 0
+        issue = next((item for item in ISSUES if item["id"] == issue_id), None)
+
+    if issue is None:
+        return False, 0
+
+    supported, count = add_issue_support(issue_id, user)
+
+    with ISSUE_LOCK:
+        issue = next((item for item in ISSUES if item["id"] == issue_id), None)
+        if issue is not None:
+            issue["supporters"] = count
+
+    if supported:
+        ISSUE_SUPPORTERS.setdefault(issue_id, set()).add(user)
+
+    return supported, count
 
 
 def top_issues(limit: int = 5) -> list[dict]:
@@ -162,6 +193,13 @@ def issue_consideration_status(index: int) -> str:
 
 
 def vote_for_proposal(proposal_id: int, user: str) -> tuple[str, int]:
+    # Keep solution-vote eligibility consistent with issue support.
+    # Issue support normalises account identifiers before storing them, so
+    # proposal voting must use the same canonical form when checking support.
+    user = str(user or "").strip().lower()
+    if not user:
+        return "ineligible", 0
+
     with PROPOSAL_LOCK:
         proposal = next((item for item in PROPOSALS if item["id"] == proposal_id), None)
         if proposal is None:
@@ -284,11 +322,19 @@ def proposed_solutions_markup() -> str:
 
 
 def proof_markup(issue: dict) -> str:
+    parts = []
     proof_id = issue.get("proof_id")
-    if not proof_id:
-        return ""
-    status = "GPS location verified" if issue.get("proof_status") == "verified" else "Location unverified"
-    return f'<p><a href="/proof/{html.escape(proof_id)}">View photo proof</a> · {status}</p>'
+    if proof_id:
+        status = "GPS location verified" if issue.get("proof_status") == "verified" else "Location unverified"
+        label = "View video proof" if str(issue.get("proof_type", "")).startswith("video/") else "View photo proof"
+        parts.append(f'<p><a href="/proof/{html.escape(str(proof_id))}">{label}</a> · {status}</p>')
+    video_id = issue.get("video_id")
+    if video_id:
+        analysis = html.escape(str(issue.get("video_predicted_category") or "supporting evidence"))
+        parts.append(
+            f'<p><a href="/video/{html.escape(str(video_id))}">View video evidence</a> · not geotagged · AI: {analysis}</p>'
+        )
+    return "".join(parts)
 
 
 def contractor_progress_markup(issue_id: int, assignments: list[dict]) -> str:
@@ -309,14 +355,19 @@ def render_page(user: str, latitude: float | None = None, longitude: float | Non
     contractor_assignments = load_all_contractor_assignments()
     location_label = "Showing all civic voices" if latitude is None or longitude is None else "Showing voices within 2 km of your location"
     cards = "".join(
-        f'<article class="issue"><div class="meta">{html.escape(issue["category"])} · {html.escape(issue["area"])}</div>'
+        f'<article class="issue">'
+        f'<div class="issue-top"><span class="issue-rank">Civic issue #{index}</span>'
+        f'<span class="issue-category">{html.escape(issue.get("category", "Community"))}</span></div>'
+        f'<div class="meta">{html.escape(issue.get("category", "Community"))} · {html.escape(issue.get("area", ""))}</div>'
         f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
         f'{public_report_markup(issue["id"], reports)}'
         f'{proof_markup(issue)}'
         f'{contractor_progress_markup(issue["id"], contractor_assignments)}'
-        f'<div class="issue-footer"><span>{issue["supporters"]} supporters · {html.escape(issue["age"])}</span>'
-        f'<button class="upvote" data-id="{issue["id"]}">▲ Support this voice</button></div></article>'
-        for issue in issues
+        f'<div class="issue-meta"><span class="supporters">{issue.get("supporters", 0)} supporters</span>'
+        f'<span class="location">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("age", ""))}</span></div>'
+        f'<div class="issue-footer"><span>{issue.get("supporters", 0)} supporters · {html.escape(issue.get("age", ""))}</span>'
+        f'<button class="upvote" data-id="{issue["id"]}" type="button">▲ Support this issue</button></div></article>'
+        for index, issue in enumerate(issues, 1)
     ) or '<p class="empty">No civic issues were found in this area yet.</p>'
     template = Path(__file__).with_name("templates").joinpath("community.html").read_text(encoding="utf-8")
     return (template.replace("__USER__", html.escape(user)).replace("__LOCATION__", html.escape(location_label))

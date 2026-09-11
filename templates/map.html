@@ -932,7 +932,17 @@ aside>h2::before{
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important}
 }
- </style>
+ .submit:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-accent),0 14px 26px -12px rgba(233,95,53,.8);
+}
+
+.account-trigger:focus-visible{
+  outline:none;
+  box-shadow:var(--ring-blue);
+}
+
+</style>
 </head>
 <body>
  <header>

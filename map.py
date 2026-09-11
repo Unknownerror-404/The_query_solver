@@ -11,6 +11,7 @@ import threading
 import webbrowser
 import base64
 import html
+import logging
 from email import policy
 from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,6 +31,8 @@ INDUSTRY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "industry_login.html"
 INDUSTRY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "industry_register.html"
 INDUSTRY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "industry_admin.html"
 GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
+UNIVERSITY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "university_admin.html"
+MAIN_MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
 ADMIN_PAGE_FILE = BASE_DIR / "templates" / "admin.html"
 MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
 CONTRACTOR_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "contractor_login.html"
@@ -39,14 +42,14 @@ CONTRACTOR_ADMIN_FILE = BASE_DIR / "templates" / "contractor_admin.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, assign_issue_to_contractor, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
+    from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
     from .tagging import tag_issue
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, assign_issue_to_contractor, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
+    from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
     from tagging import tag_issue
@@ -55,6 +58,9 @@ PORT = 8000
 SESSIONS: dict[str, str] = {}
 PROPOSALS: list[dict] = load_proposals()
 NEXT_PROPOSAL_ID = max((proposal["id"] for proposal in PROPOSALS), default=0) + 1
+UNIVERSITY_CACHE = None
+CACHE_LOCK = threading.Lock()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s', filename='app.log')
 UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration Â· Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace Â· <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
 def parse_multipart_form(headers, body: bytes) -> tuple[dict[str, str], tuple[str, str, bytes] | None]:
     """Parse text fields and one uploaded file without the removed cgi module."""
@@ -519,10 +525,21 @@ def auto_assign_tasks_to_university(university, assigned_by="ai-assignment"):
             if assign_issue(issue["id"], university["id"], assigned_by):
                 assigned.append({"issue": issue, "score": score})
     return assigned
+def _cached_universities() -> list[dict]:
+    global UNIVERSITY_CACHE
+    with CACHE_LOCK:
+        if UNIVERSITY_CACHE is None:
+            UNIVERSITY_CACHE = [u for u in load_universities() if u.get("approval_status") == "Active"]
+        return UNIVERSITY_CACHE
+
 def auto_assign_issue_to_best_university(issue, assigned_by="ai-assignment"):
     if issue.get("id") in load_assignments():
         return None
-    recommended, score = best_university_for_issue(issue, load_universities())
+    try:
+        recommended, score = best_university_for_issue(issue, _cached_universities())
+    except Exception as exc:
+        logging.error(f"Ranking failed for issue {issue.get('id')}: {exc}")
+        return None
     if not recommended:
         return None
     if not assign_issue(issue["id"], recommended["id"], assigned_by):
@@ -624,6 +641,7 @@ def render_industry_dashboard(user):
     partner = industry_for_user(user)
     if partner is None:
         return "<div class='section-card'><h1>Industry Account Required</h1><p>This account is not linked to a registered industry partner profile.</p></div>"
+    
     offers = load_partner_offers(user)
     assignments = load_assignments()
     universities = load_universities()
@@ -634,30 +652,36 @@ def render_industry_dashboard(user):
         key=lambda issue: industry_match_score(partner, issue)[0],
         reverse=True,
     )
+    
     total_offers = len(offers)
     total_funding = sum(int(offer.get("funding_amount") or 0) for offer in offers)
     accepted_offers = sum(1 for offer in offers if offer.get("status") in {"Accepted", "Delivered"})
-    active_offers = sum(1 for offer in offers if offer.get("status") in {"Offered", "Accepted"})
-    delivered_offers = sum(1 for offer in offers if offer.get("status") == "Delivered")
-    css = """
-    <style>
-    .industry-dashboard{--id-ink:#132d29;--id-ink-2:#21463f;--id-muted:#6b7b77;--id-paper:#f5f2ea;--id-card:#fffdf8;--id-line:#e4e0d5;--id-blue:#317c91;--id-teal:#278477;--id-orange:#e65f38;--id-gold:#c48622;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--id-ink)}
-    .industry-dashboard *{box-sizing:border-box}.industry-dashboard .section-card{background:var(--id-card);border:1px solid var(--id-line);border-radius:20px;padding:28px;box-shadow:0 8px 30px rgba(19,45,41,.055);margin:0 0 24px}.industry-dashboard .eyebrow{margin:0 0 8px;color:var(--id-orange);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.industry-dashboard h1,.industry-dashboard h2,.industry-dashboard h3,.industry-dashboard h4{color:var(--id-ink);letter-spacing:-.025em}.industry-dashboard h2{font-size:24px;margin:0 0 8px}.industry-dashboard h3{font-size:18px}.industry-dashboard p{line-height:1.6}.industry-dashboard label{display:block;color:var(--id-ink);font-size:12px;font-weight:750;margin-bottom:6px}.industry-dashboard input,.industry-dashboard select,.industry-dashboard textarea{width:100%;border:1px solid var(--id-line);border-radius:10px;background:#fff;padding:11px 13px;color:var(--id-ink);font:inherit;font-size:13px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s}.industry-dashboard input:focus,.industry-dashboard select:focus,.industry-dashboard textarea:focus{border-color:var(--id-blue);box-shadow:0 0 0 3px rgba(49,124,145,.12);background:#fff}.industry-dashboard textarea{resize:vertical}.industry-dashboard button{border:0;border-radius:10px;background:var(--id-ink);color:#fff;padding:11px 16px;font:700 13px inherit;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}.industry-dashboard button:hover{background:var(--id-orange);transform:translateY(-1px);box-shadow:0 8px 18px rgba(230,95,56,.18)}.industry-dashboard details{transition:background .18s}.industry-dashboard summary{cursor:pointer}.industry-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#132d29 0%,#21463f 68%,#2b5a50 100%);color:#fff;border-radius:24px;padding:32px;margin-bottom:24px;box-shadow:0 14px 36px rgba(19,45,41,.14)}.industry-hero:after{content:"";position:absolute;width:240px;height:240px;border:1px solid rgba(255,255,255,.1);border-radius:50%;right:-80px;top:-110px}.industry-hero .eyebrow{color:#ff9e80}.industry-hero h1{position:relative;margin:0 0 8px;color:#fff;font-size:clamp(30px,4vw,44px);font-weight:750;line-height:1.05}.industry-hero p{position:relative;color:#c4d7d2;margin:0;max-width:760px;font-size:14px}.industry-profile-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end}.industry-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.industry-chip{padding:7px 11px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;color:#d8e6e2}.industry-chip strong{color:#fff}.industry-stats{display:grid;grid-template-columns:repeat(3,132px);gap:10px}.industry-stat{padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(255,255,255,.075);backdrop-filter:blur(8px)}.industry-stat strong{display:block;color:#fff;font-size:25px;line-height:1.1}.industry-stat span{display:block;color:#a9c4bd;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.08em;margin-top:6px}.industry-overview{display:grid;grid-template-columns:1.4fr .6fr;gap:18px;margin-bottom:24px}.industry-section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px}.industry-section-head h2{margin:0}.industry-section-head p{margin:3px 0 0;color:var(--id-muted);font-size:13px}.industry-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.industry-mini{padding:18px;border-radius:14px;background:#f7f8f4;border:1px solid var(--id-line)}.industry-mini strong{display:block;font-size:22px}.industry-mini span{color:var(--id-muted);font-size:11px}.industry-feed{display:grid;gap:14px}.industry-offer{padding:20px;border:1px solid var(--id-line);border-radius:16px;background:#fff;transition:transform .18s,box-shadow .18s,border-color .18s}.industry-offer:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(19,45,41,.07);border-color:#cbd7d2}.industry-offer-top,.industry-challenge-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.industry-offer h3,.industry-challenge h3{margin:0 0 5px}.industry-sub{margin:0;color:var(--id-muted);font-size:12px}.industry-status{display:inline-flex;align-items:center;white-space:nowrap;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}.industry-details{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#f8f7f1;color:#455650;font-size:13px}.industry-facts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.industry-fact{padding:7px 9px;border-radius:8px;background:#f2f6f4;color:#536560;font-size:11px}.industry-team{margin-top:14px;padding:14px;border-radius:12px;background:#eef6f8;border-left:3px solid var(--id-blue)}.industry-team p{margin:0;font-size:12px}.industry-team details{margin-top:9px}.industry-team summary{font-size:11px;color:var(--id-blue);font-weight:750}.industry-team ul{color:var(--id-muted);padding-left:18px}.industry-challenge{padding:22px;border:1px solid var(--id-line);border-radius:18px;background:#fff;margin-bottom:14px;transition:transform .18s,box-shadow .18s}.industry-challenge:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(19,45,41,.07)}.industry-category{display:inline-flex;padding:5px 9px;border-radius:7px;background:#fff0eb;color:#c74e2f;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.07em}.industry-supporters{color:var(--id-orange);font-weight:800}.industry-match{display:flex;align-items:center;gap:10px;margin:14px 0;padding:12px 14px;border:1px solid #cfe4e0;border-radius:12px;background:#edf7f6}.industry-match-score{font-size:20px;font-weight:850;color:var(--id-teal);white-space:nowrap}.industry-match-text{font-size:11px;color:#526660}.industry-academic{margin:12px 0;padding:13px 14px;border-radius:12px;background:#f2f7f8;font-size:12px;color:#405550}.industry-academic strong{color:var(--id-ink)}.industry-report{margin:10px 0;padding:12px;border-radius:10px;background:#faf9f5;font-size:12px}.industry-pledge{margin-top:16px;border:1px solid var(--id-line);border-radius:14px;background:#fafbf8;padding:16px}.industry-pledge summary{font-size:13px;font-weight:800;color:var(--id-ink)}.industry-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.industry-form-full{grid-column:1/-1}.industry-empty{padding:24px;border:1px dashed #cfd8d3;border-radius:14px;background:#fafbf8;color:var(--id-muted);font-size:13px}.industry-messages article{padding:16px;border:1px solid var(--id-line);border-radius:12px;background:#fff;margin-bottom:10px}.industry-messages h1{font-size:18px}.industry-messages form{display:grid;gap:10px;margin-top:14px}.industry-footer-note{font-size:11px;color:var(--id-muted);margin-top:12px}@media(max-width:850px){.industry-profile-grid,.industry-overview{grid-template-columns:1fr}.industry-stats{grid-template-columns:repeat(3,1fr)}.industry-form-grid{grid-template-columns:1fr}.industry-form-full{grid-column:auto}}@media(max-width:560px){.industry-hero{padding:24px}.industry-stats{grid-template-columns:1fr}.industry-stat{display:flex;justify-content:space-between;align-items:center}.industry-stat span{margin:0}.industry-section-head,.industry-offer-top,.industry-challenge-top{flex-direction:column;align-items:flex-start}.industry-dashboard .section-card{padding:20px;border-radius:16px}}
-    </style>
-    """
+    
+    # 1. Partner Profile & Metric Overview
     profile_html = (
-        f"<section class='industry-hero'>"
-        f"<div class='industry-profile-grid'><div>"
-        f"<p class='eyebrow'>Industry & CSR partner</p>"
-        f"<h1>{html.escape(partner['name'])}</h1>"
-        f"<p>Turn corporate expertise, funding and infrastructure into measurable civic impact across approved community challenges.</p>"
-        f"<div class='industry-meta'><span class='industry-chip'><strong>{html.escape(partner['partner_type'])}</strong></span><span class='industry-chip'>District Â· <strong>{html.escape(partner['district'])}</strong></span><span class='industry-chip'>Domains Â· <strong>{html.escape(partner['domains'])}</strong></span><span class='industry-chip'>Contact Â· <strong>{html.escape(partner['contact_email'])}</strong></span></div>"
-        f"</div><div class='industry-stats'>"
-        f"<div class='industry-stat'><strong>{total_offers}</strong><span>Support offers</span></div>"
-        f"<div class='industry-stat'><strong>â‚¹ {total_funding:,}</strong><span>Funding pledged</span></div>"
-        f"<div class='industry-stat'><strong>{accepted_offers}</strong><span>Active pledges</span></div>"
-        f"</div></div></section>"
+        f"<div class='section-card' style='background:linear-gradient(135deg, #172b28 0%, #203f3a 100%);color:white;border-radius:16px;padding:26px;margin-bottom:26px;'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;'>"
+        f"<div>"
+        f"<span style='background:rgba(230,95,56,0.25);color:#ff9e80;border:1px solid #e65f38;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;'>{html.escape(partner['partner_type'])}</span>"
+        f"<h2 style='margin:10px 0 4px;font-size:28px;color:#fff;'>{html.escape(partner['name'])}</h2>"
+        f"<p style='color:#a3c2bc;font-size:13px;margin:0;'>District: <strong>{html.escape(partner['district'])}</strong> · Focus Domains: <strong>{html.escape(partner['domains'])}</strong> · Contact: <strong>{html.escape(partner['contact_email'])}</strong></p>"
+        f"</div>"
+        f"<div style='display:flex;gap:12px;flex-wrap:wrap;'>"
+        f"<div style='background:rgba(255,255,255,0.08);padding:12px 18px;border-radius:12px;text-align:center;min-width:110px;'>"
+        f"<div style='font-size:22px;font-weight:bold;color:#ff9e80;'>{total_offers}</div><div style='font-size:11px;color:#a3c2bc;text-transform:uppercase;'>Support Offers</div>"
+        f"</div>"
+        f"<div style='background:rgba(255,255,255,0.08);padding:12px 18px;border-radius:12px;text-align:center;min-width:110px;'>"
+        f"<div style='font-size:22px;font-weight:bold;color:#64d8cb;'>₹ {total_funding:,}</div><div style='font-size:11px;color:#a3c2bc;text-transform:uppercase;'>Funding Pledged</div>"
+        f"</div>"
+        f"<div style='background:rgba(255,255,255,0.08);padding:12px 18px;border-radius:12px;text-align:center;min-width:110px;'>"
+        f"<div style='font-size:22px;font-weight:bold;color:#ffd54f;'>{accepted_offers}</div><div style='font-size:11px;color:#a3c2bc;text-transform:uppercase;'>Active Pledges</div>"
+        f"</div>"
+        f"</div>"
+        f"</div>"
+        f"</div>"
     )
+    
+    # 2. Active Pledges & Collaboration Feed
     offer_cards = []
     for offer in offers:
         issue_id = offer["issue_id"]
@@ -668,53 +692,124 @@ def render_industry_dashboard(user):
             m_items = []
             for m in milestones:
                 t_res = f"<br><em>Testing: {html.escape(m['testing_result'])}</em>" if m.get('testing_result') else ""
-                m_items.append(f"<li><strong>{html.escape(m['title'])}</strong> Â· {html.escape(m['status'])} Â· {html.escape(str(m['due_date'] or 'No deadline'))}{t_res}</li>")
+                m_items.append(f"<li style='margin:4px 0;'><span style='font-weight:bold;'>{html.escape(m['title'])}</span> [{html.escape(m['status'])}] &mdash; <small>{html.escape(str(m['due_date'] or 'No deadline'))}</small>{t_res}</li>")
             m_markup = "".join(m_items)
-            team_markup = f"<div class='industry-team'><p><strong>University team:</strong> {html.escape(issue_team['name'])} Â· Mentor: <strong>{html.escape(issue_team['faculty_mentor'])}</strong> Â· Stage: <strong>{html.escape(issue_team['status'])}</strong></p><details><summary>View active milestones ({len(milestones)})</summary><ul>{m_markup or '<li>No milestones defined</li>'}</ul></details></div>"
+            team_markup = (
+                f"<div style='background:#f4f8f7;border-left:4px solid #317c91;padding:12px 16px;border-radius:6px;margin-top:12px;'>"
+                f"<p style='margin:0 0 6px;font-size:13px;'><strong>University Team:</strong> {html.escape(issue_team['name'])} (Mentor: <em>{html.escape(issue_team['faculty_mentor'])}</em>) &middot; Stage: <span style='font-weight:bold;color:#317c91;'>{html.escape(issue_team['status'])}</span></p>"
+                f"<details><summary style='cursor:pointer;font-size:12px;color:#667773;'>View Active Milestones ({len(milestones)})</summary><ul style='font-size:12px;margin:6px 0 0 16px;padding:0;'>{m_markup or '<li>No milestones defined</li>'}</ul></details>"
+                f"</div>"
+            )
+            
         status_color = "#2b7a4b" if offer["status"] == "Accepted" else "#317c91" if offer["status"] == "Delivered" else "#b83226" if offer["status"] == "Declined" else "#c48622"
-        funding_badge = f"<span class='industry-fact'>Funding Â· â‚¹ {int(offer.get('funding_amount') or 0):,}</span>" if offer.get('funding_amount') else ""
-        resources_line = f"<span class='industry-fact'>Resources Â· {html.escape(str(offer.get('resources') or ''))}</span>" if offer.get('resources') else ""
-        timeline_line = f"<span class='industry-fact'>Timeline Â· {html.escape(str(offer.get('timeline') or ''))}</span>" if offer.get('timeline') else ""
-        commitment_line = f"<div class='industry-details'><strong>University / nodal response:</strong> {html.escape(str(offer.get('commitment_note') or ''))}</div>" if offer.get('commitment_note') else ""
-        offer_cards.append(f"<article class='industry-offer'><div class='industry-offer-top'><div><h3>{html.escape(offer['title'])}</h3><p class='industry-sub'>{html.escape(str(offer.get('district','')))} Â· {html.escape(str(offer.get('category','Civic')))} Â· Support type: <strong>{html.escape(offer['support_type'])}</strong></p></div><span class='industry-status' style='background:{status_color}14;color:{status_color};border:1px solid {status_color}35'>{html.escape(offer['status'])}</span></div><div class='industry-details'><strong>Scope:</strong> {html.escape(offer['details'])}</div><div class='industry-facts'>{funding_badge}{resources_line}{timeline_line}</div>{commitment_line}{team_markup}</article>")
-    offers_feed = "".join(offer_cards) if offer_cards else "<div class='industry-empty'>No support offers submitted yet. Browse the approved challenges below to pledge mentorship, funding, testing, prototyping or deployment support.</div>"
+        funding_badge = f"<span style='background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:12px;margin-left:8px;'>₹ {int(offer.get('funding_amount') or 0):,}</span>" if offer.get('funding_amount') else ""
+        resources_line = f"<p style='font-size:12px;color:#667773;margin:4px 0;'><strong>Committed Resources:</strong> {html.escape(str(offer.get('resources') or ''))}</p>" if offer.get('resources') else ""
+        timeline_line = f"<p style='font-size:12px;color:#667773;margin:4px 0;'><strong>Target Timeline:</strong> {html.escape(str(offer.get('timeline') or ''))}</p>" if offer.get('timeline') else ""
+        commitment_line = f"<p style='font-size:12px;color:#2e7d32;margin:6px 0;background:#f1f8e9;padding:6px 10px;border-radius:6px;'><strong>Nodal / University Response:</strong> {html.escape(str(offer.get('commitment_note') or ''))}</p>" if offer.get('commitment_note') else ""
+        
+        offer_cards.append(
+            f"<article style='background:#fffdf8;border:1px solid #dedbd1;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 4px 12px rgba(23,43,40,0.04);'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px;'>"
+            f"<div>"
+            f"<h3 style='margin:0 0 4px;font-size:18px;'>{html.escape(offer['title'])} <small style='color:#667773;font-size:13px;'>({html.escape(str(offer.get('district', '')))} &middot; {html.escape(str(offer.get('category', 'Civic')))})</small></h3>"
+            f"<p style='margin:4px 0 8px;font-size:13px;'>Support Type: <strong>{html.escape(offer['support_type'])}</strong> {funding_badge}</p>"
+            f"</div>"
+            f"<span style='background:{status_color}18;color:{status_color};border:1px solid {status_color}40;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:bold;'>{html.escape(offer['status'])}</span>"
+            f"</div>"
+            f"<p style='color:#444;font-size:13px;line-height:1.5;background:#faf8f2;padding:10px 14px;border-radius:8px;margin:8px 0;'><strong>Details:</strong> {html.escape(offer['details'])}</p>"
+            f"{resources_line}"
+            f"{timeline_line}"
+            f"{commitment_line}"
+            f"{team_markup}"
+            f"</article>"
+        )
+    offers_feed = "".join(offer_cards) if offer_cards else "<p style='color:#667773;'>No support offers submitted yet. Browse the societal challenges below to pledge mentorship, funding, or testing support.</p>"
+    
+    # 3. Societal Challenge & University R&D Explorer
     challenge_cards = []
     for issue in approved_issues:
         issue_id = issue["id"]
         assignment = assignments.get(issue_id)
         issue_team = next((t for t in teams if t["issue_id"] == issue_id), None)
         issue_reports = [r for r in reports if r["issue_id"] == issue_id]
-        score, expertise_matches, location_match = industry_match_score(partner, issue)
-        expertise_text = ", ".join(sorted(expertise_matches)) if expertise_matches else "No direct domain keyword overlap"
-        location_text = "same district" if location_match else "nearest available location"
+        
         academic_info = ""
         if assignment:
             assigned_university = next((u for u in universities if u["id"] == assignment["university_id"]), None)
             uni_name = html.escape((assigned_university or {}).get("name") or "Assigned University")
-            team_info = f"<br>Faculty mentor / team: <strong>{html.escape(issue_team['faculty_mentor'])}</strong> Â· Stage: <strong>{html.escape(issue_team['status'])}</strong>" if issue_team else "<br><em>Team forming in progress</em>"
-            academic_info = f"<div class='industry-academic'><strong>Assigned institution:</strong> {uni_name} Â· Request status: <strong>{html.escape(assignment['status'])}</strong>{team_info}</div>"
+            team_info = f"<br><strong>Faculty Mentor / Team:</strong> {html.escape(issue_team['faculty_mentor'])} &middot; Stage: <span style='color:#317c91;font-weight:bold;'>{html.escape(issue_team['status'])}</span>" if issue_team else "<br><em style='color:#667773;'>Team forming in progress</em>"
+            academic_info = (
+                f"<div style='background:#edf7f6;border-radius:8px;padding:12px;margin:10px 0;font-size:13px;'>"
+                f"<strong>Assigned Institution:</strong> {uni_name} &middot; Status: <strong>{html.escape(assignment['status'])}</strong>"
+                f"{team_info}"
+                f"</div>"
+            )
+            
         reports_markup = ""
         if issue_reports:
-            r_list = "".join(f"<div class='industry-report'><strong>{html.escape(r['title'])}</strong><br>{html.escape(r['summary'][:180])}...</div>" for r in issue_reports)
-            reports_markup = f"<details><summary style='color:#317c91;font-weight:750;font-size:12px;'>View academic pilot reports ({len(issue_reports)})</summary>{r_list}</details>"
+            r_list = "".join(f"<div style='margin-bottom:6px;'><strong>{html.escape(r['title'])}</strong>: {html.escape(r['summary'][:180])}...</div>" for r in issue_reports)
+            reports_markup = f"<details style='font-size:12px;color:#333;margin:8px 0;'><summary style='cursor:pointer;color:#317c91;font-weight:bold;'>View Academic Pilot Reports ({len(issue_reports)})</summary><div style='padding:8px;background:#f9f9f9;border-radius:6px;margin-top:4px;'>{r_list}</div></details>"
+            
         challenge_cards.append(
-            f"<article class='industry-challenge'><div class='industry-challenge-top'><div><span class='industry-category'>{html.escape(issue.get('category','Civic Issue'))}</span><h3>{html.escape(issue['title'])}</h3><p class='industry-sub'>Location Â· <strong>{html.escape(issue.get('district','Jharkhand'))}</strong> Â· {html.escape(str(issue.get('block','')))} Â· <span class='industry-supporters'>{issue.get('supporters',0)} citizen supporters</span></p></div></div>"
-            f"<p style='font-size:13px;color:#40514d;margin:12px 0'>{html.escape(issue.get('description',''))}</p>"
-            f"<div class='industry-match'><span class='industry-match-score'>{score}</span><span class='industry-match-text'><strong>AI-assisted partner match</strong><br>Expertise signals: {html.escape(expertise_text)} Â· Location: {html.escape(location_text)}</span></div>"
-            f"{academic_info}{reports_markup}"
-            f"<details class='industry-pledge'><summary>+ Pledge support & co-development</summary><form data-endpoint='/api/industry/offers'><input type='hidden' name='issue_id' value='{issue_id}'><div class='industry-form-grid'><div><label>Support Category</label><select name='support_type' required><option>Mentorship</option><option>Funding</option><option>Prototyping</option><option>Testing</option><option>Deployment</option><option>Co-development</option><option>Technology Transfer</option><option>Pilot Implementation</option></select></div><div><label>CSR / Seed Funding (â‚¹ Optional)</label><input type='number' name='funding_amount' placeholder='e.g. 150000' min='0'></div><div><label>Committed Resources / Equipment</label><input name='resources' placeholder='e.g. Maker lab access, hardware components'></div><div><label>Target Timeline</label><input name='timeline' placeholder='e.g. 3-month prototype, 6-month pilot'></div><div class='industry-form-full'><label>Support & Implementation Scope</label><textarea name='details' placeholder='Describe how your organization will support the student/faculty team with technical expertise, testing, funding, or deployment...' required style='min-height:90px'></textarea></div></div><button type='submit'>Submit Support Pledge</button></form></details></article>"
+            f"<article style='background:#fffdf8;border:1px solid #dedbd1;border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 4px 14px rgba(23,43,40,0.05);'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;'>"
+            f"<div>"
+            f"<span style='background:#fbe9e7;color:#d84315;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;text-transform:uppercase;'>{html.escape(issue.get('category', 'Civic Issue'))}</span>"
+            f"<h3 style='margin:8px 0 4px;font-size:20px;'>{html.escape(issue['title'])}</h3>"
+            f"<p style='color:#667773;font-size:13px;margin:0 0 8px;'>Location: <strong>{html.escape(issue.get('district', 'Jharkhand'))}</strong> &middot; {html.escape(str(issue.get('block', '')))} &middot; <strong style='color:#e65f38;'>{issue.get('supporters', 0)} citizen supporters</strong></p>"
+            f"</div>"
+            f"</div>"
+            f"<p style='color:#333;font-size:14px;line-height:1.5;margin:8px 0 12px;'>{html.escape(issue.get('description', ''))}</p>"
+            f"{industry_match_markup(partner, issue)}"
+            f"{academic_info}"
+            f"{reports_markup}"
+            f"<details style='margin-top:14px;background:#fff;border:1px solid #e0ded6;border-radius:10px;padding:14px;'>"
+            f"<summary style='cursor:pointer;font-weight:bold;color:#172b28;font-size:14px;'>+ Pledge Support & Co-Development for this Challenge</summary>"
+            f"<form data-endpoint='/api/industry/offers' style='margin-top:14px;display:grid;gap:10px;'>"
+            f"<input type='hidden' name='issue_id' value='{issue_id}'>"
+            f"<div style='display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;'>"
+            f"<div><label>Support Category</label><select name='support_type' required><option>Mentorship</option><option>Funding</option><option>Prototyping</option><option>Testing</option><option>Deployment</option><option>Co-development</option><option>Technology Transfer</option><option>Pilot Implementation</option></select></div>"
+            f"<div><label>CSR / Seed Funding (₹ Optional)</label><input type='number' name='funding_amount' placeholder='e.g. 150000' min='0'></div>"
+            f"<div><label>Committed Resources / Equipment</label><input name='resources' placeholder='e.g. Maker lab access, hardware components'></div>"
+            f"<div><label>Target Timeline</label><input name='timeline' placeholder='e.g. 3-month prototype, 6-month pilot'></div>"
+            f"</div>"
+            f"<div><label>Support & Implementation Scope</label><textarea name='details' placeholder='Describe how your organization will support the student/faculty team with technical expertise, testing, funding, or deployment...' required style='min-height:75px;'></textarea></div>"
+            f"<button type='submit' style='width:fit-content;'>Submit Support Pledge</button>"
+            f"</form>"
+            f"</details>"
+            f"</article>"
         )
-    challenges_feed = "".join(challenge_cards) if challenge_cards else "<div class='industry-empty'>No approved challenges are currently awaiting industry partnership.</div>"
+    challenges_feed = "".join(challenge_cards) if challenge_cards else "<p style='color:#667773;'>No approved challenges are currently awaiting industry partnership.</p>"
+
+    # 4. Direct Institutional Communication
     messages_feed = render_messages(user)
-    return f"<div class='industry-dashboard'>{css}{profile_html}<div class='industry-overview'><section class='section-card'><div class='industry-section-head'><div><p class='eyebrow'>Your portfolio</p><h2>Support activity</h2><p>Quick view of your current contribution pipeline.</p></div></div><div class='industry-mini-grid'><div class='industry-mini'><strong>{active_offers}</strong><span>Open / accepted commitments</span></div><div class='industry-mini'><strong>{delivered_offers}</strong><span>Delivered contributions</span></div><div class='industry-mini'><strong>{len(approved_issues)}</strong><span>Approved challenges</span></div></div></section><section class='section-card'><p class='eyebrow'>Next action</p><h2>Find a challenge</h2><p style='color:var(--id-muted);font-size:13px'>Review AI-matched civic challenges and open a support pledge.</p><a href='#industry-challenges' style='display:inline-flex;padding:10px 14px;border-radius:10px;background:var(--id-orange);color:#fff;text-decoration:none;font-size:12px;font-weight:800'>Explore opportunities â†“</a></section></div><section class='section-card'><div class='industry-section-head'><div><p class='eyebrow'>Contribution tracking</p><h2>Active support pledges</h2><p>Track contribution status, university progress and commitment responses.</p></div></div><div class='industry-feed'>{offers_feed}</div></section><section class='section-card' id='industry-challenges'><div class='industry-section-head'><div><p class='eyebrow'>Civic opportunity marketplace</p><h2>Societal challenges & university R&D</h2><p>Government-approved challenges ranked by relevance to your organization's expertise and location.</p></div><span class='industry-fact'>{len(approved_issues)} opportunities</span></div><div>{challenges_feed}</div></section><section class='section-card industry-messages'><div class='industry-section-head'><div><p class='eyebrow'>Collaboration</p><h2>Institutional communications</h2><p>Communicate directly with university faculty mentors and government nodal officers.</p></div></div>{messages_feed}</section></div>"
+    
+    return (
+        f"{profile_html}"
+        f"<section class='section-card'>"
+        f"<h2>1. Active Support Pledges & Co-Development Feed</h2>"
+        f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Track the real-time status of your contributions, university team milestones, and government commitment acknowledgments.</p>"
+        f"{offers_feed}"
+        f"</section>"
+        f"<section class='section-card'>"
+        f"<h2>2. Societal Challenges & University R&D Explorer</h2>"
+        f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Browse citizen challenges validated by government moderation and paired with university student/faculty teams ready for industry partnership.</p>"
+        f"{challenges_feed}"
+        f"</section>"
+        f"<section class='section-card'>"
+        f"<h2>3. Institutional Communications & Direct Messaging</h2>"
+        f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Communicate directly with University Faculty Mentors and Government Nodal Officers.</p>"
+        f"{messages_feed}"
+        f"</section>"
+    )
 def render_government_dashboard():
     metrics = load_dashboard_metrics()
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])
-    distribution = "".join(f"<li>{html.escape(str(row['district']))} Â· {html.escape(str(row['category']))}: {row['total']}</li>" for row in metrics["district_domains"])
+    distribution = "".join(f"<li>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}: {row['total']}</li>" for row in metrics["district_domains"])
     stages = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["project_stages"])
     max_distribution = max((row["total"] for row in metrics["district_domains"]), default=1)
     distribution_chart = "".join(
-        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['district']))} Â· {html.escape(str(row['category']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_distribution * 100))}%;background:#317c91'></div></div></div>"
+        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_distribution * 100))}%;background:#317c91'></div></div></div>"
         for row in metrics["district_domains"]
     )
     max_stages = max((row["total"] for row in metrics["project_stages"]), default=1)
@@ -729,15 +824,15 @@ def render_government_dashboard():
         response_items.append(
             f"<li style='margin-bottom:10px;padding:10px;border-bottom:1px solid #eee;'>"
             f"<strong>{html.escape(resp['university_name'])}</strong> "
-            f"Â· Issue: <em>{html.escape(resp['issue_title'])}</em> ({html.escape(resp['issue_district'])})<br>"
+            f"· Issue: <em>{html.escape(resp['issue_title'])}</em> ({html.escape(resp['issue_district'])})<br>"
             f"Request Status: <span style='color:{status_color};font-weight:bold;'>{html.escape(resp['status'])}</span> "
-            f"Â· Decision Reason: <strong>{html.escape(str(resp.get('response_reason') or 'No reason provided'))}</strong> "
+            f"· Decision Reason: <strong>{html.escape(str(resp.get('response_reason') or 'No reason provided'))}</strong> "
             f"<br><small style='color:#666;'>Assigned at: {resp['assigned_at']}</small></li>"
         )
     responses_markup = "".join(response_items) or "<li>No university assignment decisions logged yet</li>"
     return (
         f"<h1>Government Dashboard</h1><p>Jharkhand societal innovation overview and institutional response tracking.</p>"
-        f"<section><h2>Totals</h2><p>Issues: {metrics['total_issues']} Â· Proposals: {metrics['proposals']} Â· Assignments: {metrics['assignments']} Â· Universities: {metrics['universities']} Â· Industry partners: {metrics['industry_partners']} Â· Support offers: {metrics['support_offers']}</p></section>"
+        f"<section><h2>Totals</h2><p>Issues: {metrics['total_issues']} · Proposals: {metrics['proposals']} · Assignments: {metrics['assignments']} · Universities: {metrics['universities']} · Industry partners: {metrics['industry_partners']} · Support offers: {metrics['support_offers']}</p></section>"
         f"<section><h2>University Request Responses & Decisions (Accept/Reject Feed)</h2><ul>{responses_markup}</ul></section>"
         f"<section><h2>Moderation</h2><ul>{moderation or '<li>No issue data</li>'}</ul></section>"
         f"<section><h2>District and domain distribution</h2><div>{distribution_chart or '<p>No issue data</p>'}</div><details><summary>View data list</summary><ul>{distribution or '<li>No issue data</li>'}</ul></details></section>"
@@ -835,7 +930,7 @@ def render_industry_admin():
     partners = load_industry_partners()
     offers = load_all_partner_offers()
     pending_count = sum(1 for partner in partners if partner.get('approval_status', 'Active') == 'Pending')
-    partner_markup = "".join(f"<article class='partner-card'><div class='partner-heading'><div><p class='eyebrow'>Partner request</p><h3>{html.escape(partner['name'])}</h3><p>{html.escape(partner['partner_type'])} Â· {html.escape(partner['district'])}</p></div><span class='approval-badge approval-{str(partner.get('approval_status', 'Active')).lower()}'>{html.escape(partner.get('approval_status', 'Active'))}</span></div><p class='partner-meta'><strong>Domains:</strong> {html.escape(partner['domains'])}<br><strong>Contact:</strong> {html.escape(partner['contact_email'])}</p><form class='approval' data-kind='industry' data-id='{partner['id']}'><label>Decision<select name='status'><option {'selected' if partner.get('approval_status', 'Active') == 'Active' else ''}>Active</option><option {'selected' if partner.get('approval_status') == 'Rejected' else ''}>Rejected</option><option {'selected' if partner.get('approval_status') == 'Pending' else ''}>Pending</option></select></label><button type='submit'>Save decision</button></form></article>" for partner in partners) or "<p class='empty-state'>No industry partner registrations yet.</p>"
+    partner_markup = "".join(f"<article class='partner-card'><div class='partner-heading'><div><p class='eyebrow'>Partner request</p><h3>{html.escape(partner['name'])}</h3><p>{html.escape(partner['partner_type'])} · {html.escape(partner['district'])}</p></div><span class='approval-badge approval-{str(partner.get('approval_status', 'Active')).lower()}'>{html.escape(partner.get('approval_status', 'Active'))}</span></div><p class='partner-meta'><strong>Domains:</strong> {html.escape(partner['domains'])}<br><strong>Contact:</strong> {html.escape(partner['contact_email'])}</p><form class='approval' data-kind='industry' data-id='{partner['id']}'><label>Decision<select name='status'><option {'selected' if partner.get('approval_status', 'Active') == 'Active' else ''}>Active</option><option {'selected' if partner.get('approval_status') == 'Rejected' else ''}>Rejected</option><option {'selected' if partner.get('approval_status') == 'Pending' else ''}>Pending</option></select></label><button type='submit'>Save decision</button></form></article>" for partner in partners) or "<p class='empty-state'>No industry partner registrations yet.</p>"
     offer_markup = "".join(f"<article class='commitment-card'><p><strong>{html.escape(offer['partner_name'])}</strong> offered {html.escape(offer['support_type'])} for {html.escape(offer['title'])}</p><form class='offer-update'><input type='hidden' name='offer_id' value='{offer['id']}'><select name='status'><option>Offered</option><option>Accepted</option><option>Delivered</option><option>Declined</option></select><input name='note' placeholder='Commitment note'><button type='submit'>Update commitment</button></form></article>" for offer in offers) or "<p class='empty-state'>No support offers yet.</p>"
     return f"<div class='industry-admin-shell'><div class='admin-intro'><p class='eyebrow'>Industry verification</p><h1>Review industry partner requests.</h1><p>Approve organizations before they access approved civic challenges and submit support commitments.</p></div><div class='admin-stats'><div><strong>{pending_count}</strong><span>Pending requests</span></div><div><strong>{len(partners)}</strong><span>Total partners</span></div><div><strong>{len(offers)}</strong><span>Support offers</span></div></div><section class='admin-section'><div class='section-heading'><div><p class='eyebrow'>Onboarding queue</p><h2>Partner registrations</h2></div><span class='queue-label'>{pending_count} awaiting review</span></div><div class='partner-grid'>{partner_markup}</div></section><section class='admin-section'><p class='eyebrow'>Collaboration monitoring</p><h2>Support commitments</h2><div class='commitment-list'>{offer_markup}</div></section><section class='admin-section'><p class='eyebrow'>Manual onboarding</p><h2>Register a partner</h2><form class='industry-create admin-form'><input name='name' placeholder='Organization name' required><select name='partner_type'><option>Industry</option><option>Startup</option><option>MSME</option><option>CSR Organization</option><option>Research Laboratory</option></select><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='contact_email' type='email' placeholder='Contact email' required><button type='submit'>Register partner</button></form></section></div>"
 def render_university_issues():
@@ -1006,6 +1101,14 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.send_payload(proof[1],content_type=proof[0])
             return
+        if path.startswith("/video/"):
+            video_id = path.split("/",2)[2]
+            video = get_video(video_id)
+            if video is None:
+                self.send_error(404)
+                return
+            self.send_payload(video[1],content_type=video[0])
+            return
         if path.startswith("/public-contractor-progress/"):
             try:
                 assignment_id = int(path.split("/", 2)[2])
@@ -1086,7 +1189,8 @@ class MapHandler(BaseHTTPRequestHandler):
             if not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(UNIVERSITY_PAGE.replace("__ISSUES__", render_university_issues()))
+            template = UNIVERSITY_ADMIN_PAGE_FILE.read_text(encoding="utf-8")
+            self.send_html(template.replace("__ISSUES__", render_university_issues()))
             return
         if path == "/citizen-dashboard" or path == "/my-issues":
             user = self.session_user()
@@ -1159,8 +1263,10 @@ class MapHandler(BaseHTTPRequestHandler):
             self.redirect("/login")
             return
         issues_json = json.dumps(ISSUES).replace("</", "<\\/")
-        page = MAP_PAGE_FILE.read_text(encoding="utf-8")
-        payload = page.replace("__ISSUES__", issues_json).replace("__USER__", html.escape(user)).encode("utf-8")
+        template = MAIN_MAP_PAGE_FILE.read_text(encoding="utf-8")
+        district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
+        domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
+        payload = template.replace("__ISSUES__", issues_json).replace("__USER__", html.escape(user)).replace("__DISTRICT_OPTIONS__", district_options).replace("__DOMAIN_OPTIONS__", domain_options).encode("utf-8")
         self.send_payload(payload)
     def do_POST(self) -> None:
         global NEXT_PROPOSAL_ID
@@ -1916,11 +2022,15 @@ class MapHandler(BaseHTTPRequestHandler):
                     return
                 supported, supporters = upvote_issue(issue_id, self.session_user() or "")
                 if not supported:
-                    self.send_json({"message": "You already supported this voice.", "supporters": supporters}, status=409)
+                    self.send_error(404)
                     return
                 self.send_json({"supporters": supporters})
                 return
             length = int(self.headers.get("Content-Length","0"))
+            proof_bytes = b""
+            video_bytes = b""
+            proof_id = ""
+            video_id = ""
             try:
                 issue = json.loads(self.rfile.read(length).decode("utf-8"))
                 issue["lat"] = float(issue["lat"])
@@ -1930,12 +2040,19 @@ class MapHandler(BaseHTTPRequestHandler):
                 issue["reporter"] = self.session_user() or ""
                 encoded_proof = issue.pop("proof_image","")
                 proof_type = issue.pop("proof_type","image/jpeg")
+                encoded_video = issue.pop("proof_video","")
+                video_type = issue.pop("proof_video_type","video/mp4")
                 allowed_proof_types = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+                allowed_video_types = {"video/mp4", "video/webm"}
                 if proof_type not in allowed_proof_types:
                     self.send_error(415,"Unsupported proof file type")
                     return
+                if encoded_video and video_type not in allowed_video_types:
+                    self.send_error(415,"Unsupported video file type")
+                    return
                 proof_bytes = base64.b64decode(encoded_proof,validate=True) if encoded_proof else b""
-                if len(proof_bytes) > 25 * 1024 * 1024:
+                video_bytes = base64.b64decode(encoded_video,validate=True) if encoded_video else b""
+                if len(proof_bytes) > 25 * 1024 * 1024 or len(video_bytes) > 25 * 1024 * 1024:
                     self.send_error(413,"Proof file is larger than 25 MB")
                     return
                 if proof_bytes:
@@ -1947,20 +2064,25 @@ class MapHandler(BaseHTTPRequestHandler):
                             return
                         issue.update({"proof_status":proof["status"],"proof_message":proof["message"]})
                     else:
-                        issue.update({"proof_status":"unverified","proof_message":"Supporting file uploaded; location verification is available for images."})
+                        issue.update({"proof_status":"unverified","proof_message":"Supporting file uploaded; location verification is available for geotagged photos."})
                     proof_id = secrets.token_urlsafe(12)
                     issue["proof_id"] = proof_id
                     issue["_proof_type"] = proof_type
                     issue["_proof_data"] = proof_bytes
-                else:
-                    proof_id = ""
-                issue = tag_issue(issue)
+                if video_bytes:
+                    video_id = secrets.token_urlsafe(12)
+                    issue["video_id"] = video_id
+                    issue["_video_type"] = video_type
+                    issue["_video_data"] = video_bytes
                 created = add_issue(issue)
             except (ValueError,KeyError,json.JSONDecodeError):
                 self.send_error(400)
                 return
-            if proof_bytes and created.get("issue") and created["result"] != "possible_duplicate":
-                created["issue"]["proof_id"] = proof_id
+            if created.get("issue") and created["result"] != "possible_duplicate":
+                if proof_bytes:
+                    created["issue"]["proof_id"] = proof_id
+                if video_bytes:
+                    created["issue"]["video_id"] = video_id
             if created.get("result") == "new" and created.get("issue"):
                 assignment = auto_assign_issue_to_best_university(created["issue"])
                 if assignment:
@@ -2023,9 +2145,22 @@ class MapHandler(BaseHTTPRequestHandler):
             if proposal is None:
                 self.send_json({"message":"Proposal not found."},status=404)
                 return
-            proposal["votes"] += 1
-            update_proposal(proposal)
-            self.send_json({"votes":proposal["votes"],"result":"voted"})
+            result, votes, previous_proposal_id = cast_proposal_vote(proposal_id, self.session_user() or "")
+            if result == "missing":
+                self.send_json({"message": "Proposal not found."}, status=404)
+                return
+            if result == "ineligible":
+                self.send_json({"message": "Support the related issue before voting."}, status=403)
+                return
+            if result == "already_voted":
+                self.send_json({"votes": votes, "result": result}, status=409)
+                return
+            proposal["votes"] = votes
+            if previous_proposal_id is not None:
+                previous = next((item for item in PROPOSALS if item["id"] == previous_proposal_id), None)
+                if previous is not None:
+                    previous["votes"] = max(0, previous["votes"] - 1)
+            self.send_json({"votes": votes, "result": result})
             return
         if path.startswith("/api/proposals/") and path.endswith("/review"):
             user = self.session_user()
@@ -2136,4 +2271,3 @@ if __name__ == "__main__":
         print("\nMap stopped.")
     finally:
         server.server_close()
-

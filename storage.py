@@ -88,6 +88,14 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
         proof_status VARCHAR(30),
         proof_message TEXT,
 
+        -- Video evidence / processing
+        video_id VARCHAR(100),
+        video_type VARCHAR(40),
+        video_data LONGBLOB,
+        video_predicted_category VARCHAR(100),
+        video_confidence DECIMAL(4, 2),
+        video_explanation TEXT,
+
         -- Moderation
         moderation_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
         moderation_reason TEXT,
@@ -122,6 +130,12 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             "ALTER TABLE issues ADD COLUMN category_mismatch BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE issues ADD COLUMN ai_tags JSON",
             "ALTER TABLE issues ADD COLUMN tagging_model VARCHAR(150)",
+            "ALTER TABLE issues ADD COLUMN video_id VARCHAR(100)",
+            "ALTER TABLE issues ADD COLUMN video_type VARCHAR(40)",
+            "ALTER TABLE issues ADD COLUMN video_data LONGBLOB",
+            "ALTER TABLE issues ADD COLUMN video_predicted_category VARCHAR(100)",
+            "ALTER TABLE issues ADD COLUMN video_confidence DECIMAL(4, 2)",
+            "ALTER TABLE issues ADD COLUMN video_explanation TEXT",
         ):
             try:
                 cursor.execute(statement)
@@ -176,6 +190,18 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 reviewer VARCHAR(255),
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS proposal_votes (
+                issue_id INT NOT NULL,
+                user_email VARCHAR(255) NOT NULL,
+                proposal_id INT NOT NULL,
+                PRIMARY KEY (issue_id, user_email),
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+                FOREIGN KEY (proposal_id) REFERENCES proposals(id) ON DELETE CASCADE
             )
             """
         )
@@ -516,13 +542,15 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
 
 
 def _issue(row: tuple[Any, ...]) -> dict[str, Any]:
-    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter")
+    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_type", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter", "video_id", "video_predicted_category", "video_confidence", "video_explanation")
     issue = {key: value for key, value in zip(keys, row) if value is not None}
     for coordinate in ("lat", "lng"):
         if isinstance(issue.get(coordinate), Decimal):
             issue[coordinate] = float(issue[coordinate])
     if isinstance(issue.get("category_confidence"), Decimal):
         issue["category_confidence"] = float(issue["category_confidence"])
+    if isinstance(issue.get("video_confidence"), Decimal):
+        issue["video_confidence"] = float(issue["video_confidence"])
     return issue
 
 
@@ -530,7 +558,7 @@ def load_issues() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter FROM issues ORDER BY id")
+        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter, video_id, video_predicted_category, video_confidence, video_explanation FROM issues ORDER BY id")
         return [_issue(row) for row in cursor.fetchall()]
     finally:
         cursor.close()
@@ -549,38 +577,41 @@ def load_user_issues(reporter: str) -> list[dict[str, Any]]:
 
 def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
     connection = connect()
+
     try:
         cursor = connection.cursor()
+
         cursor.execute(
             """
             INSERT INTO issues
-            (title, category, ai_category, ai_confidence, category_mismatch, ai_tags, tagging_model, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_data, proof_status, proof_message, predicted_category, priority_score, priority_label, matching_explanation, moderation_status, reporter)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, 'just now', %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending', %s)
+            (title, category, ai_category, ai_confidence, category_mismatch, ai_tags, tagging_model,
+             area, district, block, latitude, longitude, description, supporters, age,
+             proof_id, proof_type, proof_data, proof_status, proof_message,
+             predicted_category, category_confidence, priority_score, priority_label, matching_explanation,
+             moderation_status, reporter,
+             video_id, video_type, video_data, video_predicted_category, video_confidence, video_explanation)
+            VALUES (%s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, 1, 'just now',
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    'Pending', %s,
+                    %s, %s, %s, %s, %s, %s)
             """,
             (
-                issue["title"],
-                issue["category"],
-                issue.get("problem_type"),
-                issue.get("tag_confidence"),
-                issue.get("category_mismatch", False),
-                issue.get("problem_tags"),
+                issue["title"], issue["category"],
+                issue.get("problem_type"), issue.get("tag_confidence"),
+                issue.get("category_mismatch", False), issue.get("problem_tags"),
                 issue.get("tag_version"),
-                issue.get("area", ""),
-                issue.get("district", "Ranchi"),
-                issue.get("block", ""),
-                issue["lat"],
-                issue["lng"],
-                issue.get("description", ""),
-                issue.get("proof_id"),
-                issue.get("_proof_type"),
-                issue.get("_proof_data"),
-                issue.get("proof_status"),
-                issue.get("proof_message"),
-                issue.get("predicted_category"),
-                issue.get("priority_score"),
-                issue.get("priority_label"),
-                issue.get("matching_explanation"),
-                issue.get("reporter"),
+                issue.get("area", ""), issue.get("district", "Ranchi"), issue.get("block", ""),
+                issue["lat"], issue["lng"], issue.get("description", ""),
+                issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"),
+                issue.get("proof_status"), issue.get("proof_message"),
+                issue.get("predicted_category"), issue.get("category_confidence") or issue.get("tag_confidence"),
+                issue.get("priority_score"), issue.get("priority_label"),
+                issue.get("matching_explanation"), issue.get("reporter"),
+                issue.get("video_id"), issue.get("_video_type"), issue.get("_video_data"),
+                issue.get("video_predicted_category"), issue.get("video_confidence"),
+                issue.get("video_explanation"),
             ),
         )
 
@@ -592,18 +623,23 @@ def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
                 "INSERT INTO issue_supporters (issue_id, user_email) VALUES (%s, %s)",
                 (issue_id, reporter),
             )
-
         connection.commit()
 
         saved = dict(issue)
+
+        # Don't return raw proof/video data to the application
         saved.pop("_proof_type", None)
         saved.pop("_proof_data", None)
+        saved.pop("_video_type", None)
+        saved.pop("_video_data", None)
+
         saved.update({
-            "id": issue_id,
+            "id": issue_id or cursor.lastrowid,
             "supporters": 1,
             "age": "just now",
         })
         return saved
+
     finally:
         cursor.close()
         connection.close()
@@ -614,8 +650,8 @@ def update_issue(issue: dict[str, Any]) -> None:
     try:
         cursor = connection.cursor()
         cursor.execute(
-            "UPDATE issues SET supporters = %s, proof_id = %s, proof_type = %s, proof_data = %s, proof_status = %s, proof_message = %s WHERE id = %s",
-            (issue.get("supporters", 0), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue["id"]),
+            "UPDATE issues SET supporters = %s, proof_id = %s, proof_type = %s, proof_data = %s, proof_status = %s, proof_message = %s, video_id = %s, video_type = %s, video_data = %s, video_predicted_category = %s, video_confidence = %s, video_explanation = %s WHERE id = %s",
+            (issue.get("supporters", 0), issue.get("proof_id"), issue.get("_proof_type"), issue.get("_proof_data"), issue.get("proof_status"), issue.get("proof_message"), issue.get("video_id"), issue.get("_video_type"), issue.get("_video_data"), issue.get("video_predicted_category"), issue.get("video_confidence"), issue.get("video_explanation"), issue["id"]),
         )
         connection.commit()
     finally:
@@ -651,6 +687,20 @@ def get_proof(proof_id: str) -> tuple[str, bytes] | None:
         cursor.close()
         connection.close()
 
+
+
+def get_video(video_id: str) -> tuple[str, bytes] | None:
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT video_type, video_data FROM issues WHERE video_id = %s", (video_id,))
+        row = cursor.fetchone()
+        if not row or row[1] is None:
+            return None
+        return row[0] or "video/mp4", bytes(row[1])
+    finally:
+        cursor.close()
+        connection.close()
 
 def load_proposals() -> list[dict[str, Any]]:
     connection = connect()
@@ -707,6 +757,43 @@ def update_proposal(proposal: dict[str, Any]) -> None:
             (proposal.get("votes", 0), proposal.get("status", "Submitted"), review.get("decision"), review.get("explanation"), review.get("reviewer"), proposal["id"]),
         )
         connection.commit()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def cast_proposal_vote(proposal_id: int, user_email: str) -> tuple[str, int, int | None]:
+    """Record one active solution choice per supporter and issue."""
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT issue_id FROM proposals WHERE id = %s", (proposal_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return "missing", 0, None
+        issue_id = int(row[0])
+        cursor.execute("SELECT 1 FROM issue_supporters WHERE issue_id = %s AND user_email = %s", (issue_id, user_email))
+        if cursor.fetchone() is None:
+            return "ineligible", 0, None
+        cursor.execute("SELECT proposal_id FROM proposal_votes WHERE issue_id = %s AND user_email = %s FOR UPDATE", (issue_id, user_email))
+        previous = cursor.fetchone()
+        previous_proposal_id = int(previous[0]) if previous else None
+        if previous_proposal_id == proposal_id:
+            cursor.execute("SELECT votes FROM proposals WHERE id = %s", (proposal_id,))
+            count = cursor.fetchone()
+            return "already_voted", int(count[0]) if count else 0, previous_proposal_id
+        if previous_proposal_id is None:
+            cursor.execute("INSERT INTO proposal_votes (issue_id, user_email, proposal_id) VALUES (%s, %s, %s)", (issue_id, user_email, proposal_id))
+            result = "voted"
+        else:
+            cursor.execute("UPDATE proposals SET votes = GREATEST(votes - 1, 0) WHERE id = %s", (previous_proposal_id,))
+            cursor.execute("UPDATE proposal_votes SET proposal_id = %s WHERE issue_id = %s AND user_email = %s", (proposal_id, issue_id, user_email))
+            result = "changed"
+        cursor.execute("UPDATE proposals SET votes = votes + 1 WHERE id = %s", (proposal_id,))
+        cursor.execute("SELECT votes FROM proposals WHERE id = %s", (proposal_id,))
+        count = cursor.fetchone()
+        connection.commit()
+        return result, int(count[0]) if count else 0, previous_proposal_id
     finally:
         cursor.close()
         connection.close()
