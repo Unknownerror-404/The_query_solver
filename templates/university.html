@@ -463,6 +463,97 @@ button:active, .btn:active { transform: translateY(0); }
   main { padding: 20px 16px 60px; }
   .hero-card { padding: 24px 20px; }
 }
+
+/* Dashboard polish for server-rendered challenge content. */
+article {
+  padding: 30px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+article::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--primary), var(--gold), var(--accent));
+}
+article > h2 {
+  margin-bottom: 10px;
+  font-size: clamp(22px, 3vw, 30px);
+}
+article > p {
+  color: var(--ink-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+article > p:nth-of-type(2) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 8px 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-light);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 12px;
+}
+article > p:nth-of-type(2) strong { color: var(--ink-secondary); }
+article > h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 26px 0 12px;
+  color: var(--ink);
+  font: 600 17px 'Outfit', sans-serif;
+}
+article > h3::before {
+  content: "";
+  width: 7px;
+  height: 22px;
+  flex: 0 0 7px;
+  border-radius: 99px;
+  background: var(--accent);
+}
+article > form,
+article form.team,
+article form.report-form {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(245, 242, 234, .58) !important;
+}
+article form + h3 { margin-top: 30px; }
+article form input,
+article form select,
+article form textarea { background: var(--surface); }
+article form button { margin-top: 4px; }
+article form p { color: var(--ink-secondary); font-size: 13px; }
+article form h4 {
+  margin-bottom: 12px;
+  color: var(--ink);
+  font: 600 15px 'Outfit', sans-serif;
+}
+article > div[style*="background:#eef6f8"] {
+  border: 1px solid #c9e0e4;
+  background: var(--primary-light) !important;
+}
+article > div[style*="background:#eef6f8"] strong { color: var(--primary-dark); }
+article .muted { color: var(--muted); }
+.status-pill { vertical-align: middle; }
+
+@media (max-width: 760px) {
+  article { padding: 22px 18px; }
+  article > p:nth-of-type(2) { display: flex; }
+  article > form,
+  article form.team,
+  article form.report-form { padding: 15px; }
+  article form input[style*="width:60%"],
+  article form input[style*="width:98%"] { width: 100% !important; }
+}
 </style>
 <link rel="stylesheet" href="/templates/shared.css">
 </head>

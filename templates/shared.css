@@ -184,3 +184,105 @@ body:has(.login-card), body:has(.register) { background: linear-gradient(135deg,
   .nav-button { flex: 1 1 auto; text-align: center; }
   .section-card { padding: 20px; }
 }
+
+/* Government admin workspace */
+body:has(.admin-portal-bar), body:has(.admin-intro), body:has(.industry-admin-shell), body:has(.government-page) {
+  background: #f3f6f5;
+}
+body:has(.admin-portal-bar) main, body:has(.admin-intro) main, body:has(.industry-admin-shell) main, body:has(.government-page) main {
+  max-width: 1240px;
+  padding-top: 36px;
+}
+.admin-portal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: -8px 0 28px;
+  padding: 14px 16px;
+  border: 1px solid #d7e2df;
+  border-radius: 14px;
+  background: #173b3b;
+  color: white;
+  box-shadow: 0 10px 24px rgba(23, 59, 59, .12);
+}
+.admin-portal-title { display: flex; align-items: center; gap: 10px; font: 700 15px 'Outfit', sans-serif; }
+.admin-portal-title::before {
+  content: 'G';
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: #e65f38;
+  color: white;
+  font: 700 14px 'Outfit', sans-serif;
+}
+.admin-portal-links { display: flex; gap: 7px; flex-wrap: wrap; }
+.admin-portal-links a {
+  padding: 7px 11px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 7px;
+  color: #dcebea;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.admin-portal-links a:hover, .admin-portal-links a.active { background: #e65f38; border-color: #e65f38; color: white; }
+.admin-intro { padding-bottom: 4px; }
+.admin-intro h1 { color: #173b3b; font: 700 clamp(30px, 4vw, 46px)/1.1 'Outfit', sans-serif !important; letter-spacing: -.4px !important; }
+.admin-intro > p:last-child { color: #5b716d; font-size: 14px; }
+.moderation-list, .admin-content { gap: 18px; }
+.moderation-card, .admin-content article, .partner-card, .commitment-card {
+  border: 1px solid #dce6e3 !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: 0 7px 20px rgba(23, 59, 59, .07) !important;
+}
+.moderation-card { padding: 24px !important; }
+.moderation-card h2, .moderation-card h3 { color: #173b3b; font: 700 21px 'Outfit', sans-serif !important; }
+.moderation-card p, .partner-meta, .commitment-card p { color: #607570 !important; font-family: 'Inter', sans-serif !important; }
+.moderation-card textarea, .moderation-card input, .industry-admin-shell input, .industry-admin-shell select {
+  border: 1px solid #d4e1de !important;
+  border-radius: 8px !important;
+  background: #f9fcfb !important;
+}
+.moderation-card button, .industry-admin-shell button { border-radius: 8px; font-weight: 700; }
+.moderation-card button[value='Approved'] { background: #277b58 !important; }
+.moderation-card button[value='Rejected'] { background: #c44e3b !important; }
+.industry-admin-shell { display: grid; gap: 22px; }
+.industry-admin-shell .admin-intro { margin-bottom: 0; }
+.admin-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.admin-stats > div { padding: 18px 20px; border: 1px solid #dce6e3; border-radius: 12px; background: white; box-shadow: 0 5px 16px rgba(23,59,59,.05); }
+.admin-stats strong { display: block; color: #173b3b; font: 700 30px 'Outfit', sans-serif; }
+.admin-stats span { color: #71837f; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+.admin-section { padding: 24px; border: 1px solid #dce6e3; border-radius: 14px; background: white; box-shadow: 0 7px 20px rgba(23,59,59,.06); }
+.government-page .banner { margin-bottom: 22px; border-color: #dce6e3; border-radius: 14px; box-shadow: 0 7px 20px rgba(23,59,59,.06); }
+.government-page .section-card, .government-page section { border-color: #dce6e3; border-radius: 14px; box-shadow: 0 7px 20px rgba(23,59,59,.06); }
+.government-page .banner h1 { color: #173b3b; font: 700 clamp(30px, 4vw, 46px)/1.1 'Outfit', sans-serif; letter-spacing: -.4px; }
+.government-page .banner p { color: #607570; }
+.government-page section h2 { color: #173b3b; font: 700 24px 'Outfit', sans-serif; }
+.admin-section h2 { margin: 0; color: #173b3b; font: 700 24px 'Outfit', sans-serif; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.queue-label, .approval-badge { padding: 6px 10px; border-radius: 999px; background: #fff2d6; color: #8a6414; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.partner-card, .commitment-card { padding: 18px !important; box-shadow: none !important; }
+.partner-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.partner-card h3 { margin: 0 0 4px; color: #173b3b; font: 700 18px 'Outfit', sans-serif; }
+.partner-card form, .commitment-card form { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.partner-card label { flex: 1 1 140px; }
+.partner-card select, .commitment-card select { min-width: 135px; padding: 9px 12px; }
+.partner-card button, .commitment-card button { background: #1d6a7f; }
+.commitment-list { display: grid; gap: 10px; margin-top: 16px; }
+.admin-form { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.admin-form button { background: #e65f38; }
+@media (max-width: 760px) {
+  .admin-portal-bar { align-items: flex-start; flex-direction: column; }
+  .admin-portal-links { width: 100%; }
+  .admin-portal-links a { flex: 1 1 auto; text-align: center; }
+  .admin-stats { grid-template-columns: 1fr; }
+  .admin-section { padding: 18px; }
+  .section-heading { align-items: flex-start; flex-direction: column; }
+  .admin-form { grid-template-columns: 1fr; }
+}

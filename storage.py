@@ -66,6 +66,7 @@ _MEM_SESSIONS: dict[str, str] = {}
 _MEM_MESSAGES: list[dict[str, Any]] = []
 _MEM_NOTIFICATIONS: list[dict[str, Any]] = []
 _MEM_STATUS_HISTORY: list[dict[str, Any]] = []
+_MEM_UNIVERSITY_REPORTS: list[dict[str, Any]] = []
 _MEM_PROPOSALS: list[dict[str, Any]] = []
 _MEM_RATE_LIMITS: dict[str, Any] = {}
 
@@ -1411,6 +1412,19 @@ def check_rate_limit(client_key: str, max_requests: int = 30, window_seconds: in
 
 
 def create_university_report(issue_id: int, university_id: int, submitted_by: str, title: str, summary: str, deliverables: str = "") -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        report = {
+            "id": len(_MEM_UNIVERSITY_REPORTS) + 1,
+            "issue_id": issue_id,
+            "university_id": university_id,
+            "submitted_by": submitted_by,
+            "title": title,
+            "summary": summary,
+            "deliverables": deliverables,
+            "created_at": "just now",
+        }
+        _MEM_UNIVERSITY_REPORTS.append(report)
+        return report
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1438,6 +1452,24 @@ def create_university_report(issue_id: int, university_id: int, submitted_by: st
 
 
 def load_university_reports(issue_id: int | None = None) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        from community import ISSUES
+        reports = []
+        universities = {university["id"]: university for university in _MEM_UNIVERSITIES}
+        issues = {issue["id"]: issue for issue in ISSUES}
+        for report in _MEM_UNIVERSITY_REPORTS:
+            if issue_id is not None and report.get("issue_id") != issue_id:
+                continue
+            issue = issues.get(report.get("issue_id"), {})
+            university = universities.get(report.get("university_id"), {})
+            reports.append({
+                **report,
+                "issue_title": issue.get("title", "Civic challenge"),
+                "issue_district": issue.get("district", "Ranchi"),
+                "issue_category": issue.get("category", "General"),
+                "university_name": university.get("name", "University"),
+            })
+        return reports
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
