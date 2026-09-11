@@ -646,6 +646,7 @@ button[type="submit"]:active {
       __ERROR__
 
       <form method="post" action="/login">
+        <input type="hidden" name="next" value="__NEXT__">
         <label>Email<input name="email" type="email" autocomplete="username" placeholder="you@example.com" required></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
         <button type="submit">Sign in to Civic Map</button>
@@ -653,7 +654,9 @@ button[type="submit"]:active {
 
       <div class="create" style="margin-top: 18px;">New here? <a href="/register">Create an account →</a></div>
       <div class="create" style="margin-top: 12px;">Are you a University or Institution? <a href="/university/login" style="color:var(--blue);font-weight:bold;">University Portal Login →</a></div>
-      <div class="create" style="margin-top: 12px;">Are you an Industry or CSR Partner? <a href="/industry/login" style="color:var(--accent);font-weight:bold;">Industry Portal Login →</a></div>
+      <div class="create" style="margin-top: 12px;">Are you an Industry or CSR Partner? <a href="/industry/login" style="color:var(--accent);font-weight:bold;">Industry Portal Login →</a></div> 
+      <div class="create" style="margin-top: 12px;">Are you a Contractor? <a href="/contractor/login" style="color:var(--blue);font-weight:bold;">Contractor Portal Login →</a></div>
+      <div class="create" style="margin-top: 12px;">Government contractor administration? <a href="/login?next=/contractor-admin" style="color:var(--accent);font-weight:bold;">Admin Login →</a></div>
 
       <div class="safe">
         <div class="safe-icon">✓</div>
@@ -684,6 +687,7 @@ button[type="submit"]:active {
 <div class="issue-pin light">
   <div class="issue-marker"><span>L</span></div>
   <div class="issue-label">Streetlight outage</div>
+</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contractor Registration · Civic Map</title>
+<meta name="description" content="Register your construction company as a verified government contractor on the Jharkhand Civic Map platform.">
+<link rel="stylesheet" href="/templates/shared.css">
+<style>
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  background: linear-gradient(135deg, #f7f3ea 0%, #eee9dc 50%, #e8f4f1 100%);
+  font-family: Georgia, serif;
+}
+.register {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 680px;
+  padding: 40px 44px 44px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 253, 248, .94);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 24px 64px rgba(23, 43, 40, .16);
+}
+.register::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #e65f38, #c48622, #317c91);
+}
+.register-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.register-brand-mark {
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  border-radius: 12px;
+  background: var(--ink);
+  color: white;
+  font: 700 18px Arial, sans-serif;
+  box-shadow: 0 6px 18px rgba(23,43,40,.2);
+}
+.register-brand-text .name { font: 700 16px Arial, sans-serif; }
+.register-brand-text .sub {
+  margin-top: 2px;
+  color: var(--accent);
+  font: 700 9px Arial, sans-serif;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 500;
+  letter-spacing: -1px;
+  color: var(--ink);
+}
+.sub-heading {
+  margin: 0 0 28px;
+  color: var(--muted);
+  font: 14px/1.55 Arial, sans-serif;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field.full { grid-column: 1 / -1; }
+label {
+  font: 700 10px Arial, sans-serif;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+input, select, textarea {
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,.9);
+  color: var(--ink);
+  font: 13px/1.4 Arial, sans-serif;
+  transition: border-color .2s, box-shadow .2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(230,95,56,.12);
+  outline: none;
+}
+textarea { resize: vertical; min-height: 72px; }
+.checkbox-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.checkbox-group input[type="checkbox"] {
+  width: 16px; height: 16px;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.submit-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ink);
+  color: white;
+  font: 700 14px Arial, sans-serif;
+  letter-spacing: .4px;
+  cursor: pointer;
+  transition: background .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 6px 18px rgba(23,43,40,.18);
+}
+.submit-btn:hover { background: var(--ink-soft); transform: translateY(-2px); box-shadow: 0 10px 26px rgba(23,43,40,.22); }
+.login-link {
+  display: block;
+  margin-top: 18px;
+  text-align: center;
+  font: 13px Arial, sans-serif;
+  color: var(--muted);
+}
+.login-link a { color: var(--accent); text-decoration: none; font-weight: 700; }
+.login-link a:hover { text-decoration: underline; }
+.message { margin-bottom: 18px; padding: 12px 16px; border-radius: 10px; font: 14px/1.5 Arial, sans-serif; }
+.message.error { background: #fce8e6; color: var(--danger); border: 1px solid #f5c6c4; }
+.message.success { background: #e6f4ea; color: var(--success); border: 1px solid #b7dfc5; }
+.spec-label {
+  font: 700 10px Arial, sans-serif;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  display: block;
+}
+@media(max-width:600px) {
+  .register { padding: 32px 22px 36px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .checkbox-group { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="register">
+  <div class="register-brand">
+    <div class="register-brand-mark">C</div>
+    <div class="register-brand-text">
+      <div class="name">Civic Map</div>
+      <div class="sub">Contractor Registration</div>
+    </div>
+  </div>
+  <h1>Register as a Contractor</h1>
+  <p class="sub-heading">Join the Jharkhand government contractor network. Your registration will be reviewed and approved by a government administrator.</p>
+  __MESSAGE__
+  <form method="POST" action="/contractor/register">
+    <div class="form-grid">
+      <div class="field">
+        <label for="company_name">Company Name</label>
+        <input id="company_name" name="company_name" type="text" required placeholder="e.g. Jharkhand Road Builders Ltd." maxlength="255">
+      </div>
+      <div class="field">
+        <label for="owner_name">Owner / Director Name</label>
+        <input id="owner_name" name="owner_name" type="text" required placeholder="Full name" maxlength="255">
+      </div>
+      <div class="field">
+        <label for="license_no">Contractor License Number</label>
+        <input id="license_no" name="license_no" type="text" required placeholder="e.g. JH-CON-2024-00123" maxlength="100">
+      </div>
+      <div class="field">
+        <label for="district">District of Operation</label>
+        <select id="district" name="district" required>
+          <option value="" disabled selected>Select district…</option>
+          __DISTRICTS__
+        </select>
+      </div>
+      <div class="field">
+        <label for="email">Contact Email</label>
+        <input id="email" name="email" type="email" required placeholder="company@example.com" maxlength="255">
+      </div>
+      <div class="field">
+        <label for="phone">Phone Number</label>
+        <input id="phone" name="phone" type="tel" required placeholder="+91 00000 00000" maxlength="20">
+      </div>
+      <div class="field full">
+        <span class="spec-label">Specializations (select all that apply)</span>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="spec_road" value="Road Construction"> Road Construction</label>
+          <label><input type="checkbox" name="spec_bridge" value="Bridge & Overpass"> Bridge &amp; Overpass</label>
+          <label><input type="checkbox" name="spec_building" value="Building Construction"> Building Construction</label>
+          <label><input type="checkbox" name="spec_water" value="Water Supply"> Water Supply</label>
+          <label><input type="checkbox" name="spec_sanitation" value="Sanitation & Drainage"> Sanitation &amp; Drainage</label>
+          <label><input type="checkbox" name="spec_electrical" value="Electrical Infrastructure"> Electrical Infrastructure</label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required minlength="8" placeholder="Min. 8 characters">
+      </div>
+      <div class="field">
+        <label for="confirm_password">Confirm Password</label>
+        <input id="confirm_password" name="confirm_password" type="password" required minlength="8" placeholder="Repeat password">
+      </div>
+    </div>
+    <button id="register-submit" class="submit-btn" type="submit">Submit Registration for Approval</button>
+  </form>
+  <span class="login-link">Already registered? <a href="/contractor/login">Sign in</a> &nbsp;·&nbsp; <a href="/login">Citizen login</a></span>
+</div>
+<script>
+// Collect checked specializations into hidden input before submit
+document.querySelector('form').addEventListener('submit', function(e) {
+  const boxes = this.querySelectorAll('input[type="checkbox"]:checked');
+  const specs = Array.from(boxes).map(b => b.value).join(', ');
+  if (!specs) { e.preventDefault(); alert('Please select at least one specialization.'); return; }
+  let hidden = this.querySelector('input[name="specializations"]');
+  if (!hidden) { hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = 'specializations'; this.appendChild(hidden); }
+  hidden.value = specs;
+});
+</script>
+</body>
+</html>

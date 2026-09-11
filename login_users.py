@@ -24,6 +24,8 @@ DEMO_EMAIL = "citizen@example.com"
 DEMO_PASSWORD = "map123"
 PROFESSIONAL_DEMO_EMAIL = "engineer@example.gov"
 PROFESSIONAL_DEMO_PASSWORD = "gov12345"
+ADMIN_DEMO_EMAIL = "admin@jharkhand.gov.in"
+ADMIN_DEMO_PASSWORD = "admin12345"
 ADMIN_EMAILS = {"admin@jharkhand.gov.in"}
 VERIFIED_PROFESSIONALS = {
     PROFESSIONAL_DEMO_EMAIL: {
@@ -51,14 +53,20 @@ def _ensure_accounts_file() -> None:
             professional_hash, professional_salt = _hash_password(PROFESSIONAL_DEMO_PASSWORD)
             with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
                 csv.DictWriter(file, fieldnames=CSV_FIELDS).writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
+        if not any(account.get("email", "").lower() == ADMIN_DEMO_EMAIL for account in accounts):
+            admin_hash, admin_salt = _hash_password(ADMIN_DEMO_PASSWORD)
+            with ACCOUNTS_FILE.open("a", newline="", encoding="utf-8") as file:
+                csv.DictWriter(file, fieldnames=CSV_FIELDS).writerow({"email": ADMIN_DEMO_EMAIL, "password_hash": admin_hash, "salt": admin_salt})
         return
     password_hash, salt = _hash_password(DEMO_PASSWORD)
     professional_hash, professional_salt = _hash_password(PROFESSIONAL_DEMO_PASSWORD)
+    admin_hash, admin_salt = _hash_password(ADMIN_DEMO_PASSWORD)
     with ACCOUNTS_FILE.open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
         writer.writeheader()
         writer.writerow({"email": DEMO_EMAIL, "password_hash": password_hash, "salt": salt})
         writer.writerow({"email": PROFESSIONAL_DEMO_EMAIL, "password_hash": professional_hash, "salt": professional_salt})
+        writer.writerow({"email": ADMIN_DEMO_EMAIL, "password_hash": admin_hash, "salt": admin_salt})
 
 
 def _ensure_accounts() -> None:

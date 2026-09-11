@@ -8,9 +8,9 @@ import threading
 from pathlib import Path
 
 try:
-    from .storage import add_issue_support, initialise, insert_issue, load_issues, load_university_reports, update_issue
+    from .storage import add_issue_support, initialise, insert_issue, load_issues, load_university_reports, update_issue, load_all_contractor_assignments, create_contractor_complaint
 except ImportError:
-    from storage import add_issue_support, initialise, insert_issue, load_issues, load_university_reports, update_issue
+    from storage import add_issue_support, initialise, insert_issue, load_issues, load_university_reports, update_issue, load_all_contractor_assignments, create_contractor_complaint
 
 DEFAULT_ISSUES = [
     {"id": 1, "title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
@@ -56,6 +56,37 @@ def nearby_issues(latitude: float | None = None, longitude: float | None = None,
     return [issue for issue in issues if distance_km(latitude, longitude, issue["lat"], issue["lng"]) <= radius_km]
 
 
+def check_and_penalize_recurring_issues(new_issue: dict) -> None:
+    """Check if a new issue is near a past completed project and penalize the contractor."""
+    new_lat = new_issue.get("lat")
+    new_lng = new_issue.get("lng")
+    if new_lat is None or new_lng is None or new_lat == 0.0 or new_lng == 0.0:
+        return
+        
+    category = str(new_issue.get("category", "")).strip().casefold()
+    if not category:
+        return
+        
+    assignments = load_all_contractor_assignments()
+    for a in assignments:
+        if a.get("status") == "Completed" and str(a.get("category", "")).strip().casefold() == category:
+            # Find the original issue coordinates
+            orig_issue = next((i for i in ISSUES if i["id"] == a["issue_id"]), None)
+            if orig_issue and orig_issue.get("lat") and orig_issue.get("lng"):
+                dist = distance_km(new_lat, new_lng, orig_issue["lat"], orig_issue["lng"])
+                if dist <= 0.5:  # within 500 meters
+                    # File an auto-detected complaint against this contractor
+                    create_contractor_complaint(
+                        contractor_id=a["contractor_id"],
+                        issue_id=a["issue_id"],
+                        filed_by="System (Auto-Detect)",
+                        complaint_type="Auto-Detected: Recurring Issue",
+                        description=f"A new recurring issue '{new_issue.get('title')}' was reported within 500m of this completed project."
+                    )
+                    # For a given new issue, we can just penalize the closest match or all matches. 
+                    # We'll just penalize the first match found to avoid spamming multiple contractors for overlapping projects.
+                    return
+
 def add_issue(issue: dict) -> dict:
     try:
         from .AI_model import classify_issue, find_duplicate
@@ -84,7 +115,11 @@ def add_issue(issue: dict) -> dict:
         issue.pop("_proof_type", None)
         issue.pop("_proof_data", None)
         ISSUES.append(issue)
-        return {"result": "new", "issue": issue}
+        
+    # Run auto-penalize check outside the lock
+    check_and_penalize_recurring_issues(issue)
+    
+    return {"result": "new", "issue": issue}
 
 
 def upvote_issue(issue_id: int, user: str) -> tuple[bool, int]:
@@ -256,15 +291,29 @@ def proof_markup(issue: dict) -> str:
     return f'<p><a href="/proof/{html.escape(proof_id)}">View photo proof</a> · {status}</p>'
 
 
+def contractor_progress_markup(issue_id: int, assignments: list[dict]) -> str:
+    project = next((item for item in assignments if item.get("issue_id") == issue_id), None)
+    if not project:
+        return ""
+    status = html.escape(str(project.get("status") or "Assigned"))
+    contractor = html.escape(str(project.get("company_name") or "Assigned contractor"))
+    note = project.get("completion_note")
+    details = f"<p><strong>Contractor update:</strong> {html.escape(str(note))}</p>" if note else ""
+    image = f'<p><a href="/public-contractor-progress/{project["id"]}" target="_blank" rel="noopener">View contractor progress photo</a></p>' if project.get("progress_image_type") else ""
+    return f'<details class="contractor-progress"><summary>Contractor project · {contractor} · {status}</summary>{details}{image}</details>'
+
+
 def render_page(user: str, latitude: float | None = None, longitude: float | None = None) -> str:
     issues = nearby_issues(latitude, longitude)
     reports = load_university_reports()
+    contractor_assignments = load_all_contractor_assignments()
     location_label = "Showing all civic voices" if latitude is None or longitude is None else "Showing voices within 2 km of your location"
     cards = "".join(
         f'<article class="issue"><div class="meta">{html.escape(issue["category"])} · {html.escape(issue["area"])}</div>'
         f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
         f'{public_report_markup(issue["id"], reports)}'
         f'{proof_markup(issue)}'
+        f'{contractor_progress_markup(issue["id"], contractor_assignments)}'
         f'<div class="issue-footer"><span>{issue["supporters"]} supporters · {html.escape(issue["age"])}</span>'
         f'<button class="upvote" data-id="{issue["id"]}">▲ Support this voice</button></div></article>'
         for issue in issues

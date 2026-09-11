@@ -61,6 +61,13 @@ Password: gov12345
 
 Administrator access is allowlisted for `admin@jharkhand.gov.in`. Register that email with a password of at least 8 characters before using `/admin`.
 
+The local demo administrator account is created automatically:
+
+```text
+Email: admin@jharkhand.gov.in
+Password: admin12345
+```
+
 University and industry profiles use their MySQL contact email as the account identity. Register one of these emails before logging in:
 
 ```text
