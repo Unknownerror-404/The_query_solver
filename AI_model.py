@@ -258,6 +258,9 @@ class IssueDeduplicator:
             return
 
         self._model_loaded = True
+        if os.getenv("CIVIC_MAP_LOAD_TRANSFORMERS", "0") != "1":
+            self._model = None
+            return
 
         try:
 
@@ -273,8 +276,10 @@ class IssueDeduplicator:
             ImportError,
             OSError,
             RuntimeError,
+            Exception,
         ):
 
+            self._model = None
             self._model = None
 
 

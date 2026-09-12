@@ -17,6 +17,8 @@
 - [x] Community issue upvotes
 - [x] Basic solution proposal submission
 - [x] Basic professional review portal
+- [x] Verify the main citizen -> government -> university -> industry solution flow
+- [x] Run the civic application test suite: 16 tests passing
 
 ## Phase 1: Jharkhand Foundation
 
@@ -70,13 +72,18 @@
 
 - [x] Build citizen issue tracking page
 - [x] Build university project dashboard
+- [x] Connect university dashboard tabs to live MySQL data
+- [x] Show saved assignment, team, milestone, report, offer, message, and notification updates
 - [x] Build industry partnership dashboard
 - [x] Build government administrator dashboard
 - [x] Show district-wise and domain-wise issue analytics
 - [x] Show university participation and industry engagement
 - [x] Show project completion and measurable community impact
 - [x] Add visual charts for district/domain distribution and project progress
-- [ ] Add visual charts for university participation, industry support, completed projects, and impact outcomes
+- [ ] Add visual charts for university participation by institution
+- [ ] Add visual charts for industry support by partner and support type
+- [ ] Add visual charts for completed/deployed projects
+- [ ] Add structured impact outcome metrics, including beneficiaries, patents, and startups
 - [x] Add email or in-app notifications
 - [x] Add role-based project communication
 
@@ -85,7 +92,8 @@
 - [x] Move sessions to persistent secure session storage
 - [ ] Add CSRF protection and HTTPS deployment
 - [x] Validate and re-encode uploaded images
-- [ ] Add malware scanning and complete EXIF privacy handling
+- [ ] Add malware scanning for uploaded images, videos, and documents
+- [ ] Complete EXIF privacy handling after verification and before publication
 - [ ] Move rate limits to Redis or MySQL for persistent enforcement
 - [ ] Add secure database-backed role permissions
 - [ ] Add password reset and account recovery
@@ -97,17 +105,28 @@
 
 - [ ] Add responsive PWA or a dedicated mobile client
 - [x] Add admin approval workflow for university registrations
-- [ ] Add admin approval workflow for professionals and industry partners
+- [ ] Add admin approval workflow for industry partner registrations
+- [ ] Add database-backed professional registration and approval
 - [x] Add proposal moderation to the admin interface
 - [ ] Add tests for university registration and approval
-- [ ] Add tests for expertise matching and nearest-location fallback
-- [ ] Add tests for proposal submission and industry offer flow
-- [ ] Add tests for admin moderation and assignment workflows
+- [x] Add tests for industry expertise and location matching
+- [ ] Add tests for proposal submission, voting, and moderation
+- [ ] Add tests for industry registration, approval, and support offers
+- [ ] Add tests for admin moderation and university assignment workflows
+- [ ] Add API and browser-flow tests for the FastAPI application
+
+## Phase 9: Structured Project Evidence
+
+- [ ] Add structured pilot location, dates, beneficiary counts, and outcome measurements
+- [ ] Add milestone deliverable upload and download workflows
+- [ ] Add formal testing, pilot, and deployment review records
+- [ ] Add university requests for industry support
+- [ ] Add complete faculty, mentor, and student role management
 
 ## Project Status
 
-The project is a functional demo with citizen reporting, moderation, university collaboration,
-industry support, project tracking, MySQL persistence, and FastAPI integration implemented.
-The remaining work is focused on multimedia support, stronger AI assistance, verified onboarding,
-dashboard visualization, production security, broader testing, mobile delivery, and fixing the
-industry dashboard data-shape bug listed above.
+The project is a working architecture-aligned prototype with citizen reporting, moderation,
+university collaboration, industry support, project tracking, MySQL persistence, notifications,
+messaging, and FastAPI integration. The main rendering and matching behavior are verified by the
+current 16-test suite. Remaining work is focused on complete analytics, structured impact evidence,
+verified onboarding, production security, mobile delivery, and broader API/browser-flow testing.

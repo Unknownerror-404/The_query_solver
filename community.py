@@ -30,7 +30,10 @@ JHARKHAND_DOMAINS = (
     "Environment", "Energy", "Urban Infrastructure", "Accessibility",
     "Public Administration", "Rural Livelihoods",
 )
-initialise(DEFAULT_ISSUES)
+try:
+    initialise(DEFAULT_ISSUES)
+except Exception:
+    pass
 ISSUES = load_issues()
 PROPOSALS: list[dict] = []
 ISSUE_LOCK = threading.Lock()

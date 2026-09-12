@@ -23,7 +23,58 @@ MYSQL_CONFIG = {
     "user": os.getenv("CIVIC_MAP_DB_USER", "root"),
     "password": os.getenv("CIVIC_MAP_DB_PASSWORD", ""),
     "database": os.getenv("CIVIC_MAP_DB_NAME", "sih26"),
+    "connection_timeout": int(os.getenv("CIVIC_MAP_DB_TIMEOUT", "2")),
 }
+
+
+_DB_AVAILABLE: bool = False
+
+_MEM_ISSUES: list[dict[str, Any]] = [
+    {"id": 1, "title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "district": "Ranchi", "block": "Morabadi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road.", "moderation_status": "Approved"},
+    {"id": 2, "title": "Garbage uncollected for four days", "category": "Waste", "area": "Bank More, Dhanbad", "district": "Dhanbad", "block": "Bank More", "lat": 23.7957, "lng": 86.4304, "supporters": 18, "age": "4d ago", "description": "Household waste has accumulated beside the community park.", "moderation_status": "Approved"},
+    {"id": 3, "title": "Water cut, no notice", "category": "Water", "area": "Sakchi, Jamshedpur", "district": "East Singhbhum", "block": "Sakchi", "lat": 22.8046, "lng": 86.2029, "supporters": 42, "age": "36h ago", "description": "The neighbourhood has had no supply since yesterday morning.", "moderation_status": "Approved"},
+    {"id": 4, "title": "Streetlight outage at junction", "category": "Streetlights", "area": "Tower Chowk, Deoghar", "district": "Deoghar", "block": "Tower Chowk", "lat": 24.4857, "lng": 86.6947, "supporters": 12, "age": "2d ago", "description": "Three streetlights are out, making the junction difficult to cross at night.", "moderation_status": "Approved"},
+]
+
+_MEM_UNIVERSITIES: list[dict[str, Any]] = [
+    {"id": 1, "name": "Birla Institute of Technology, Mesra", "district": "Ranchi", "domains": "Engineering, Energy, Water Resources", "departments": "Civil Engineering, Electrical & Electronics, Environmental Sciences", "laboratories": "Advanced Water Lab, IoT Center, Power Systems Lab", "incubation_facilities": "STEP Technology Incubation Hub", "contact_email": "innovation@bitmesra.ac.in"},
+    {"id": 2, "name": "National Institute of Technology, Jamshedpur", "district": "East Singhbhum", "domains": "Engineering, Urban Infrastructure, Energy", "departments": "Mechanical, Civil, Computer Science", "laboratories": "Materials Testing, Smart City Lab", "incubation_facilities": "NIT Innovation & Incubation Center", "contact_email": "innovation@nitjsr.ac.in"},
+    {"id": 3, "name": "Central University of Jharkhand", "district": "Ranchi", "domains": "Education, Healthcare, Rural Livelihoods", "departments": "Rural Development, Public Health, Biotechnology", "laboratories": "Bio-resource Lab, Soil & Water Testing", "incubation_facilities": "Centre for Tribal & Rural Innovation", "contact_email": "innovation@cuj.ac.in"},
+]
+
+_MEM_INDUSTRY: list[dict[str, Any]] = [
+    {"id": 1, "name": "Jharkhand Innovation Network", "partner_type": "Startup", "district": "Ranchi", "domains": "Education, Agriculture, Energy", "contact_email": "partner@jin.example"},
+    {"id": 2, "name": "Adivasi Livelihoods Foundation", "partner_type": "CSR Organization", "district": "Khunti", "domains": "Rural Livelihoods, Healthcare, Water Resources", "contact_email": "connect@alf.example"},
+    {"id": 3, "name": "Eastern Tech Manufacturing", "partner_type": "MSME", "district": "East Singhbhum", "domains": "Engineering, Urban Infrastructure, Sanitation", "contact_email": "innovation@etm.example"},
+]
+
+_MEM_ASSIGNMENTS: dict[int, dict[str, Any]] = {
+    3: {"issue_id": 3, "university_id": 1, "status": "Accepted", "response_reason": "Accepted by Dept of Civil Engineering for IoT-based smart pressure monitoring.", "assigned_by": "admin@jharkhand.gov.in"},
+    1: {"issue_id": 1, "university_id": 1, "status": "Accepted", "response_reason": "Accepted for smart road sensing study.", "assigned_by": "admin@jharkhand.gov.in"},
+}
+
+_MEM_TEAMS: list[dict[str, Any]] = [
+    {"id": 1, "issue_id": 3, "university_id": 1, "name": "Team Jal-Drishti", "faculty_mentor": "mentor@bitmesra.ac.in", "status": "Prototype", "members": ["student1@bitmesra.ac.in", "student2@bitmesra.ac.in"], "ip_outcome": "Provisional Patent Application #2026/JH/0042", "startup_outcome": "Incubated at BIT STEP", "impact_summary": "Estimated 40% reduction in water leakage detection time across 12 wards.", "university_name": "Birla Institute of Technology, Mesra", "university_district": "Ranchi", "issue_title": "Water cut, no notice", "issue_category": "Water", "issue_district": "East Singhbhum", "issue_block": "Sakchi"},
+]
+
+_MEM_MILESTONES: list[dict[str, Any]] = [
+    {"id": 1, "team_id": 1, "title": "Sensor Calibration & PCB Design", "due_date": "2026-09-15", "status": "Completed", "deliverable": "PCB v1.0 & Calibration Curves", "testing_result": "Accuracy within +/-1.5% under varying pressure flows."},
+    {"id": 2, "team_id": 1, "title": "Pilot Field Installation in Sakchi Ward", "due_date": "2026-10-30", "status": "In Progress", "deliverable": "5 IoT sensor nodes deployed", "testing_result": "Telemetry streaming live via LoRaWAN."},
+]
+
+_MEM_OFFERS: list[dict[str, Any]] = [
+    {"id": 1, "issue_id": 3, "partner_id": 1, "support_type": "Funding", "details": "Rs. 2.5 Lakh seed grant + LoRaWAN gateway hardware access for Ranchi pilot testing.", "status": "Accepted", "commitment_note": "Seed grant disbursed; gateways deployed.", "title": "Water cut, no notice", "district": "East Singhbhum", "block": "Sakchi", "category": "Water", "partner_name": "Jharkhand Innovation Network", "partner_type": "Startup", "partner_email": "partner@jin.example"},
+    {"id": 2, "issue_id": 1, "partner_id": 3, "support_type": "Prototyping", "details": "Fabrication lab access at Jamshedpur facility for weather-resistant enclosures.", "status": "Offered", "commitment_note": "", "title": "Pothole on Main Road", "district": "Ranchi", "block": "Morabadi", "category": "Roads", "partner_name": "Eastern Tech Manufacturing", "partner_type": "MSME", "partner_email": "innovation@etm.example"},
+]
+
+_MEM_ACCOUNTS: dict[str, dict[str, str]] = {}
+_MEM_SESSIONS: dict[str, str] = {}
+_MEM_MESSAGES: list[dict[str, Any]] = []
+_MEM_NOTIFICATIONS: list[dict[str, Any]] = []
+_MEM_STATUS_HISTORY: list[dict[str, Any]] = []
+_MEM_UNIVERSITY_REPORTS: list[dict[str, Any]] = []
+_MEM_PROPOSALS: list[dict[str, Any]] = []
+_MEM_RATE_LIMITS: dict[str, Any] = {}
 
 
 def connect():
@@ -45,8 +96,14 @@ def ensure_database() -> None:
 
 
 def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
-    ensure_database()
-    connection = connect()
+    global _DB_AVAILABLE
+    try:
+        ensure_database()
+        connection = connect()
+    except Exception:
+        _DB_AVAILABLE = False
+        return
+    _DB_AVAILABLE = True
     try:
         cursor = connection.cursor()
 
@@ -555,6 +612,8 @@ def _issue(row: tuple[Any, ...]) -> dict[str, Any]:
 
 
 def load_issues() -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return list(_MEM_ISSUES)
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -566,6 +625,8 @@ def load_issues() -> list[dict[str, Any]]:
 
 
 def load_user_issues(reporter: str) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [i for i in _MEM_ISSUES if str(i.get("reporter", "")).casefold() == reporter.casefold()]
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -576,6 +637,12 @@ def load_user_issues(reporter: str) -> list[dict[str, Any]]:
         connection.close()
 
 def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        iid = max((i["id"] for i in _MEM_ISSUES), default=0) + 1
+        saved = dict(issue)
+        saved.update({"id": iid, "supporters": 1, "age": "just now", "moderation_status": "Pending"})
+        _MEM_ISSUES.append(saved)
+        return saved
     connection = connect()
 
     try:
@@ -646,6 +713,11 @@ def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_issue(issue: dict[str, Any]) -> None:
+    if not _DB_AVAILABLE:
+        existing = next((i for i in _MEM_ISSUES if i["id"] == issue.get("id")), None)
+        if existing:
+            existing.update(issue)
+        return
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -660,6 +732,14 @@ def update_issue(issue: dict[str, Any]) -> None:
 
 
 def moderate_issue(issue_id: int, status: str, reason: str, moderator: str) -> bool:
+    if not _DB_AVAILABLE:
+        existing = next((i for i in _MEM_ISSUES if i["id"] == issue_id), None)
+        if existing:
+            existing["moderation_status"] = status
+            existing["moderation_reason"] = reason
+            existing["moderated_by"] = moderator
+            return True
+        return False
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -675,6 +755,8 @@ def moderate_issue(issue_id: int, status: str, reason: str, moderator: str) -> b
 
 
 def get_proof(proof_id: str) -> tuple[str, bytes] | None:
+    if not _DB_AVAILABLE:
+        return None
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -703,6 +785,8 @@ def get_video(video_id: str) -> tuple[str, bytes] | None:
         connection.close()
 
 def load_proposals() -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return list(_MEM_PROPOSALS)
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -727,6 +811,12 @@ def load_proposals() -> list[dict[str, Any]]:
 
 
 def insert_proposal(proposal: dict[str, Any]) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        pid = max((p["id"] for p in _MEM_PROPOSALS), default=0) + 1
+        saved = dict(proposal)
+        saved.update({"id": pid, "votes": 0, "status": "Submitted", "review": None})
+        _MEM_PROPOSALS.append(saved)
+        return saved
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -748,6 +838,11 @@ def insert_proposal(proposal: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_proposal(proposal: dict[str, Any]) -> None:
+    if not _DB_AVAILABLE:
+        existing = next((p for p in _MEM_PROPOSALS if p["id"] == proposal.get("id")), None)
+        if existing:
+            existing.update(proposal)
+        return
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -800,6 +895,8 @@ def cast_proposal_vote(proposal_id: int, user_email: str) -> tuple[str, int, int
 
 
 def get_proposal_visual(proposal_id: int) -> tuple[str, bytes] | None:
+    if not _DB_AVAILABLE:
+        return None
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -814,6 +911,8 @@ def get_proposal_visual(proposal_id: int) -> tuple[str, bytes] | None:
 
 
 def load_universities() -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return list(_MEM_UNIVERSITIES)
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -852,6 +951,9 @@ def create_university(name: str, district: str, domains: str, departments: str, 
 
 
 def assign_issue(issue_id: int, university_id: int, assigned_by: str) -> bool:
+    if not _DB_AVAILABLE:
+        _MEM_ASSIGNMENTS[issue_id] = {"issue_id": issue_id, "university_id": university_id, "status": "Assigned", "response_reason": "", "assigned_by": assigned_by}
+        return True
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -867,6 +969,8 @@ def assign_issue(issue_id: int, university_id: int, assigned_by: str) -> bool:
 
 
 def load_assignments() -> dict[int, dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return dict(_MEM_ASSIGNMENTS)
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -878,6 +982,28 @@ def load_assignments() -> dict[int, dict[str, Any]]:
 
 
 def load_university_assignments(contact_email: str) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        uni = next((u for u in _MEM_UNIVERSITIES if str(u.get("contact_email", "")).casefold() == contact_email.casefold()), None)
+        if not uni:
+            return []
+        from community import ISSUES
+        results = []
+        for a in _MEM_ASSIGNMENTS.values():
+            if a["university_id"] == uni["id"]:
+                iss = next((i for i in ISSUES if i.get("id") == a["issue_id"]), {})
+                results.append({
+                    "issue_id": a["issue_id"],
+                    "university_id": uni["id"],
+                    "status": a.get("status", "Assigned"),
+                    "response_reason": a.get("response_reason", ""),
+                    "title": iss.get("title", f"Challenge #{a['issue_id']}"),
+                    "description": iss.get("description", ""),
+                    "district": iss.get("district", "Ranchi"),
+                    "block": iss.get("block", ""),
+                    "category": iss.get("category", "General"),
+                    "university_name": uni["name"],
+                })
+        return results
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -892,6 +1018,12 @@ def load_university_assignments(contact_email: str) -> list[dict[str, Any]]:
 
 
 def update_assignment(issue_id: int, status: str, reason: str) -> bool:
+    if not _DB_AVAILABLE:
+        if issue_id in _MEM_ASSIGNMENTS:
+            _MEM_ASSIGNMENTS[issue_id]["status"] = status
+            _MEM_ASSIGNMENTS[issue_id]["response_reason"] = reason
+            return True
+        return False
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -907,6 +1039,8 @@ def update_assignment(issue_id: int, status: str, reason: str) -> bool:
 
 
 def load_teams() -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return list(_MEM_TEAMS)
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -922,6 +1056,11 @@ def load_teams() -> list[dict[str, Any]]:
 
 
 def create_team(issue_id: int, university_id: int, name: str, faculty_mentor: str, members: list[str]) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        tid = max((t["id"] for t in _MEM_TEAMS), default=0) + 1
+        rec = {"id": tid, "issue_id": issue_id, "university_id": university_id, "name": name, "faculty_mentor": faculty_mentor, "status": "Forming", "members": members, "ip_outcome": "", "startup_outcome": "", "impact_summary": ""}
+        _MEM_TEAMS.append(rec)
+        return rec
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -936,6 +1075,13 @@ def create_team(issue_id: int, university_id: int, name: str, faculty_mentor: st
 
 
 def update_team_status(team_id: int, status: str, changed_by: str = "system", note: str = "") -> bool:
+    if not _DB_AVAILABLE:
+        t = next((item for item in _MEM_TEAMS if item["id"] == team_id), None)
+        if t:
+            t["status"] = status
+            _MEM_STATUS_HISTORY.append({"id": len(_MEM_STATUS_HISTORY) + 1, "team_id": team_id, "status": status, "changed_by": changed_by, "note": note, "changed_at": "just now"})
+            return True
+        return False
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -950,6 +1096,11 @@ def update_team_status(team_id: int, status: str, changed_by: str = "system", no
 
 
 def create_milestone(team_id: int, title: str, due_date: str, deliverable: str, deliverable_type: str = "", deliverable_data: bytes = b"") -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        mid = max((m["id"] for m in _MEM_MILESTONES), default=0) + 1
+        rec = {"id": mid, "team_id": team_id, "title": title, "due_date": due_date, "status": "Pending", "deliverable": deliverable, "testing_result": ""}
+        _MEM_MILESTONES.append(rec)
+        return rec
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -962,6 +1113,8 @@ def create_milestone(team_id: int, title: str, due_date: str, deliverable: str, 
 
 
 def load_milestones(team_id: int) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [m for m in _MEM_MILESTONES if m["team_id"] == team_id]
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -973,6 +1126,8 @@ def load_milestones(team_id: int) -> list[dict[str, Any]]:
 
 
 def get_milestone_deliverable(milestone_id: int) -> tuple[str, bytes] | None:
+    if not _DB_AVAILABLE:
+        return None
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -987,6 +1142,8 @@ def get_milestone_deliverable(milestone_id: int) -> tuple[str, bytes] | None:
 
 
 def load_status_history(team_id: int) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [h for h in _MEM_STATUS_HISTORY if h["team_id"] == team_id]
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -998,6 +1155,19 @@ def load_status_history(team_id: int) -> list[dict[str, Any]]:
 
 
 def load_dashboard_metrics() -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        from community import ISSUES
+        return {
+            "total_issues": len(ISSUES),
+            "moderation": [{"status": "Approved", "total": len([i for i in ISSUES if i.get("moderation_status") == "Approved"])}, {"status": "Pending", "total": len([i for i in ISSUES if i.get("moderation_status") != "Approved"])}],
+            "district_domains": [{"district": i.get("district", "Ranchi"), "category": i.get("category", "General"), "total": 1} for i in ISSUES],
+            "universities": len(_MEM_UNIVERSITIES),
+            "assignments": len(_MEM_ASSIGNMENTS),
+            "industry_partners": len(_MEM_INDUSTRY),
+            "support_offers": len(_MEM_OFFERS),
+            "project_stages": [{"status": "Prototype", "total": len(_MEM_TEAMS)}],
+            "proposals": len(_MEM_PROPOSALS),
+        }
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1027,6 +1197,13 @@ def load_dashboard_metrics() -> dict[str, Any]:
 
 
 def update_milestone(milestone_id: int, status: str, testing_result: str) -> bool:
+    if not _DB_AVAILABLE:
+        m = next((item for item in _MEM_MILESTONES if item["id"] == milestone_id), None)
+        if m:
+            m["status"] = status
+            m["testing_result"] = testing_result
+            return True
+        return False
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1039,6 +1216,14 @@ def update_milestone(milestone_id: int, status: str, testing_result: str) -> boo
 
 
 def update_team_outcomes(team_id: int, ip_outcome: str, startup_outcome: str, impact_summary: str) -> bool:
+    if not _DB_AVAILABLE:
+        t = next((item for item in _MEM_TEAMS if item["id"] == team_id), None)
+        if t:
+            t["ip_outcome"] = ip_outcome
+            t["startup_outcome"] = startup_outcome
+            t["impact_summary"] = impact_summary
+            return True
+        return False
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1051,6 +1236,8 @@ def update_team_outcomes(team_id: int, ip_outcome: str, startup_outcome: str, im
 
 
 def load_industry_partners() -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return list(_MEM_INDUSTRY)
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1062,6 +1249,29 @@ def load_industry_partners() -> list[dict[str, Any]]:
 
 
 def load_partner_offers(contact_email: str) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        from community import ISSUES
+        p = next((partner for partner in _MEM_INDUSTRY if str(partner.get("contact_email", "")).casefold() == contact_email.casefold()), None)
+        if not p:
+            return []
+        results = []
+        for o in _MEM_OFFERS:
+            if o.get("partner_id") == p["id"]:
+                iss = next((i for i in ISSUES if i.get("id") == o["issue_id"]), {})
+                results.append({
+                    "id": o["id"],
+                    "issue_id": o["issue_id"],
+                    "partner_id": p["id"],
+                    "support_type": o["support_type"],
+                    "details": o["details"],
+                    "status": o.get("status", "Offered"),
+                    "commitment_note": o.get("commitment_note", ""),
+                    "title": iss.get("title", f"Challenge #{o['issue_id']}"),
+                    "district": iss.get("district", "Ranchi"),
+                    "block": iss.get("block", ""),
+                    "partner_name": p["name"],
+                })
+        return results
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1086,6 +1296,24 @@ def load_partner_offers(contact_email: str) -> list[dict[str, Any]]:
 
 
 def load_all_partner_offers() -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        from community import ISSUES
+        results = []
+        for o in _MEM_OFFERS:
+            p = next((partner for partner in _MEM_INDUSTRY if partner["id"] == o.get("partner_id")), {})
+            iss = next((i for i in ISSUES if i.get("id") == o["issue_id"]), {})
+            results.append({
+                "id": o["id"],
+                "issue_id": o["issue_id"],
+                "partner_id": o.get("partner_id"),
+                "support_type": o["support_type"],
+                "details": o["details"],
+                "status": o.get("status", "Offered"),
+                "commitment_note": o.get("commitment_note", ""),
+                "title": iss.get("title", f"Challenge #{o['issue_id']}"),
+                "partner_name": p.get("name", "Industry Partner"),
+            })
+        return results
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1143,6 +1371,11 @@ def create_support_offer(
 
 
 def create_industry_partner(name: str, partner_type: str, district: str, domains: str, contact_email: str) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        pid = max((p["id"] for p in _MEM_INDUSTRY), default=0) + 1
+        rec = {"id": pid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email}
+        _MEM_INDUSTRY.append(rec)
+        return rec
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1596,6 +1829,13 @@ def load_contractor_leaderboard() -> list[dict[str, Any]]:
 
 
 def update_offer_commitment(offer_id: int, status: str, note: str) -> bool:
+    if not _DB_AVAILABLE:
+        o = next((item for item in _MEM_OFFERS if item["id"] == offer_id), None)
+        if o:
+            o["status"] = status
+            o["commitment_note"] = note
+            return True
+        return False
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1608,6 +1848,10 @@ def update_offer_commitment(offer_id: int, status: str, note: str) -> bool:
 
 
 def create_notification(recipient: str, message: str, related_type: str = "", related_id: int | None = None) -> None:
+    if not _DB_AVAILABLE:
+        nid = len(_MEM_NOTIFICATIONS) + 1
+        _MEM_NOTIFICATIONS.append({"id": nid, "recipient": recipient, "message": message, "related_type": related_type, "related_id": related_id, "is_read": False, "created_at": "just now"})
+        return
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1619,6 +1863,8 @@ def create_notification(recipient: str, message: str, related_type: str = "", re
 
 
 def load_notifications(recipient: str) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [n for n in _MEM_NOTIFICATIONS if n["recipient"].casefold() == recipient.casefold()]
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1630,6 +1876,8 @@ def load_notifications(recipient: str) -> list[dict[str, Any]]:
 
 
 def load_messages(user: str) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [m for m in _MEM_MESSAGES if m["sender"].casefold() == user.casefold() or m["recipient"].casefold() == user.casefold()]
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1641,6 +1889,11 @@ def load_messages(user: str) -> list[dict[str, Any]]:
 
 
 def create_message(sender: str, recipient: str, message: str, related_type: str = "", related_id: int | None = None) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        mid = len(_MEM_MESSAGES) + 1
+        rec = {"id": mid, "sender": sender, "recipient": recipient, "message": message, "related_type": related_type, "related_id": related_id, "created_at": "just now"}
+        _MEM_MESSAGES.append(rec)
+        return rec
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1653,6 +1906,8 @@ def create_message(sender: str, recipient: str, message: str, related_type: str 
 
 
 def add_issue_support(issue_id: int, user: str) -> tuple[bool, int]:
+    if not _DB_AVAILABLE:
+        return True, 1
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1674,6 +1929,9 @@ def add_issue_support(issue_id: int, user: str) -> tuple[bool, int]:
 
 
 def import_account(email: str, password_hash: str, salt: str) -> None:
+    if not _DB_AVAILABLE:
+        _MEM_ACCOUNTS[email.strip().lower()] = {"email": email.strip().lower(), "password_hash": password_hash, "salt": salt}
+        return
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1689,6 +1947,8 @@ def import_account(email: str, password_hash: str, salt: str) -> None:
 
 
 def get_account(email: str) -> dict[str, str] | None:
+    if not _DB_AVAILABLE:
+        return _MEM_ACCOUNTS.get(email.strip().lower())
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1700,6 +1960,12 @@ def get_account(email: str) -> dict[str, str] | None:
 
 
 def create_account_record(email: str, password_hash: str, salt: str) -> bool:
+    if not _DB_AVAILABLE:
+        em = email.strip().lower()
+        if em in _MEM_ACCOUNTS:
+            return False
+        _MEM_ACCOUNTS[em] = {"email": em, "password_hash": password_hash, "salt": salt}
+        return True
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1717,6 +1983,9 @@ def create_account_record(email: str, password_hash: str, salt: str) -> bool:
 
 def create_session_record(user_email: str) -> str:
     session_id = secrets.token_hex(32)
+    if not _DB_AVAILABLE:
+        _MEM_SESSIONS[session_id] = user_email
+        return session_id
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1731,6 +2000,8 @@ def create_session_record(user_email: str) -> str:
 def get_session_user(session_id: str) -> str | None:
     if not session_id:
         return None
+    if not _DB_AVAILABLE:
+        return _MEM_SESSIONS.get(session_id)
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1745,6 +2016,9 @@ def get_session_user(session_id: str) -> str | None:
 def delete_session_record(session_id: str) -> None:
     if not session_id:
         return
+    if not _DB_AVAILABLE:
+        _MEM_SESSIONS.pop(session_id, None)
+        return
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1756,6 +2030,8 @@ def delete_session_record(session_id: str) -> None:
 
 
 def check_rate_limit(client_key: str, max_requests: int = 30, window_seconds: int = 60) -> bool:
+    if not _DB_AVAILABLE:
+        return True
     connection = connect()
     now = datetime.now(timezone.utc)
     try:
@@ -1792,6 +2068,19 @@ def check_rate_limit(client_key: str, max_requests: int = 30, window_seconds: in
 
 
 def create_university_report(issue_id: int, university_id: int, submitted_by: str, title: str, summary: str, deliverables: str = "") -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        report = {
+            "id": len(_MEM_UNIVERSITY_REPORTS) + 1,
+            "issue_id": issue_id,
+            "university_id": university_id,
+            "submitted_by": submitted_by,
+            "title": title,
+            "summary": summary,
+            "deliverables": deliverables,
+            "created_at": "just now",
+        }
+        _MEM_UNIVERSITY_REPORTS.append(report)
+        return report
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1819,6 +2108,24 @@ def create_university_report(issue_id: int, university_id: int, submitted_by: st
 
 
 def load_university_reports(issue_id: int | None = None) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        from community import ISSUES
+        reports = []
+        universities = {university["id"]: university for university in _MEM_UNIVERSITIES}
+        issues = {issue["id"]: issue for issue in ISSUES}
+        for report in _MEM_UNIVERSITY_REPORTS:
+            if issue_id is not None and report.get("issue_id") != issue_id:
+                continue
+            issue = issues.get(report.get("issue_id"), {})
+            university = universities.get(report.get("university_id"), {})
+            reports.append({
+                **report,
+                "issue_title": issue.get("title", "Civic challenge"),
+                "issue_district": issue.get("district", "Ranchi"),
+                "issue_category": issue.get("category", "General"),
+                "university_name": university.get("name", "University"),
+            })
+        return reports
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)

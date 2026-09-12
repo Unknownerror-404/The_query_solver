@@ -1,4 +1,4 @@
-﻿"""A small civic-issues map inspired by Swaraj's public accountability map.
+"""A small civic-issues map inspired by Swaraj's public accountability map.
 Run with ``python map.py`` and open http://localhost:8000 in a browser.
 The map uses OpenStreetMap tiles through Leaflet, so an internet connection is needed for the basemap.
 """
@@ -104,6 +104,7 @@ main{max-width:1150px}
     <nav class='nav'><a class='nav-button' href='/'>Live Map</a><a class='nav-button' href='/community'>Community</a><a class='nav-button' href='/proposals'>Solutions</a><a class='nav-button' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button active' href='/admin'>Moderation</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav>
 </header>
 <main>
+    <div class='admin-portal-bar'><div class='admin-portal-title'>Government workspace</div><nav class='admin-portal-links'><a class='active' href='/admin'>Moderation</a><a href='/industry-admin'>Industry partners</a><a href='/universities'>Universities</a><a href='/government-dashboard'>Analytics</a></nav></div>
     <div class='admin-intro'><p class='eyebrow'>Trust and safety</p><h1>Issue and proposal moderation.</h1><p>Review community reports and solution proposals before they move into institutional collaboration.</p></div>
     <div class='moderation-list'>__ISSUES__</div>
 </main>
@@ -115,6 +116,7 @@ UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.q
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.university-profile').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/universities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Profile update failed')});</script></body></html>")
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelector('.university-create').onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/universities/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')};</script></body></html>")
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</body></html>", "<script>document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const button=form.querySelector('button');button.disabled=true;button.textContent='Saving...';const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok){button.textContent='Saved';button.classList.add('saved');setTimeout(()=>location.reload(),500)}else{button.disabled=false;button.textContent='Save approval';alert((await response.json()).message||'Approval update failed')}});</script></body></html>")
+UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("<main>", "<main><div class='admin-portal-bar'><div class='admin-portal-title'>Government workspace</div><nav class='admin-portal-links'><a href='/admin'>Moderation</a><a href='/industry-admin'>Industry partners</a><a class='active' href='/universities'>Universities</a><a href='/government-dashboard'>Analytics</a></nav></div>", 1)
 UNIVERSITY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>University dashboard</h1><p>Assigned challenges, university decisions, project teams, and proposed solutions.</p>__ASSIGNMENTS__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);const response=await fetch(form.dataset.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Request failed')})</script></body></html>"""
 INDUSTRY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Industry dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>Industry partnership dashboard</h1><p>Offer practical support to approved societal challenges.</p>__CONTENT__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/industry/offers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Offer failed')})</script></body></html>"""
 GOVERNMENT_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Government dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;color:#172b28}section{border:1px solid #d9d7cd;padding:18px;margin:14px 0}li{margin:7px 0}</style></head><body>__CONTENT__</body></html>"""
@@ -139,6 +141,22 @@ def load_proposals_page():
     return PROPOSALS_PAGE_FILE.read_text(encoding="utf-8")
 def load_professionals_page():
     return PROFESSIONALS_PAGE_FILE.read_text(encoding="utf-8")
+def known_recipients() -> set[str]:
+    recipients = {"admin@jharkhand.gov.in", "innovation@bitmesra.ac.in", "partner@jin.example", "citizen@example.com"}
+    for u in load_universities():
+        if u.get("contact_email"):
+            recipients.add(u["contact_email"].strip().lower())
+    for p in load_industry_partners():
+        if p.get("contact_email"):
+            recipients.add(p["contact_email"].strip().lower())
+    for t in load_teams():
+        if t.get("faculty_mentor"):
+            recipients.add(t["faculty_mentor"].strip().lower())
+        for m in t.get("members", []):
+            recipients.add(m.strip().lower())
+    return recipients
+
+
 def university_for_user(user):
     return next((university for university in load_universities() if university.get("approval_status", "Active") == "Active" and str(university.get("contact_email", "")).casefold() == user.casefold()), None)
 def industry_for_user(user):
@@ -559,18 +577,60 @@ def render_dashboard_team(team):
     history_markup = "".join(f"<p>History: {html.escape(item['status'])} Â· {html.escape(item['changed_by'])} Â· {html.escape(str(item['changed_at']))}</p>" for item in history)
     return f"<p><strong>{html.escape(team['name'])}</strong> Â· Mentor: <em>{html.escape(team['faculty_mentor'])}</em> Â· Stage: {html.escape(team['status'])} Â· Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
 def render_university_dashboard(user):
+    page = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
+
+    def option_values(values, selected):
+        return "".join(
+            f"<option value='{html.escape(value)}'{' selected' if value == selected else ''}>{html.escape(value)}</option>"
+            for value in values
+        )
+
+    def render_shell(content, hero, metrics="", teams="", milestones="", offers="", messages="", profile=""):
+        return (
+            page.replace("__USER__", html.escape(user))
+            .replace("__UNIVERSITY_HERO__", hero)
+            .replace("__METRICS_BAR__", metrics)
+            .replace("__CHALLENGES_CONTENT__", content)
+            .replace("__TEAMS_CONTENT__", teams)
+            .replace("__MILESTONES_CONTENT__", milestones)
+            .replace("__OFFERS_CONTENT__", offers)
+            .replace("__MESSAGES_CONTENT__", messages)
+            .replace("__PROFILE_CONTENT__", profile)
+        )
+
     university = university_for_user(user)
     if university is None:
-        return "<h1>University account required</h1><p>This account is not linked to a university profile.</p>"
+        error_hero = f"""
+        <div class="hero-card">
+          <span class="hero-eyebrow">Authentication Required</span>
+          <h1 class="hero-title">University Account Required</h1>
+          <p class="hero-desc">The signed-in account (<strong>{html.escape(user)}</strong>) is not associated with an accredited university or institution. Please log in with a registered university contact email (e.g. <code>innovation@bitmesra.ac.in</code>, <code>innovation@cuj.ac.in</code>, or <code>innovation@nitjsr.ac.in</code>) or contact the portal administrator.</p>
+          <div style="margin-top:20px;">
+            <a href="/logout" class="btn btn-accent">Sign In with University Account</a>
+          </div>
+        </div>
+        """
+        return render_shell("", error_hero)
+
     assignments = load_university_assignments(user)
-    teams = load_teams()
+    university_teams = [team for team in load_teams() if team["university_id"] == university["id"]]
     reports = load_university_reports()
-    if not assignments:
-        return f"<h1>{html.escape(university['name'])}</h1><p>No issues have been assigned to this university yet.</p>"
+    assignment_ids = {assignment["issue_id"] for assignment in assignments}
+    university_milestones = [milestone for team in university_teams for milestone in load_milestones(team["id"])]
+    university_offers = [offer for offer in load_all_partner_offers() if offer.get("issue_id") in assignment_ids]
+    messages_for_user = load_messages(user)
+    notifications = load_notifications(user)
+    hero = f"""
+    <section class='hero-card'>
+      <span class='hero-eyebrow'>University project workspace</span>
+      <h1 class='hero-title'>{html.escape(university['name'])}</h1>
+      <p class='hero-desc'>Coordinate assigned civic challenges, student teams, milestones, reports, and industry collaboration from one workspace.</p>
+    </section>
+    """
     cards = []
     for assignment in assignments:
         issue_id = assignment["issue_id"]
-        issue_teams = [team for team in teams if team["issue_id"] == issue_id and team["university_id"] == assignment["university_id"]]
+        issue_teams = [team for team in university_teams if team["issue_id"] == issue_id]
         issue_reports = [r for r in reports if r["issue_id"] == issue_id and r["university_id"] == assignment["university_id"]]
         team_markup = "".join(render_dashboard_team(team) for team in issue_teams)
         if not team_markup:
@@ -604,7 +664,7 @@ def render_university_dashboard(user):
             f"<input name='reason' placeholder='Reason for government record' required style='width:60%;'>"
             f"<button type='submit'>Save & Transmit Decision to Government</button>"
             f"</form>"
-            f"<h3>2. Assign Faculty Mentor & Student Team Members</h3>"
+            f"<h3>2. Student Project Teams</h3>"
             f"{team_markup}"
             f"<form class='team' data-endpoint='/api/university/teams' style='margin-top:12px;background:#fffdf8;padding:16px;border:1px solid #dedbd1;border-radius:10px;'>"
             f"<h4>Assign Project Team</h4>"
@@ -615,7 +675,8 @@ def render_university_dashboard(user):
             f"<input name='members' placeholder='Assigned Student Emails (comma separated: student1@bitmesra.ac.in, student2@bitmesra.ac.in)' required style='width:98%;'><br>"
             f"<button type='submit' style='margin-top:8px;'>Assign Faculty & Students</button>"
             f"</form>"
-            f"<h3>3. Submit University Project Report (Visible to All)</h3>"
+            f"<h3>3. Milestones & Testing</h3>"
+            f"<h3>4. Submit University Project Report (Visible to All)</h3>"
             f"{reports_markup}"
             f"<form class='report-form' data-endpoint='/api/university/reports' style='margin-top:12px;background:#fffdf8;padding:16px;border:1px solid #dedbd1;border-radius:10px;'>"
             f"<h4>Submit Public Project Report</h4>"
@@ -625,7 +686,7 @@ def render_university_dashboard(user):
             f"<textarea name='deliverables' placeholder='Project Deliverables, Prototypes, & Outcomes' style='width:98%;min-height:50px;'></textarea><br>"
             f"<button type='submit' style='margin-top:8px;'>Submit Report to Public Record</button>"
             f"</form>"
-            f"<h3>4. Solution Proposals</h3>"
+            f"<h3>5. Solution Proposals</h3>"
             f"<form data-endpoint='/api/proposals'>"
             f"<input type='hidden' name='issue_id' value='{issue_id}'>"
             f"<input name='title' placeholder='Solution Proposal Title' required style='width:98%;'><br>"
@@ -634,13 +695,59 @@ def render_university_dashboard(user):
             f"</form>"
             f"</article>"
         )
-    return f"<h1>{html.escape(university['name'])} Dashboard</h1>" + "".join(cards)
+    challenge_content = "".join(cards) or "<div class='empty-state'><h2>No assigned challenges yet</h2><p>No issues have been assigned to this university yet.</p></div>"
+
+    def metric_card(icon, tone, label, value):
+        return f"<div class='metric-card'><div class='metric-icon {tone}'>{icon}</div><div class='metric-info'><h4>{label}</h4><div class='val'>{value}</div></div></div>"
+
+    metrics = "<div class='metrics-grid'>" + "".join([
+        metric_card("◎", "blue", "Assigned challenges", len(assignments)),
+        metric_card("◈", "gold", "Active teams", len(university_teams)),
+        metric_card("✓", "green", "Completed milestones", sum(1 for item in university_milestones if item.get("status") == "Completed")),
+        metric_card("✦", "coral", "Industry offers", len(university_offers)),
+    ]) + "</div>"
+
+    if university_teams:
+        team_cards = []
+        for team in university_teams:
+            team_milestones = [item for item in university_milestones if item["team_id"] == team["id"]]
+            team_cards.append(
+                f"<div class='section-card'><div class='card-header-row'><div><h3>{html.escape(team['name'])}</h3><p class='muted'>Faculty mentor: {html.escape(team['faculty_mentor'])}</p></div><span class='status-pill assigned'>{html.escape(team['status'])}</span></div>"
+                f"<p class='meta-row'><span class='meta-item'><strong>{len(team.get('members', []))}</strong> student members</span><span class='meta-item'><strong>{len(team_milestones)}</strong> milestones</span></p>"
+                f"<form data-endpoint='/api/university/team-status' class='approval'><input type='hidden' name='team_id' value='{team['id']}'><label>Project stage<select name='status'>{option_values(['Team Formed', 'Prototype', 'Pilot', 'Deployed', 'Impact Measured'], team.get('status', 'Team Formed'))}</select></label><input name='note' placeholder='Stage update note'><button class='btn-primary'>Update stage</button></form></div>"
+            )
+        teams_content = "".join(team_cards)
+    else:
+        teams_content = "<div class='empty-state'><h3>No student teams yet</h3><p>Open an assigned challenge to create the first project team.</p></div>"
+
+    if university_milestones:
+        milestone_cards = []
+        for milestone in university_milestones:
+            team = next((item for item in university_teams if item["id"] == milestone["team_id"]), None)
+            milestone_cards.append(
+                f"<div class='section-card'><div class='card-header-row'><div><h3>{html.escape(milestone['title'])}</h3><p class='muted'>{html.escape(team['name'] if team else 'Project team')}</p></div><span class='status-pill {'accepted' if milestone.get('status') == 'Completed' else 'pending'}'>{html.escape(milestone.get('status', 'Pending'))}</span></div><p class='meta-row'><span class='meta-item'>Due: <strong>{html.escape(str(milestone.get('due_date') or 'No due date'))}</strong></span><span class='meta-item'>Deliverable: <strong>{html.escape(milestone.get('deliverable') or 'Not specified')}</strong></span></p><form data-endpoint='/api/university/milestone-status' class='approval'><input type='hidden' name='team_id' value='{milestone['team_id']}'><input type='hidden' name='milestone_id' value='{milestone['id']}'><label>Status<select name='status'>{option_values(['Pending', 'In Progress', 'Completed'], milestone.get('status', 'Pending'))}</select></label><input name='testing_result' value='{html.escape(milestone.get('testing_result') or '')}' placeholder='Testing result'><button class='btn-primary'>Save milestone</button></form></div>"
+            )
+        milestones_content = "".join(milestone_cards)
+    else:
+        milestones_content = "<div class='empty-state'><h3>No milestones yet</h3><p>Create milestones from a project team inside an assigned challenge.</p></div>"
+
+    if university_offers:
+        offers_content = "".join(f"<div class='section-card'><div class='card-header-row'><div><h3>{html.escape(offer.get('support_type', 'Industry support'))}</h3><p class='muted'>{html.escape(offer.get('partner_name', 'Industry partner'))} · {html.escape(offer.get('title', 'Assigned challenge'))}</p></div><span class='status-pill {'accepted' if offer.get('status') in {'Accepted', 'Delivered'} else 'pending'}'>{html.escape(offer.get('status', 'Offered'))}</span></div><p>{html.escape(offer.get('details', ''))}</p><p class='meta-row'><span class='meta-item'>Commitment: <strong>{html.escape(offer.get('commitment_note') or 'Awaiting review')}</strong></span></p></div>" for offer in university_offers)
+    else:
+        offers_content = "<div class='empty-state'><h3>No industry offers yet</h3><p>Industry support linked to your assigned challenges will appear here.</p></div>"
+
+    message_cards = "".join(f"<div class='section-card'><div class='card-header-row'><div><h3>{html.escape('Message from ' + item['sender'] if item['recipient'].casefold() == user.casefold() else 'Message to ' + item['recipient'])}</h3><p class='muted'>{html.escape(str(item.get('created_at', '')))}</p></div></div><p>{html.escape(item['message'])}</p></div>" for item in messages_for_user[:12])
+    notification_cards = "".join(f"<div class='final-report'><strong>{html.escape(item['message'])}</strong><br><small>{html.escape(str(item.get('created_at', '')))}</small></div>" for item in notifications[:8])
+    messages_content = f"<div class='section-card'><h3>Send a project message</h3><form data-endpoint='/api/messages'><label>Recipient<input name='recipient' type='email' value='admin@jharkhand.gov.in' required></label><label>Message<textarea name='message' placeholder='Write an update or request' required></textarea><button class='btn-primary'>Send message</button></form></div>{notification_cards}{message_cards or '<div class=\"empty-state\"><h3>No messages yet</h3><p>Your project communication will appear here.</p></div>'}"
+
+    profile_content = f"<div class='section-card'><p class='eyebrow'>Institutional profile</p><h2>{html.escape(university['name'])}</h2><p class='hero-desc'>Your university workspace is connected to the civic innovation network.</p><div class='inst-badges'><span class='inst-tag'>Contact: {html.escape(university.get('contact_email', user))}</span><span class='inst-tag'>District: {html.escape(university.get('district', 'Not specified'))}</span><span class='inst-tag'>Status: {html.escape(university.get('approval_status', 'Active'))}</span></div></div>"
+    return render_shell(challenge_content, hero, metrics, teams_content, milestones_content, offers_content, messages_content, profile_content)
 def industry_for_user(user):
     return next((partner for partner in load_industry_partners() if partner.get("approval_status", "Active") == "Active" and str(partner.get("contact_email", "")).casefold() == user.casefold()), None)
 def render_industry_dashboard(user):
     partner = industry_for_user(user)
     if partner is None:
-        return "<div class='section-card'><h1>Industry Account Required</h1><p>This account is not linked to a registered industry partner profile.</p></div>"
+        return "<div class='section-card'><h1>Industry Partner Account Required</h1><p>This account is not linked to a registered industry partner profile.</p></div>"
     
     offers = load_partner_offers(user)
     assignments = load_assignments()
@@ -764,7 +871,7 @@ def render_industry_dashboard(user):
             f"{academic_info}"
             f"{reports_markup}"
             f"<details style='margin-top:14px;background:#fff;border:1px solid #e0ded6;border-radius:10px;padding:14px;'>"
-            f"<summary style='cursor:pointer;font-weight:bold;color:#172b28;font-size:14px;'>+ Pledge Support & Co-Development for this Challenge</summary>"
+            f"<summary style='cursor:pointer;font-weight:bold;color:#172b28;font-size:14px;'>+ Submit Support Offer: Pledge Support & Co-Development for this Challenge</summary>"
             f"<form data-endpoint='/api/industry/offers' style='margin-top:14px;display:grid;gap:10px;'>"
             f"<input type='hidden' name='issue_id' value='{issue_id}'>"
             f"<div style='display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;'>"
@@ -792,7 +899,8 @@ def render_industry_dashboard(user):
         f"{offers_feed}"
         f"</section>"
         f"<section class='section-card'>"
-        f"<h2>2. Societal Challenges & University R&D Explorer</h2>"
+        f"<h2>2. Explore Challenges</h2>"
+        f"<h3>University Innovations & Prototypes</h3>"
         f"<p style='color:#667773;font-size:13px;margin-bottom:18px;'>Browse citizen challenges validated by government moderation and paired with university student/faculty teams ready for industry partnership.</p>"
         f"{challenges_feed}"
         f"</section>"
@@ -807,16 +915,47 @@ def render_government_dashboard():
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])
     distribution = "".join(f"<li>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}: {row['total']}</li>" for row in metrics["district_domains"])
     stages = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["project_stages"])
-    max_distribution = max((row["total"] for row in metrics["district_domains"]), default=1)
-    distribution_chart = "".join(
-        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['district']))} · {html.escape(str(row['category']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_distribution * 100))}%;background:#317c91'></div></div></div>"
-        for row in metrics["district_domains"]
+    district_totals = {}
+    domain_totals = {}
+    for row in metrics["district_domains"]:
+        district = str(row.get("district") or "Unknown")
+        domain = str(row.get("category") or "General")
+        total = int(row.get("total", 0))
+        district_totals[district] = district_totals.get(district, 0) + total
+        domain_totals[domain] = domain_totals.get(domain, 0) + total
+
+    def chart_rows(totals, color):
+        maximum = max(totals.values(), default=0)
+        return "".join(
+            f"<div class='chart-row'><div class='chart-label'><span>{html.escape(label)}</span><strong>{total}</strong></div><div class='chart-track'><span class='chart-bar' style='width:{(total / maximum * 100) if maximum else 0:.1f}%;background:{color}'></span></div></div>"
+            for label, total in sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+        ) or "<p class='chart-empty'>No data</p>"
+
+    def pie_chart(totals):
+        ordered = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+        total = sum(totals.values())
+        if not total:
+            return "<p class='chart-empty'>No data</p>"
+        colors = ["#e65f38", "#317c91", "#c48622", "#4b8f67", "#8b6f9f", "#d75b47", "#5d7891"]
+        segments = []
+        legend = []
+        start = 0.0
+        for index, (label, count) in enumerate(ordered):
+            end = start + (count / total * 100)
+            color = colors[index % len(colors)]
+            segments.append(f"{color} {start:.2f}% {end:.2f}%")
+            legend.append(f"<div class='pie-legend-row'><span class='pie-swatch' style='background:{color}'></span><span>{html.escape(label)}</span><strong>{count} ({count / total * 100:.0f}%)</strong></div>")
+            start = end
+        return f"<div class='pie-layout'><div class='pie-chart' style=\"background:conic-gradient({', '.join(segments)})\"></div><div class='pie-legend'>{''.join(legend)}</div></div>"
+
+    distribution_chart = (
+        "<div class='chart-grid'>"
+        f"<div class='chart-panel'><h3>Issues by district</h3>{chart_rows(district_totals, 'var(--blue)')}</div>"
+        f"<div class='chart-panel'><h3>Issues by domain</h3>{pie_chart(domain_totals)}</div>"
+        "</div>"
     )
-    max_stages = max((row["total"] for row in metrics["project_stages"]), default=1)
-    stages_chart = "".join(
-        f"<div style='margin:8px 0'><div style='display:flex;justify-content:space-between;font-size:13px'><span>{html.escape(str(row['status']))}</span><strong>{row['total']}</strong></div><div style='height:9px;background:#e5ecea;border-radius:4px;overflow:hidden'><div style='height:100%;width:{max(8, int(row['total'] / max_stages * 100))}%;background:#e65f38'></div></div></div>"
-        for row in metrics["project_stages"]
-    )
+    stage_totals = {str(row.get("status") or "Unknown"): int(row.get("total", 0)) for row in metrics["project_stages"]}
+    stages_chart = f"<div class='chart-panel'><h3>Teams by project stage</h3>{chart_rows(stage_totals, 'var(--gold)')}</div>"
     responses = load_university_assignment_responses()
     response_items = []
     for resp in responses:
@@ -932,7 +1071,7 @@ def render_industry_admin():
     pending_count = sum(1 for partner in partners if partner.get('approval_status', 'Active') == 'Pending')
     partner_markup = "".join(f"<article class='partner-card'><div class='partner-heading'><div><p class='eyebrow'>Partner request</p><h3>{html.escape(partner['name'])}</h3><p>{html.escape(partner['partner_type'])} · {html.escape(partner['district'])}</p></div><span class='approval-badge approval-{str(partner.get('approval_status', 'Active')).lower()}'>{html.escape(partner.get('approval_status', 'Active'))}</span></div><p class='partner-meta'><strong>Domains:</strong> {html.escape(partner['domains'])}<br><strong>Contact:</strong> {html.escape(partner['contact_email'])}</p><form class='approval' data-kind='industry' data-id='{partner['id']}'><label>Decision<select name='status'><option {'selected' if partner.get('approval_status', 'Active') == 'Active' else ''}>Active</option><option {'selected' if partner.get('approval_status') == 'Rejected' else ''}>Rejected</option><option {'selected' if partner.get('approval_status') == 'Pending' else ''}>Pending</option></select></label><button type='submit'>Save decision</button></form></article>" for partner in partners) or "<p class='empty-state'>No industry partner registrations yet.</p>"
     offer_markup = "".join(f"<article class='commitment-card'><p><strong>{html.escape(offer['partner_name'])}</strong> offered {html.escape(offer['support_type'])} for {html.escape(offer['title'])}</p><form class='offer-update'><input type='hidden' name='offer_id' value='{offer['id']}'><select name='status'><option>Offered</option><option>Accepted</option><option>Delivered</option><option>Declined</option></select><input name='note' placeholder='Commitment note'><button type='submit'>Update commitment</button></form></article>" for offer in offers) or "<p class='empty-state'>No support offers yet.</p>"
-    return f"<div class='industry-admin-shell'><div class='admin-intro'><p class='eyebrow'>Industry verification</p><h1>Review industry partner requests.</h1><p>Approve organizations before they access approved civic challenges and submit support commitments.</p></div><div class='admin-stats'><div><strong>{pending_count}</strong><span>Pending requests</span></div><div><strong>{len(partners)}</strong><span>Total partners</span></div><div><strong>{len(offers)}</strong><span>Support offers</span></div></div><section class='admin-section'><div class='section-heading'><div><p class='eyebrow'>Onboarding queue</p><h2>Partner registrations</h2></div><span class='queue-label'>{pending_count} awaiting review</span></div><div class='partner-grid'>{partner_markup}</div></section><section class='admin-section'><p class='eyebrow'>Collaboration monitoring</p><h2>Support commitments</h2><div class='commitment-list'>{offer_markup}</div></section><section class='admin-section'><p class='eyebrow'>Manual onboarding</p><h2>Register a partner</h2><form class='industry-create admin-form'><input name='name' placeholder='Organization name' required><select name='partner_type'><option>Industry</option><option>Startup</option><option>MSME</option><option>CSR Organization</option><option>Research Laboratory</option></select><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='contact_email' type='email' placeholder='Contact email' required><button type='submit'>Register partner</button></form></section></div>"
+    return f"<div class='industry-admin-shell'><div class='admin-portal-bar'><div class='admin-portal-title'>Government workspace</div><nav class='admin-portal-links'><a href='/admin'>Moderation</a><a class='active' href='/industry-admin'>Industry partners</a><a href='/universities'>Universities</a><a href='/government-dashboard'>Analytics</a></nav></div><div class='admin-intro'><p class='eyebrow'>Industry verification</p><h1>Review industry partner requests.</h1><p>Approve organizations before they access approved civic challenges and submit support commitments.</p></div><div class='admin-stats'><div><strong>{pending_count}</strong><span>Pending requests</span></div><div><strong>{len(partners)}</strong><span>Total partners</span></div><div><strong>{len(offers)}</strong><span>Support offers</span></div></div><section class='admin-section'><div class='section-heading'><div><p class='eyebrow'>Onboarding queue</p><h2>Partner registrations</h2></div><span class='queue-label'>{pending_count} awaiting review</span></div><div class='partner-grid'>{partner_markup}</div></section><section class='admin-section'><p class='eyebrow'>Collaboration monitoring</p><h2>Support commitments</h2><div class='commitment-list'>{offer_markup}</div></section><section class='admin-section'><p class='eyebrow'>Manual onboarding</p><h2>Register a partner</h2><form class='industry-create admin-form'><input name='name' placeholder='Organization name' required><select name='partner_type'><option>Industry</option><option>Startup</option><option>MSME</option><option>CSR Organization</option><option>Research Laboratory</option></select><input name='district' placeholder='District' required><input name='domains' placeholder='Domains' required><input name='contact_email' type='email' placeholder='Contact email' required><button type='submit'>Register partner</button></form></section></div>"
 def render_university_issues():
     universities = load_universities()
     assignments = load_assignments()
@@ -958,6 +1097,62 @@ def render_university_issues():
         team_markup = "".join(render_dashboard_team(team) for team in issue_teams)
         cards.append(f"<article><h2>{html.escape(str(issue['title']))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p>{recommendation}{current}<form class='assignment'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='university_id' required>{options}</select><button type='submit'>Assign university</button></form>{team_markup}<form class='team'><input type='hidden' name='issue_id' value='{issue['id']}'><input type='hidden' name='university_id' value='{assignment['university_id'] if assignment else ''}'><input name='name' placeholder='Team name' required><input name='faculty_mentor' placeholder='Faculty mentor email' required><input name='members' placeholder='Student emails, comma separated' required><button type='submit'>Create project team</button></form></article>")
     return directory + "".join(cards)
+SAMPLE_ISSUES = [
+    {"title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
+    {"title": "Garbage uncollected for four days", "category": "Waste", "area": "Bank More, Dhanbad", "lat": 23.7957, "lng": 86.4304, "supporters": 18, "age": "4d ago", "description": "Household waste has accumulated beside the community park."},
+    {"title": "Water cut, no notice", "category": "Water", "area": "Sakchi, Jamshedpur", "lat": 22.8046, "lng": 86.2029, "supporters": 42, "age": "36h ago", "description": "The neighbourhood has had no supply since yesterday morning."},
+    {"title": "Streetlight outage at junction", "category": "Streetlights", "area": "Tower Chowk, Deoghar", "lat": 24.4857, "lng": 86.6947, "supporters": 12, "age": "2d ago", "description": "Three streetlights are out, making the junction difficult to cross at night."},
+]
+PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Civic Map</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}.eyebrow{margin:0 0 5px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}.tagline{color:var(--muted);font:14px Arial,sans-serif}nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}.nav-button:hover,.nav-button.active{background:var(--ink);color:white}main{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 105px);min-height:540px}aside{padding:24px;overflow:auto;border-right:1px solid var(--line)}.stat{display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);font:13px Arial,sans-serif}.stat strong{font-size:21px}h2{font-size:18px;font-weight:500;margin:28px 0 12px}.filters{display:grid;gap:7px}button,select,input,textarea{font:14px Arial,sans-serif}button{cursor:pointer;border:1px solid var(--ink);background:transparent;padding:10px 12px;text-align:left;color:var(--ink);border-radius:8px}button:hover,button.active{background:var(--ink);color:white}.report{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}input,select,textarea{width:100%;margin:5px 0 9px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;color:var(--ink)}textarea{resize:vertical;min-height:62px}.submit{width:100%;background:var(--accent);border-color:var(--accent);color:white;text-align:center;font-weight:bold}.submit:hover{background:#d44d27}#map{width:100%;height:100%;min-height:540px}.leaflet-popup-content-wrapper{border-radius:6px}.popup h3{margin:0 0 6px;font:700 17px Georgia,serif}.popup p{margin:5px 0;font:13px Arial,sans-serif;line-height:1.4}.popup .category{color:var(--accent);text-transform:uppercase;font-weight:bold;font-size:10px;letter-spacing:1px}.popup img{width:220px;max-height:150px;object-fit:cover;margin-top:8px;border-radius:6px}.proof{font:12px Arial,sans-serif;color:var(--muted)}@media(max-width:760px){header{align-items:start;flex-direction:column;gap:5px}main{display:block;height:auto}aside{border-right:0}#map{height:58vh;min-height:420px}}</style></head><body><header><div class="brand"><div class="brand-mark">C</div><div><div class="brand-name">Civic Map</div><div class="brand-sub">Live Civic Record</div></div></div><div class="tagline">Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a></div><nav class="nav"><a class="nav-button active" href="/">Live Map</a><a class="nav-button" href="/community">Community</a><a class="nav-button" href="/proposals">Solutions</a><a class="nav-button" href="/citizen-dashboard">My Dashboard</a><a class="nav-button" href="/university-dashboard">University</a><a class="nav-button" href="/industry-dashboard">Industry</a><a class="nav-button" href="/government-dashboard">Government</a></nav></header><main><aside><div class="stat"><span>Visible voices</span><strong id="count">0</strong></div><div class="stat"><span>People supporting</span><strong id="supporters">0</strong></div><h2>Browse issues</h2><div id="filters" class="filters"></div><button id="locate" style="margin-top:18px;width:100%;text-align:center">Use my location</button><form id="report" class="report"><h2>Drop a voice</h2><label>Issue title<input name="title" required placeholder="What needs attention?"></label><label>Category<select name="category"><option>Roads</option><option>Waste</option><option>Water</option><option>Streetlights</option><option>Footpaths</option><option>Other</option></select></label><label>Details<textarea name="description" placeholder="Add useful context"></textarea></label><label>Photo proof<input name="proof_image" type="file" accept="image/jpeg,image/png,image/webp"><small>Geotagged photos receive a location verification badge.</small></label><p style="font:12px Arial,sans-serif;color:var(--muted)">Click the map first to choose the location.</p><button class="submit" type="submit">Report this issue</button></form></aside><section id="map" aria-label="Map of civic issues"></section></main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>const issues=__ISSUES__;const map=L.map('map').setView([12.9716,77.5946],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const markers=L.layerGroup().addTo(map);let selectedCategory='All';let reportLocation=null;let selectedPin=null;const colors={Roads:'#e65f38',Waste:'#657a39',Water:'#317c91',Streetlights:'#c48622',Footpaths:'#785b86',Other:'#4f6560'};function popup(issue){return `<div class="popup"><div class="category">${issue.category} · ${issue.area}</div><h3>${issue.title}</h3><p>${issue.description||''}</p><p><b>${issue.supporters||0} supporters</b> · ${issue.age||'just now'}</p>${issue.proof_id?`<img src="/proof/${issue.proof_id}" alt="Photo proof"><p class="proof">${issue.proof_status==='verified'?'✓ GPS location verified':'Photo proof · location unverified'}</p>`:''}</div>`}function render(){markers.clearLayers();const visible=issues.filter(i=>selectedCategory==='All'||i.category===selectedCategory);visible.forEach(issue=>L.circleMarker([issue.lat,issue.lng],{radius:9,color:'#fff',weight:2,fillColor:colors[issue.category]||colors.Other,fillOpacity:.92}).bindPopup(popup(issue)).addTo(markers));document.getElementById('count').textContent=visible.length;document.getElementById('supporters').textContent=visible.reduce((sum,i)=>sum+(i.supporters||0),0)}function buildFilters(){const categories=['All',...new Set(issues.map(i=>i.category))];const root=document.getElementById('filters');root.replaceChildren();categories.forEach(category=>{const button=document.createElement('button');button.textContent=category;button.className=category==='All'?'active':'';button.onclick=()=>{selectedCategory=category;root.querySelectorAll('button').forEach(b=>b.classList.remove('active'));button.classList.add('active');render()};root.appendChild(button)})}function updatePinLabel(){if(reportLocation)document.querySelector('#report p').textContent=`Pin selected: ${reportLocation.lat.toFixed(5)}, ${reportLocation.lng.toFixed(5)}`}function setReportLocation(latlng){reportLocation=latlng;if(selectedPin)map.removeLayer(selectedPin);selectedPin=L.marker(latlng,{draggable:true}).addTo(map);selectedPin.on('dragend',event=>{reportLocation=event.target.getLatLng();updatePinLabel()});updatePinLabel()}map.on('click',e=>setReportLocation(e.latlng));document.getElementById('locate').onclick=()=>{map.once('locationfound',event=>setReportLocation(event.latlng));map.once('locationerror',()=>alert('Location access was unavailable. Please allow location access or click the map to place a pin.')).locate({setView:true,maxZoom:15})};document.getElementById('report').onsubmit=async event=>{event.preventDefault();if(!reportLocation)return alert('Click the map to choose a location first.');const form=new FormData(event.target);const proofFile=form.get('proof_image');let proofImage='';if(proofFile&&proofFile.size){const bytes=new Uint8Array(await proofFile.arrayBuffer());let binary='';bytes.forEach(byte=>binary+=String.fromCharCode(byte));proofImage=btoa(binary)}const response=await fetch('/api/issues',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:form.get('title'),category:form.get('category'),description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage,proof_type:proofFile&&proofFile.type||'image/jpeg'})});const result=await response.json();if(result.result==='possible_duplicate'){alert('A similar issue is already reported nearby. Please support the existing issue from the community page.');return}if(!response.ok)return alert(result.message||'The issue could not be submitted.');if(result.result==='duplicate'){alert('This matches an existing issue and was added as support.');return}issues.push(result.issue);buildFilters();render();event.target.reset();reportLocation=null;if(selectedPin){map.removeLayer(selectedPin);selectedPin=null}alert('Your issue was added to the map.')};buildFilters();render();const districtCoords={"Bokaro":[23.6693,85.9563],"Chatra":[24.2120,84.8715],"Deoghar":[24.4826,86.6966],"Dhanbad":[23.7957,86.4304],"Dumka":[24.2676,87.2497],"East Singhbhum":[22.8046,86.2029],"Garhwa":[24.1624,83.8073],"Giridih":[24.1868,86.3050],"Godda":[24.8267,87.2132],"Gumla":[23.0448,84.5422],"Hazaribagh":[23.9925,85.3637],"Jamtara":[23.9629,86.8000],"Khunti":[23.0763,85.2787],"Koderma":[24.4678,85.5938],"Latehar":[23.7454,84.4632],"Lohardaga":[23.4377,84.6806],"Pakur":[24.6341,87.8488],"Palamu":[24.0326,84.0722],"Ramgarh":[23.6288,85.5173],"Ranchi":[23.3441,85.3096],"Sahibganj":[25.2425,87.6419],"Seraikela Kharsawan":[22.7001,85.9298],"Simdega":[22.6148,84.5074],"West Singhbhum":[22.5694,85.8115]};document.addEventListener('change',e=>{if(e.target&&e.target.name==='district'){const c=districtCoords[e.target.value];if(c)map.flyTo(c,11,{duration:1.5})}});</script></body></html>"""
+district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
+domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
+PAGE = PAGE.replace("setView([12.9716,77.5946],12)", "setView([23.3441,85.3096],7)")
+PAGE = PAGE.replace(
+    "<option>Roads</option><option>Waste</option><option>Water</option><option>Streetlights</option><option>Footpaths</option><option>Other</option>",
+    domain_options,
+).replace(
+    "<label>Details<textarea name=\"description\" placeholder=\"Add useful context\"></textarea></label>",
+    "<label>District<select name=\"district\">" + district_options + "</select></label><label>Block or city<input name=\"block\" placeholder=\"Block, municipality, or ward\"></label><label>Details<textarea name=\"description\" placeholder=\"Add useful context\"></textarea></label>",
+).replace(
+    'accept=\"image/jpeg,image/png,image/webp\"',
+    'accept=\"image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf,.doc,.docx\"',
+).replace(
+    'Photo proof<input name=\"proof_image\" type=\"file\"',
+    'Photo, video, or document proof<input name=\"proof_image\" type=\"file\"',
+).replace(
+    "description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
+    "description:form.get('description'),area:form.get('block')||form.get('district'),district:form.get('district'),block:form.get('block'),lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
+).replace(
+    "alert('Your issue was added to the map.')",
+    "alert(result.assignment?`Your issue was added and matched with ${result.assignment.university_name}.`:'Your issue was added to the map. AI will match it when a suitable university is available.')",
+)
+PAGE = PAGE.replace(
+    "</style>",
+    ".map-search{display:grid;gap:6px;margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.65)}.map-search label{font:700 11px Arial,sans-serif;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}.map-search input{margin:0;background:var(--card)}.search-hint{font:11px Arial,sans-serif;color:var(--muted)}",
+    1,
+)
+PAGE = PAGE.replace(
+    '<h2>Browse issues</h2><div id="filters" class="filters"></div>',
+    '<h2>Browse issues</h2><div class="map-search"><label for="map-search">Search the map</label><input id="map-search" type="search" placeholder="Issue, district, category..." autocomplete="off"><div id="search-hint" class="search-hint">Search results update as you type.</div></div><div id="filters" class="filters"></div>',
+    1,
+)
+PAGE = PAGE.replace("let selectedCategory='All';", "let selectedCategory='All';let searchQuery='';", 1)
+PAGE = PAGE.replace(
+    "const visible=issues.filter(i=>selectedCategory==='All'||i.category===selectedCategory);",
+    "const visible=issues.filter(i=>(selectedCategory==='All'||i.category===selectedCategory)&&(!searchQuery||[i.title,i.description,i.category,i.district,i.block,i.area].some(value=>String(value||'').toLowerCase().includes(searchQuery))));",
+    1,
+)
+PAGE = PAGE.replace(
+    "document.getElementById('supporters').textContent=visible.reduce((sum,i)=>sum+(i.supporters||0),0)}",
+    "document.getElementById('supporters').textContent=visible.reduce((sum,i)=>sum+(i.supporters||0),0);document.getElementById('search-hint').textContent=searchQuery?`${visible.length} matching issue${visible.length===1?'':'s'}`:'Search results update as you type.'}",
+    1,
+)
+PAGE = PAGE.replace(
+    "function buildFilters(){",
+    "document.getElementById('map-search').addEventListener('input',event=>{searchQuery=event.target.value.trim().toLowerCase();render()});function buildFilters(){",
+    1,
+)
+MAP_PAGE = PAGE
 def proposal_issue(issue_id: int):
     for issue in ISSUES:
         if issue.get("id") == issue_id:
@@ -1208,8 +1403,7 @@ class MapHandler(BaseHTTPRequestHandler):
             if university_for_user(user) is None:
                 self.send_error(403)
                 return
-            template = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__ASSIGNMENTS__", render_university_dashboard(user)))
+            self.send_html(render_university_dashboard(user))
             return
         if path == "/industry-dashboard":
             user = self.session_user()
@@ -1219,8 +1413,7 @@ class MapHandler(BaseHTTPRequestHandler):
             if industry_for_user(user) is None:
                 self.send_error(403)
                 return
-            template = INDUSTRY_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__CONTENT__", render_industry_dashboard(user)))
+            self.send_html(render_industry_dashboard(user))
             return
         if path == "/contractor-dashboard":
             user = self.session_user()
@@ -1249,7 +1442,7 @@ class MapHandler(BaseHTTPRequestHandler):
             if user is None:
                 self.redirect("/login")
                 return
-            if not is_admin(user):
+            if not is_admin(user) and industry_for_user(user) is None:
                 self.send_error(403)
                 return
             template = GOVERNMENT_DASHBOARD_FILE.read_text(encoding="utf-8")
@@ -2233,6 +2426,7 @@ class MapHandler(BaseHTTPRequestHandler):
         form = parse_qs(self.rfile.read(length).decode("utf-8"))
         email = form.get("email",[""])[0].strip().lower()
         password = form.get("password",[""])[0]
+        portal_role = form.get("portal_role", ["citizen"])[0]
         if path == "/register":
             if password != form.get("confirm_password",[""])[0]:
                 self.send_html(load_register_page('<p class="error">Passwords do not match.</p>'),status=400)
@@ -2248,7 +2442,12 @@ class MapHandler(BaseHTTPRequestHandler):
             return
         session_id = secrets.token_urlsafe(32)
         SESSIONS[session_id] = email
-        self.redirect("/",f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
+        destination = {
+          "government": "/government-dashboard",
+          "university": "/university-dashboard",
+          "industry": "/industry-dashboard",
+        }.get(portal_role, "/")
+        self.redirect(destination,f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
     def send_html(self,page,status=200):
         self.send_payload(page.encode("utf-8"),status)
     def send_json(self,data,status=200):

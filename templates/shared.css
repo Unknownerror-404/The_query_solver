@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 
 :root {
   /* ---------------------------------------------------------- */
@@ -94,6 +94,9 @@
 *::after {
   box-sizing: border-box;
 }
+html, body { margin: 0; min-height: 100%; }
+button, input, select, textarea { font-family: var(--font-body); }
+a { color: var(--accent); }
 
 html {
   color-scheme: light;
@@ -556,7 +559,6 @@ button:disabled {
   font-size: 14px;
   line-height: 1.6;
 }
-
 .final-report summary {
   cursor: pointer;
   color: var(--blue);
@@ -565,30 +567,12 @@ button:disabled {
   outline: none;
   transition: color var(--transition-fast);
 }
+.final-report summary:hover { color: var(--ink); }
+.final-report h3 { margin: 14px 0 var(--space-2); font-weight: 700; font-size: var(--text-md); }
+.final-report p { margin: var(--space-2) 0; color: var(--muted); }
+.final-report small { color: var(--muted); font-size: 12px; }
 
-.final-report summary:hover {
-  color: var(--ink);
-}
-
-.final-report h3 {
-  margin: 14px 0 var(--space-2);
-  font-weight: 700;
-  font-size: var(--text-md);
-}
-
-.final-report p {
-  margin: var(--space-2) 0;
-  color: var(--muted);
-}
-
-.final-report small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-/* ================================================================== */
-/* Authentication layout — centering & shared card styling              */
-/* ================================================================== */
+/* Authentication layout — centering & shared card styling */
 body:has(.login-card),
 body:has(.register) {
   min-height: 100vh;
@@ -597,7 +581,6 @@ body:has(.register) {
   padding: var(--space-7) var(--space-4);
   background: radial-gradient(circle at 50% 0%, hsl(42, 40%, 96%), hsl(42, 20%, 88%));
 }
-
 .login-card,
 .register {
   width: 100%;
@@ -610,75 +593,38 @@ body:has(.register) {
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-lg);
 }
+.login-card::before, .register::before { height: 5px; }
+.login-card h1, .register h1 { font-size: 26px; letter-spacing: var(--tracking-normal); }
+.login-card input, .register input, .register select, .register textarea { background: rgba(255, 255, 255, 0.85); margin-bottom: var(--space-3); }
+.login-card button.submit-btn, .register button.submit-btn { width: 100%; padding: var(--space-4); margin-top: var(--space-2); background: var(--ink); font-size: 14px; }
+.login-card button.submit-btn:hover, .register button.submit-btn:hover { background: var(--ink-soft); }
 
-.login-card::before,
-.register::before {
-  height: 5px;
-}
-
-.login-card h1,
-.register h1 {
-  font-size: 26px;
-  letter-spacing: var(--tracking-normal);
-}
-
-.login-card input,
-.register input,
-.register select,
-.register textarea {
-  background: rgba(255, 255, 255, 0.85);
-  margin-bottom: var(--space-3);
-}
-
-.login-card button.submit-btn,
-.register button.submit-btn {
-  width: 100%;
-  padding: var(--space-4);
-  margin-top: var(--space-2);
-  background: var(--ink);
-  font-size: 14px;
-}
-
-.login-card button.submit-btn:hover,
-.register button.submit-btn:hover {
-  background: var(--ink-soft);
-}
-
-/* ================================================================== */
-/* Responsive adaptations                                              */
-/* ================================================================== */
+/* Responsive adaptations */
 @media (max-width: 768px) {
-  header {
-    padding: var(--space-4) var(--space-5);
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  main {
-    padding: var(--space-6) var(--space-4) var(--space-8);
-  }
-
-  .banner {
-    padding: var(--space-6) var(--space-5);
-  }
-
-  .banner h1 {
-    font-size: 32px;
-  }
-
-  .nav {
-    width: 100%;
-  }
-
-  .nav-button {
-    flex: 1 1 auto;
-  }
-
-  .section-card {
-    padding: var(--space-6) 18px;
-  }
+  header { padding: var(--space-4) var(--space-5); flex-direction: column; align-items: flex-start; }
+  main { padding: var(--space-6) var(--space-4) var(--space-8); }
+  .banner { padding: var(--space-6) var(--space-5); }
+  .banner h1 { font-size: 32px; }
+  .nav { width: 100%; }
+  .nav-button { flex: 1 1 auto; }
+  .section-card { padding: var(--space-6) 18px; }
 }
 
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.chart-panel { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .42); }
+.chart-panel h3 { margin: 0 0 18px; font-size: 13px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--muted); }
+.chart-row { margin: 0 0 15px; }
+.chart-label { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 6px; font-size: 13px; }
+.chart-track { height: 10px; overflow: hidden; border-radius: 999px; background: #e8e4da; }
+.chart-bar { display: block; height: 100%; min-width: 3px; border-radius: 999px; }
+.chart-empty { margin: 0; color: var(--muted); font-size: 13px; }
+.pie-layout { display: flex; align-items: center; gap: 24px; min-height: 190px; }
+.pie-chart { position: relative; width: 170px; height: 170px; flex: 0 0 170px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(23, 43, 40, .08); }
+.pie-chart::after { content: ""; position: absolute; inset: 43px; border-radius: 50%; background: var(--card); box-shadow: 0 0 0 1px rgba(23, 43, 40, .06); }
+.pie-legend { display: grid; gap: 9px; width: 100%; min-width: 0; }
+.pie-legend-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12px; }
+.pie-legend-row strong { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.pie-swatch { width: 10px; height: 10px; border-radius: 2px; }
 @media (max-width: 560px) {
   .approval {
     align-items: stretch;
@@ -696,6 +642,12 @@ body:has(.register) {
     padding: var(--space-6) var(--space-5);
   }
 }
+@media (max-width: 760px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .pie-layout { align-items: flex-start; flex-direction: column; }
+  .pie-chart { width: 145px; height: 145px; flex-basis: 145px; }
+  .pie-chart::after { inset: 37px; }
+}
 
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
@@ -710,4 +662,71 @@ body:has(.register) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+@media (max-width: 760px) {
+  header { padding: 18px 16px 14px; }
+  main { padding: 24px 16px 36px; }
+  .banner { padding: 24px 20px; }
+  .banner h1 { font-size: 34px; }
+  .nav { width: 100%; }
+  .nav-button { flex: 1 1 auto; text-align: center; }
+  .section-card { padding: 20px; }
+}
+
+/* Government admin workspace */
+body:has(.admin-portal-bar), body:has(.admin-intro), body:has(.industry-admin-shell), body:has(.government-page) { background: #f3f6f5; }
+body:has(.admin-portal-bar) main, body:has(.admin-intro) main, body:has(.industry-admin-shell) main, body:has(.government-page) main { max-width: 1240px; padding-top: 36px; }
+.admin-portal-bar { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; margin:-8px 0 28px; padding:14px 16px; border:1px solid #d7e2df; border-radius:14px; background:#173b3b; color:white; box-shadow:0 10px 24px rgba(23,59,59,.12); }
+.admin-portal-title { display:flex; align-items:center; gap:10px; font:700 15px 'Outfit',sans-serif; }
+.admin-portal-title::before { content:'G'; display:grid; width:30px; height:30px; place-items:center; border-radius:9px; background:#e65f38; color:white; font:700 14px 'Outfit',sans-serif; }
+.admin-portal-links { display:flex; gap:7px; flex-wrap:wrap; }
+.admin-portal-links a { padding:7px 11px; border:1px solid rgba(255,255,255,.2); border-radius:7px; color:#dcebea; font-size:12px; font-weight:700; text-decoration:none; }
+.admin-portal-links a:hover,.admin-portal-links a.active { background:#e65f38; border-color:#e65f38; color:white; }
+.admin-intro { padding-bottom:4px; }
+.admin-intro h1 { color:#173b3b; font:700 clamp(30px,4vw,46px)/1.1 'Outfit',sans-serif !important; letter-spacing:-.4px !important; }
+.admin-intro > p:last-child { color:#5b716d; font-size:14px; }
+.moderation-list,.admin-content { gap:18px; }
+.moderation-card,.admin-content article,.partner-card,.commitment-card { border:1px solid #dce6e3 !important; border-radius:14px !important; background:#fff !important; box-shadow:0 7px 20px rgba(23,59,59,.07) !important; }
+.moderation-card { padding:24px !important; }
+.moderation-card h2,.moderation-card h3 { color:#173b3b; font:700 21px 'Outfit',sans-serif !important; }
+.moderation-card p,.partner-meta,.commitment-card p { color:#607570 !important; font-family:'Inter',sans-serif !important; }
+.moderation-card textarea,.moderation-card input,.industry-admin-shell input,.industry-admin-shell select { border:1px solid #d4e1de !important; border-radius:8px !important; background:#f9fcfb !important; }
+.moderation-card button,.industry-admin-shell button { border-radius:8px; font-weight:700; }
+.moderation-card button[value='Approved'] { background:#277b58 !important; }
+.moderation-card button[value='Rejected'] { background:#c44e3b !important; }
+.industry-admin-shell { display:grid; gap:22px; }
+.industry-admin-shell .admin-intro { margin-bottom:0; }
+.admin-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.admin-stats > div { padding:18px 20px; border:1px solid #dce6e3; border-radius:12px; background:white; box-shadow:0 5px 16px rgba(23,59,59,.05); }
+.admin-stats strong { display:block; color:#173b3b; font:700 30px 'Outfit',sans-serif; }
+.admin-stats span { color:#71837f; font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; }
+.admin-section { padding:24px; border:1px solid #dce6e3; border-radius:14px; background:white; box-shadow:0 7px 20px rgba(23,59,59,.06); }
+.government-page .banner { margin-bottom:22px; border-color:#dce6e3; border-radius:14px; box-shadow:0 7px 20px rgba(23,59,59,.06); }
+.government-page .section-card,.government-page section { border-color:#dce6e3; border-radius:14px; box-shadow:0 7px 20px rgba(23,59,59,.06); }
+.government-page .banner h1 { color:#173b3b; font:700 clamp(30px,4vw,46px)/1.1 'Outfit',sans-serif; letter-spacing:-.4px; }
+.government-page .banner p { color:#607570; }
+.government-page section h2 { color:#173b3b; font:700 24px 'Outfit',sans-serif; }
+.admin-section h2 { margin:0; color:#173b3b; font:700 24px 'Outfit',sans-serif; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.queue-label,.approval-badge { padding:6px 10px; border-radius:999px; background:#fff2d6; color:#8a6414; font-size:11px; font-weight:800; text-transform:uppercase; }
+.partner-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+.partner-card,.commitment-card { padding:18px !important; box-shadow:none !important; }
+.partner-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.partner-card h3 { margin:0 0 4px; color:#173b3b; font:700 18px 'Outfit',sans-serif; }
+.partner-card form,.commitment-card form { display:flex; align-items:end; gap:8px; flex-wrap:wrap; margin-top:16px; }
+.partner-card label { flex:1 1 140px; }
+.partner-card select,.commitment-card select { min-width:135px; padding:9px 12px; }
+.partner-card button,.commitment-card button { background:#1d6a7f; }
+.commitment-list { display:grid; gap:10px; margin-top:16px; }
+.admin-form { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-top:14px; }
+.admin-form button { background:#e65f38; }
+@media (max-width:760px) {
+  .admin-portal-bar { align-items:flex-start; flex-direction:column; }
+  .admin-portal-links { width:100%; }
+  .admin-portal-links a { flex:1 1 auto; text-align:center; }
+  .admin-stats { grid-template-columns:1fr; }
+  .admin-section { padding:18px; }
+  .section-heading { align-items:flex-start; flex-direction:column; }
+  .admin-form { grid-template-columns:1fr; }
 }
