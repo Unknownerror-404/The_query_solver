@@ -42,14 +42,14 @@ CONTRACTOR_ADMIN_FILE = BASE_DIR / "templates" / "contractor_admin.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
+    from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
     from .tagging import tag_issue
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
+    from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
     from tagging import tag_issue
@@ -230,11 +230,266 @@ def render_role_nav(user: str, active: str = "") -> str:
     else:
         links.append(portal_links[role])
 
-    return "".join(
+    nav_links = "".join(
         f"<a class='nav-button{' active' if key == active else ''}' "
         f"href='{href}'>{label}</a>"
         for href, label, key in links
     )
+
+    notification_ui = """
+    <div class="notification-wrap" id="notification-wrap">
+        <button class="notification-bell" type="button" aria-label="Notifications"
+                onclick="toggleNotifications(event)">
+            <span class="notification-icon">🔔</span>
+            <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+        <div class="notification-dropdown" id="notification-dropdown" hidden>
+            <div class="notification-head">
+                <strong>Notifications</strong>
+                <button type="button" onclick="markAllNotificationsRead()">Mark all read</button>
+            </div>
+            <div id="notification-list">
+                <div class="notification-empty">Loading notifications...</div>
+            </div>
+            <a class="notification-footer" href="/notifications">View all notifications</a>
+        </div>
+    </div>
+    <style>
+        .notification-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+
+        .notification-bell {
+            position: relative;
+            border: 1px solid rgba(255,255,255,.25);
+            background: rgba(255,255,255,.08);
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 8px 10px;
+            line-height: 1;
+            border-radius: 10px;
+            transition: .2s ease;
+        }
+
+        .notification-bell:hover {
+            background: rgba(255,255,255,.18);
+            transform: translateY(-1px);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -3px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #c0392b;
+            color: #ffffff;
+            font: 700 10px/18px Arial, sans-serif;
+            text-align: center;
+            border: 2px solid #ffffff;
+        }
+
+        .notification-dropdown {
+            position: absolute;
+            z-index: 9999;
+            right: 0;
+            top: calc(100% + 10px);
+            width: 360px;
+            max-width: calc(100vw - 28px);
+            background: #173b35;
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,.22);
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(0,0,0,.35);
+            overflow: hidden;
+        }
+
+        .notification-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: #102f2a;
+            border-bottom: 1px solid rgba(255,255,255,.15);
+        }
+
+        .notification-head strong {
+            color: #ffffff;
+            font-size: 15px;
+        }
+
+        .notification-head button {
+            border: 0;
+            background: transparent;
+            color: #e6c76a;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .notification-head button:hover {
+            text-decoration: underline;
+        }
+
+        .notification-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: 0;
+            border-bottom: 1px solid rgba(255,255,255,.10);
+            background: #173b35;
+            color: #d7e2df;
+            padding: 13px 16px;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+        .notification-item:hover {
+            background: #214c44;
+        }
+
+        .notification-item.unread {
+            background: #24584e;
+            color: #ffffff;
+            border-left: 4px solid #e6c76a;
+            padding-left: 12px;
+        }
+
+        .notification-message {
+            display: block;
+            color: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .notification-time {
+            display: block;
+            margin-top: 5px;
+            color: #a9bfba;
+            font-size: 11px;
+        }
+
+        .notification-item.unread .notification-time {
+            color: #d5ddd9;
+        }
+
+        .notification-empty {
+            padding: 20px 16px;
+            color: #b8c9c5;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .notification-footer {
+            display: block;
+            padding: 13px 14px;
+            background: #102f2a;
+            color: #e6c76a;
+            text-align: center;
+            text-decoration: none;
+            border-top: 1px solid rgba(255,255,255,.15);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .notification-footer:hover {
+            background: #214c44;
+            color: #ffffff;
+        }
+    </style>
+    <script>
+    (function () {
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, function (c) {
+                return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+            });
+        }
+
+        window.loadNotifications = async function () {
+            try {
+                const response = await fetch('/api/notifications?_=' + Date.now(), {credentials: 'same-origin', cache: 'no-store'});
+                if (!response.ok) return;
+                const data = await response.json();
+                const badge = document.getElementById('notification-badge');
+                const list = document.getElementById('notification-list');
+                if (!badge || !list) return;
+
+                const unread = Number(data.unread_count || 0);
+                badge.textContent = unread > 99 ? '99+' : String(unread);
+                badge.hidden = unread === 0;
+
+                const items = data.notifications || [];
+                if (!items.length) {
+                    list.innerHTML = '<div class="notification-empty">No notifications yet.</div>';
+                    return;
+                }
+
+                list.innerHTML = items.slice(0, 8).map(function (item) {
+                    const cls = item.is_read ? 'notification-item' : 'notification-item unread';
+                    return '<button class="' + cls + '" type="button" onclick="readNotification('
+                        + Number(item.id) + ')">'
+                        + '<span class="notification-message">' + escapeHtml(item.message) + '</span>'
+                        + '<span class="notification-time">' + escapeHtml(item.created_at) + '</span>'
+                        + '</button>';
+                }).join('');
+            } catch (error) {
+                console.warn('Could not load notifications', error);
+            }
+        };
+
+        window.toggleNotifications = function (event) {
+            if (event) event.stopPropagation();
+            const dropdown = document.getElementById('notification-dropdown');
+            if (!dropdown) return;
+            dropdown.hidden = !dropdown.hidden;
+            if (!dropdown.hidden) window.loadNotifications();
+        };
+
+        window.readNotification = async function (id) {
+            try {
+                await fetch('/api/notifications/' + encodeURIComponent(id) + '/read', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                window.loadNotifications();
+            } catch (error) {
+                console.warn('Could not mark notification as read', error);
+            }
+        };
+
+        window.markAllNotificationsRead = async function () {
+            try {
+                await fetch('/api/notifications/read-all', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                window.loadNotifications();
+            } catch (error) {
+                console.warn('Could not mark notifications as read', error);
+            }
+        };
+
+        document.addEventListener('click', function (event) {
+            const wrap = document.getElementById('notification-wrap');
+            const dropdown = document.getElementById('notification-dropdown');
+            if (wrap && dropdown && !wrap.contains(event.target)) dropdown.hidden = true;
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.loadNotifications();
+            setInterval(window.loadNotifications, 30000);
+        });
+    })();
+    </script>
+    """
+
+    return nav_links + notification_ui
 
 def load_contractor_login_page(message: str = "") -> str:
     return CONTRACTOR_LOGIN_PAGE_FILE.read_text(encoding="utf-8").replace("__MESSAGE__", message)
@@ -1417,6 +1672,64 @@ class MapHandler(BaseHTTPRequestHandler):
             community_page = community_page.replace("__NAV__", render_role_nav(user, "community"))
             self.send_html(community_page)
             return
+        if path == "/api/notifications":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            notifications = load_notifications(user)
+            safe_notifications = [
+                {
+                    "id": item.get("id"),
+                    "message": str(item.get("message", "")),
+                    "related_type": item.get("related_type", ""),
+                    "related_id": item.get("related_id"),
+                    "is_read": bool(item.get("is_read", False)),
+                    "created_at": str(item.get("created_at", "")),
+                }
+                for item in notifications
+            ]
+            unread_count = sum(1 for item in safe_notifications if not item["is_read"])
+            self.send_json({
+                "notifications": safe_notifications,
+                "unread_count": unread_count,
+            })
+            return
+        if path == "/notifications":
+            user = self.session_user()
+            if user is None:
+                self.redirect("/login")
+                return
+            notifications = load_notifications(user)
+            cards = []
+            for item in notifications:
+                unread_class = " unread" if not item.get("is_read", False) else ""
+                cards.append(
+                    f"<div class='section-card notification-page-item{unread_class}'>"
+                    f"<strong>{html.escape(str(item.get('message', '')))}</strong>"
+                    f"<p class='muted'>{html.escape(str(item.get('created_at', '')))}</p>"
+                    f"</div>"
+                )
+            content = "".join(cards) or (
+                "<div class='empty-state'><h3>No notifications yet</h3>"
+                "<p>Project and collaboration updates will appear here.</p></div>"
+            )
+            page = (
+                "<!doctype html><html><head><meta charset='utf-8'>"
+                "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>Notifications</title>"
+                "<link rel='stylesheet' href='/templates/shared.css'>"
+                "<style>.notification-page{max-width:1100px;margin:30px auto;padding:0 18px}"
+                ".notification-page .top-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:22px}"
+                ".notification-page-item.unread{border-left:4px solid #2b6cb0}</style>"
+                "</head><body><main class='notification-page'>"
+                f"<nav class='top-nav'>{render_role_nav(user, 'notifications')}</nav>"
+                "<div class='section-card'><p class='eyebrow'>Updates</p>"
+                "<h1>Notifications</h1><p class='muted'>Project and collaboration activity for your account.</p>"
+                f"{content}</div></main></body></html>"
+            )
+            self.send_html(page)
+            return
         if path == "/proposals":
             user = self.session_user()
             if user is None:
@@ -2107,6 +2420,31 @@ class MapHandler(BaseHTTPRequestHandler):
             create_notification("admin@jharkhand.gov.in", f"Industry partner '{partner['name']}' pledged {support_type} for Issue #{issue_id}.", "offer", offer["id"])
             self.send_json({"message": "Support offer submitted.", "offer": offer}, status=201)
             return
+        if path.startswith("/api/notifications/") and path.endswith("/read"):
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            try:
+                notification_id = int(path.split("/")[3])
+            except (IndexError, ValueError):
+                self.send_json({"message": "Invalid notification ID."}, status=400)
+                return
+            if mark_notification_read(notification_id, user):
+                self.send_json({"message": "Notification marked as read."})
+            else:
+                self.send_json({"message": "Notification not found."}, status=404)
+            return
+
+        if path == "/api/notifications/read-all":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            mark_all_notifications_read(user)
+            self.send_json({"message": "All notifications marked as read."})
+            return
+
         if path == "/api/messages":
             user = self.session_user()
             if user is None:
@@ -2594,6 +2932,10 @@ class MapHandler(BaseHTTPRequestHandler):
     def send_payload(self,payload,status=200,content_type="text/html; charset=utf-8"):
         self.send_response(status)
         self.send_header("Content-Type",content_type)
+        if self.path.split("?", 1)[0] == "/api/notifications":
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
         self.send_header("Content-Length",str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)

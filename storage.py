@@ -1875,6 +1875,62 @@ def load_notifications(recipient: str) -> list[dict[str, Any]]:
         connection.close()
 
 
+def mark_notification_read(notification_id: int, recipient: str) -> bool:
+    if not _DB_AVAILABLE:
+        notification = next(
+            (
+                n for n in _MEM_NOTIFICATIONS
+                if n["id"] == notification_id
+                and n["recipient"].casefold() == recipient.casefold()
+            ),
+            None,
+        )
+        if notification:
+            notification["is_read"] = True
+            return True
+        return False
+
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE notifications SET is_read = TRUE WHERE id = %s AND recipient = %s",
+            (notification_id, recipient),
+        )
+        connection.commit()
+        return cursor.rowcount > 0
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def mark_all_notifications_read(recipient: str) -> bool:
+    if not _DB_AVAILABLE:
+        changed = False
+        for notification in _MEM_NOTIFICATIONS:
+            if (
+                notification["recipient"].casefold() == recipient.casefold()
+                and not notification["is_read"]
+            ):
+                notification["is_read"] = True
+                changed = True
+        return changed
+
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE notifications SET is_read = TRUE "
+            "WHERE recipient = %s AND is_read = FALSE",
+            (recipient,),
+        )
+        connection.commit()
+        return cursor.rowcount > 0
+    finally:
+        cursor.close()
+        connection.close()
+
+
 def load_messages(user: str) -> list[dict[str, Any]]:
     if not _DB_AVAILABLE:
         return [m for m in _MEM_MESSAGES if m["sender"].casefold() == user.casefold() or m["recipient"].casefold() == user.casefold()]
