@@ -1,4 +1,4 @@
-"""A small civic-issues map inspired by Swaraj's public accountability map.
+﻿"""A small civic-issues map inspired by Swaraj's public accountability map.
 Run with ``python map.py`` and open http://localhost:8000 in a browser.
 The map uses OpenStreetMap tiles through Leaflet, so an internet connection is needed for the basemap.
 """
@@ -120,9 +120,17 @@ UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("<main>", "<main><div class='admin-por
 UNIVERSITY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>University dashboard</h1><p>Assigned challenges, university decisions, project teams, and proposed solutions.</p>__ASSIGNMENTS__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);const response=await fetch(form.dataset.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Request failed')})</script></body></html>"""
 INDUSTRY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Industry dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>Industry partnership dashboard</h1><p>Offer practical support to approved societal challenges.</p>__CONTENT__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/industry/offers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Offer failed')})</script></body></html>"""
 GOVERNMENT_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Government dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;color:#172b28}section{border:1px solid #d9d7cd;padding:18px;margin:14px 0}li{margin:7px 0}</style></head><body>__CONTENT__</body></html>"""
-def load_login_page(error="", next_path=""):
+def load_login_page(error="", next_path="", portal_role="citizen"):
     page = LOGIN_PAGE_FILE.read_text(encoding="utf-8")
-    return page.replace("__ERROR__", error).replace("__NEXT__", html.escape(next_path, quote=True))
+    selected_role = (portal_role or "citizen").strip().lower()
+    if selected_role not in {"citizen", "government", "university", "industry", "contractor"}:
+        selected_role = "citizen"
+    return (
+        page
+        .replace("__ERROR__", error)
+        .replace("__NEXT__", html.escape(next_path, quote=True))
+        .replace("__PORTAL_ROLE__", html.escape(selected_role, quote=True))
+    )
 def load_university_login_page(error=""):
     page = UNIVERSITY_LOGIN_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
@@ -164,6 +172,70 @@ def industry_for_user(user):
 def contractor_for_user(user: str):
     """Return the contractor record for a logged-in user, or None if not a contractor."""
     return _contractor_for_user_storage(user)
+
+
+def portal_role_for_user(user: str) -> str:
+    """Return the single portal role represented by a logged-in account."""
+    email = (user or "").strip().casefold()
+    if not email:
+        return "citizen"
+    if is_admin(email):
+        return "government"
+    if contractor_for_user(email) is not None:
+        return "contractor"
+    if university_for_user(email) is not None:
+        return "university"
+    if industry_for_user(email) is not None:
+        return "industry"
+    return "citizen"
+
+
+def user_can_access_portal(user: str, portal: str) -> bool:
+    """Allow each role into its own portal; admins use government/admin workspaces."""
+    if is_admin(user):
+        return portal in {"citizen", "government"}
+    return portal_role_for_user(user) == portal
+
+
+def render_role_nav(user: str, active: str = "") -> str:
+    """Render navigation links appropriate to the signed-in user's role."""
+    role = portal_role_for_user(user)
+
+    links = [
+        ("/", "Live Map", "map"),
+        ("/community", "Community", "community"),
+        ("/proposals", "Solutions", "proposals"),
+    ]
+
+    portal_links = {
+        "citizen": ("/citizen-dashboard", "My Dashboard", "citizen"),
+        "university": ("/university-dashboard", "University", "university"),
+        "industry": ("/industry-dashboard", "Industry", "industry"),
+        "contractor": ("/contractor-dashboard", "Contractor", "contractor"),
+    }
+
+    if role == "government":
+        # Government/Admin uses the government and admin workspaces.
+        # Do not expose the institution-specific dashboards.
+        links.extend([
+            ("/citizen-dashboard", "Citizen", "citizen"),
+            ("/government-dashboard", "Government", "government"),
+
+            # Government/Admin workspace pages.
+            ("/admin", "Moderation", "admin"),
+            ("/universities", "Universities Admin", "universities-admin"),
+            ("/industry-admin", "Industry Admin", "industry-admin"),
+            ("/contractor-admin", "Contractor Admin", "contractor-admin"),
+        ])
+    else:
+        links.append(portal_links[role])
+
+    return "".join(
+        f"<a class='nav-button{' active' if key == active else ''}' "
+        f"href='{href}'>{label}</a>"
+        for href, label, key in links
+    )
+
 def load_contractor_login_page(message: str = "") -> str:
     return CONTRACTOR_LOGIN_PAGE_FILE.read_text(encoding="utf-8").replace("__MESSAGE__", message)
 def load_contractor_register_page(message: str = "") -> str:
@@ -1201,11 +1273,13 @@ def render_professional_proposals():
     return "".join(output)
 def build_proposals_page(user):
     page = load_proposals_page()
-    page = page.replace("__USER__",html.escape(user))
-    page = page.replace("__ISSUES__",render_proposal_issues())
-    page = page.replace("__OPTIONS__",render_proposal_options())
-    page = page.replace("__PROPOSALS__",render_proposals())
-    page = page.replace("__MESSAGE__","")
+    page = page.replace("__USER__", html.escape(user))
+    page = page.replace("__ISSUES__", render_proposal_issues())
+    page = page.replace("__OPTIONS__", render_proposal_options())
+    page = page.replace("__PROPOSALS__", render_proposals())
+    page = page.replace("__MESSAGE__", "")
+    page = page.replace("__NAV__", render_role_nav(user, "proposals"))
+    return page
     return page
 def build_professionals_page(user):
     page = load_professionals_page()
@@ -1338,7 +1412,10 @@ class MapHandler(BaseHTTPRequestHandler):
                 longitude = float(query["lng"][0])
             except (KeyError,ValueError):
                 latitude = longitude = None
-            self.send_html(render_page(self.session_user() or "",latitude,longitude))
+            user = self.session_user() or ""
+            community_page = render_page(user, latitude, longitude)
+            community_page = community_page.replace("__NAV__", render_role_nav(user, "community"))
+            self.send_html(community_page)
             return
         if path == "/proposals":
             user = self.session_user()
@@ -1392,39 +1469,49 @@ class MapHandler(BaseHTTPRequestHandler):
             if user is None:
                 self.redirect("/login")
                 return
+            if not user_can_access_portal(user, "citizen"):
+                self.send_error(403)
+                return
             template = CITIZEN_PAGE_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__USER__", html.escape(user)).replace("__ISSUES__", render_user_issues(user)))
+            self.send_html(
+                template.replace("__USER__", html.escape(user))
+                .replace("__ISSUES__", render_user_issues(user))
+                .replace("__NAV__", render_role_nav(user, "citizen"))
+            )
             return
         if path == "/university-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
-            if university_for_user(user) is None:
+            if not user_can_access_portal(user, "university"):
                 self.send_error(403)
                 return
-            self.send_html(render_university_dashboard(user))
+            self.send_html(render_university_dashboard(user).replace("__NAV__", render_role_nav(user, "university")))
             return
         if path == "/industry-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
-            if industry_for_user(user) is None:
+            if not user_can_access_portal(user, "industry"):
                 self.send_error(403)
                 return
-            self.send_html(render_industry_dashboard(user))
+            self.send_html(render_industry_dashboard(user).replace("__NAV__", render_role_nav(user, "industry")))
             return
         if path == "/contractor-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/contractor/login")
                 return
-            if contractor_for_user(user) is None:
+            if not user_can_access_portal(user, "contractor"):
                 self.send_error(403)
                 return
             template = CONTRACTOR_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__CONTENT__", render_contractor_dashboard(user)))
+            self.send_html(
+                template.replace("__CONTENT__", render_contractor_dashboard(user))
+                .replace("__NAV__", render_role_nav(user, "contractor"))
+            )
             return
         if path == "/contractor-admin":
             user = self.session_user()
@@ -1442,11 +1529,14 @@ class MapHandler(BaseHTTPRequestHandler):
             if user is None:
                 self.redirect("/login")
                 return
-            if not is_admin(user) and industry_for_user(user) is None:
+            if not user_can_access_portal(user, "government"):
                 self.send_error(403)
                 return
             template = GOVERNMENT_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__CONTENT__", render_government_dashboard()))
+            self.send_html(
+                template.replace("__CONTENT__", render_government_dashboard())
+                .replace("__NAV__", render_role_nav(user, "government"))
+            )
             return
         if path not in ("/","/index.html"):
             self.send_error(404)
@@ -1459,7 +1549,15 @@ class MapHandler(BaseHTTPRequestHandler):
         template = MAIN_MAP_PAGE_FILE.read_text(encoding="utf-8")
         district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
         domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
-        payload = template.replace("__ISSUES__", issues_json).replace("__USER__", html.escape(user)).replace("__DISTRICT_OPTIONS__", district_options).replace("__DOMAIN_OPTIONS__", domain_options).encode("utf-8")
+        payload = (
+            template
+            .replace("__ISSUES__", issues_json)
+            .replace("__USER__", html.escape(user))
+            .replace("__DISTRICT_OPTIONS__", district_options)
+            .replace("__DOMAIN_OPTIONS__", domain_options)
+            .replace("__NAV__", render_role_nav(user, "map"))
+            .encode("utf-8")
+        )
         self.send_payload(payload)
     def do_POST(self) -> None:
         global NEXT_PROPOSAL_ID
@@ -2426,7 +2524,7 @@ class MapHandler(BaseHTTPRequestHandler):
         form = parse_qs(self.rfile.read(length).decode("utf-8"))
         email = form.get("email",[""])[0].strip().lower()
         password = form.get("password",[""])[0]
-        portal_role = form.get("portal_role", ["citizen"])[0]
+        portal_role = form.get("portal_role", ["citizen"])[0].strip().lower()
         if path == "/register":
             if password != form.get("confirm_password",[""])[0]:
                 self.send_html(load_register_page('<p class="error">Passwords do not match.</p>'),status=400)
@@ -2437,16 +2535,57 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.redirect("/login")
             return
-        if not authenticate(email,password):
-            self.send_html(load_login_page('<p class="error">Email or password is incorrect.</p>'),status=401)
+        allowed_roles = {"citizen", "government", "university", "industry", "contractor"}
+        if portal_role not in allowed_roles:
+            self.send_html(
+                load_login_page('<p class="error">Please select a valid portal.</p>', portal_role=portal_role),
+                status=400,
+            )
             return
+
+        if not authenticate(email,password):
+            self.send_html(
+                load_login_page(
+                    '<p class="error">Email or password is incorrect.</p>',
+                    portal_role=portal_role,
+                ),
+                status=401,
+            )
+            return
+
+        actual_role = portal_role_for_user(email)
+        if portal_role != actual_role:
+            role_names = {
+                "citizen": "Citizen",
+                "government": "Government",
+                "university": "University",
+                "industry": "Industry",
+                "contractor": "Contractor",
+            }
+            actual_role_name = role_names.get(actual_role, actual_role.title())
+            selected_role_name = role_names.get(portal_role, portal_role.title())
+            error = (
+                '<p class="error">'
+                f'Wrong portal selected. You selected <strong>{html.escape(selected_role_name)}</strong>, '
+                f'but this account belongs to the <strong>{html.escape(actual_role_name)}</strong> portal. '
+                f'Please select {html.escape(actual_role_name)} and try again.'
+                '</p>'
+            )
+            self.send_html(
+                load_login_page(error, portal_role=portal_role),
+                status=403,
+            )
+            return
+
         session_id = secrets.token_urlsafe(32)
         SESSIONS[session_id] = email
         destination = {
-          "government": "/government-dashboard",
-          "university": "/university-dashboard",
-          "industry": "/industry-dashboard",
-        }.get(portal_role, "/")
+            "citizen": "/citizen-dashboard",
+            "government": "/government-dashboard",
+            "university": "/university-dashboard",
+            "industry": "/industry-dashboard",
+            "contractor": "/contractor-dashboard",
+        }[portal_role]
         self.redirect(destination,f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
     def send_html(self,page,status=200):
         self.send_payload(page.encode("utf-8"),status)
