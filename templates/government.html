@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="/manifest.json">
 <title>Government Admin Dashboard · Civic Map</title>
 <style>
 :root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
@@ -112,4 +113,5 @@ document.querySelectorAll('form').forEach(form => {
 });
 </script>
 </body>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js');</script>
 </html>

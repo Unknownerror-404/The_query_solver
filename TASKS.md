@@ -80,10 +80,10 @@
 - [x] Show university participation and industry engagement
 - [x] Show project completion and measurable community impact
 - [x] Add visual charts for district/domain distribution and project progress
-- [ ] Add visual charts for university participation by institution
-- [ ] Add visual charts for industry support by partner and support type
-- [ ] Add visual charts for completed/deployed projects
-- [ ] Add structured impact outcome metrics, including beneficiaries, patents, and startups
+- [x] Add visual charts for university participation by institution
+- [x] Add visual charts for industry support by partner and support type
+- [x] Add visual charts for completed/deployed projects
+- [x] Add structured impact outcome metrics, including beneficiaries, patents, startups, and measured outcomes
 - [x] Add email or in-app notifications
 - [x] Add role-based project communication
 
@@ -104,23 +104,26 @@
 ## Phase 8: SIH Final Improvements
 
 - [ ] Add responsive PWA or a dedicated mobile client
+- [x] Add PWA manifest, service worker, install shell, and offline fallback
 - [x] Add admin approval workflow for university registrations
-- [ ] Add admin approval workflow for industry partner registrations
-- [ ] Add database-backed professional registration and approval
+- [x] Add admin approval workflow for industry partner registrations
+- [x] Add database-backed professional registration and approval
 - [x] Add proposal moderation to the admin interface
-- [ ] Add tests for university registration and approval
+- [x] Add tests for university registration and approval
 - [x] Add tests for industry expertise and location matching
-- [ ] Add tests for proposal submission, voting, and moderation
-- [ ] Add tests for industry registration, approval, and support offers
+- [x] Add tests for proposal persistence and one-vote-per-user behavior
+- [ ] Add API tests for proposal submission and moderation
+- [x] Add tests for industry registration, approval, and support offers
 - [ ] Add tests for admin moderation and university assignment workflows
 - [ ] Add API and browser-flow tests for the FastAPI application
 
 ## Phase 9: Structured Project Evidence
 
-- [ ] Add structured pilot location, dates, beneficiary counts, and outcome measurements
-- [ ] Add milestone deliverable upload and download workflows
-- [ ] Add formal testing, pilot, and deployment review records
-- [ ] Add university requests for industry support
+- [x] Add structured pilot location, dates, beneficiary counts, and outcome measurements
+- [x] Add milestone deliverable upload and download workflows
+- [x] Add formal testing, pilot, and deployment review records
+- [x] Add university requests for industry support
+- [x] Persist faculty/student role metadata on project team members
 - [ ] Add complete faculty, mentor, and student role management
 
 ## Project Status

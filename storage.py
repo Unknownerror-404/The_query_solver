@@ -67,6 +67,9 @@ _MEM_MESSAGES: list[dict[str, Any]] = []
 _MEM_NOTIFICATIONS: list[dict[str, Any]] = []
 _MEM_STATUS_HISTORY: list[dict[str, Any]] = []
 _MEM_UNIVERSITY_REPORTS: list[dict[str, Any]] = []
+_MEM_PROJECT_REVIEWS: list[dict[str, Any]] = []
+_MEM_PROFESSIONALS: list[dict[str, Any]] = [{"email": "engineer@example.gov", "name": "Arun Mehta", "organization": "Bengaluru Urban Transport Authority", "affiliation": "Government transport professional", "verification": "Verified by organization", "approval_status": "Active"}]
+_MEM_SUPPORT_REQUESTS: list[dict[str, Any]] = []
 _MEM_PROPOSALS: list[dict[str, Any]] = []
 _MEM_RATE_LIMITS: dict[str, Any] = {}
 
@@ -267,6 +270,11 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 ip_outcome TEXT,
                 startup_outcome TEXT,
                 impact_summary TEXT,
+                pilot_location VARCHAR(255),
+                pilot_start_date DATE,
+                pilot_end_date DATE,
+                beneficiary_count INT NOT NULL DEFAULT 0,
+                outcome_metric TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
                 FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE CASCADE
@@ -277,6 +285,11 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             "ALTER TABLE project_teams ADD COLUMN ip_outcome TEXT",
             "ALTER TABLE project_teams ADD COLUMN startup_outcome TEXT",
             "ALTER TABLE project_teams ADD COLUMN impact_summary TEXT",
+            "ALTER TABLE project_teams ADD COLUMN pilot_location VARCHAR(255)",
+            "ALTER TABLE project_teams ADD COLUMN pilot_start_date DATE",
+            "ALTER TABLE project_teams ADD COLUMN pilot_end_date DATE",
+            "ALTER TABLE project_teams ADD COLUMN beneficiary_count INT NOT NULL DEFAULT 0",
+            "ALTER TABLE project_teams ADD COLUMN outcome_metric TEXT",
         ):
             try:
                 cursor.execute(statement)
@@ -288,6 +301,7 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             CREATE TABLE IF NOT EXISTS team_members (
                 team_id INT NOT NULL,
                 student_email VARCHAR(255) NOT NULL,
+                member_role VARCHAR(30) NOT NULL DEFAULT 'Student',
                 PRIMARY KEY (team_id, student_email),
                 FOREIGN KEY (team_id) REFERENCES project_teams(id) ON DELETE CASCADE
             )
@@ -350,6 +364,36 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_reviews (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                team_id INT NOT NULL,
+                review_type VARCHAR(30) NOT NULL,
+                decision VARCHAR(30) NOT NULL,
+                notes TEXT NOT NULL,
+                reviewed_by VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (team_id) REFERENCES project_teams(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS professional_profiles (
+                email VARCHAR(255) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                organization VARCHAR(255) NOT NULL,
+                affiliation VARCHAR(255) NOT NULL,
+                verification VARCHAR(255) NOT NULL,
+                approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute("SELECT COUNT(*) FROM professional_profiles WHERE email = %s", ("engineer@example.gov",))
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO professional_profiles (email, name, organization, affiliation, verification, approval_status) VALUES (%s, %s, %s, %s, %s, 'Active')", ("engineer@example.gov", "Arun Mehta", "Bengaluru Urban Transport Authority", "Government transport professional", "Verified by organization"))
         cursor.execute("SELECT COUNT(*) FROM universities")
         if cursor.fetchone()[0] == 0:
             cursor.executemany(
@@ -379,6 +423,11 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
         except Error as error:
             if error.errno != 1060:
                 raise
+        try:
+            cursor.execute("ALTER TABLE team_members ADD COLUMN member_role VARCHAR(30) NOT NULL DEFAULT 'Student'")
+        except Error as error:
+            if error.errno != 1060:
+                raise
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS support_offers (
@@ -395,6 +444,22 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
                 FOREIGN KEY (partner_id) REFERENCES industry_partners(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS support_requests (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                university_id INT NOT NULL,
+                requested_by VARCHAR(255) NOT NULL,
+                support_type VARCHAR(50) NOT NULL,
+                details TEXT NOT NULL,
+                status VARCHAR(30) NOT NULL DEFAULT 'Requested',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+                FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE CASCADE
             )
             """
         )
@@ -812,25 +877,31 @@ def update_assignment(issue_id: int, status: str, reason: str) -> bool:
 
 def load_teams() -> list[dict[str, Any]]:
     if not _DB_AVAILABLE:
-        return list(_MEM_TEAMS)
+        teams = list(_MEM_TEAMS)
+        for team in teams:
+            team.setdefault("member_roles", {member: "Student" for member in team.get("members", [])})
+        return teams
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT id, issue_id, university_id, name, faculty_mentor, status FROM project_teams ORDER BY id")
         teams = cursor.fetchall()
         for team in teams:
-            cursor.execute("SELECT student_email FROM team_members WHERE team_id = %s ORDER BY student_email", (team["id"],))
-            team["members"] = [row["student_email"] for row in cursor.fetchall()]
+            cursor.execute("SELECT student_email, member_role FROM team_members WHERE team_id = %s ORDER BY student_email", (team["id"],))
+            members = cursor.fetchall()
+            team["members"] = [row["student_email"] for row in members]
+            team["member_roles"] = {row["student_email"]: row.get("member_role", "Student") for row in members}
         return teams
     finally:
         cursor.close()
         connection.close()
 
 
-def create_team(issue_id: int, university_id: int, name: str, faculty_mentor: str, members: list[str]) -> dict[str, Any]:
+def create_team(issue_id: int, university_id: int, name: str, faculty_mentor: str, members: list[str], member_roles: dict[str, str] | None = None) -> dict[str, Any]:
+    member_roles = member_roles or {}
     if not _DB_AVAILABLE:
         tid = max((t["id"] for t in _MEM_TEAMS), default=0) + 1
-        rec = {"id": tid, "issue_id": issue_id, "university_id": university_id, "name": name, "faculty_mentor": faculty_mentor, "status": "Forming", "members": members, "ip_outcome": "", "startup_outcome": "", "impact_summary": ""}
+        rec = {"id": tid, "issue_id": issue_id, "university_id": university_id, "name": name, "faculty_mentor": faculty_mentor, "status": "Forming", "members": members, "member_roles": {member: member_roles.get(member, "Student") for member in members}, "ip_outcome": "", "startup_outcome": "", "impact_summary": "", "pilot_location": "", "pilot_start_date": "", "pilot_end_date": "", "beneficiary_count": 0, "outcome_metric": ""}
         _MEM_TEAMS.append(rec)
         return rec
     connection = connect()
@@ -838,9 +909,9 @@ def create_team(issue_id: int, university_id: int, name: str, faculty_mentor: st
         cursor = connection.cursor()
         cursor.execute("INSERT INTO project_teams (issue_id, university_id, name, faculty_mentor) VALUES (%s, %s, %s, %s)", (issue_id, university_id, name, faculty_mentor))
         team_id = cursor.lastrowid
-        cursor.executemany("INSERT INTO team_members (team_id, student_email) VALUES (%s, %s)", [(team_id, member) for member in members])
+        cursor.executemany("INSERT INTO team_members (team_id, student_email, member_role) VALUES (%s, %s, %s)", [(team_id, member, member_roles.get(member, "Student")) for member in members])
         connection.commit()
-        return {"id": team_id, "issue_id": issue_id, "university_id": university_id, "name": name, "faculty_mentor": faculty_mentor, "status": "Forming", "members": members}
+        return {"id": team_id, "issue_id": issue_id, "university_id": university_id, "name": name, "faculty_mentor": faculty_mentor, "status": "Forming", "members": members, "member_roles": {member: member_roles.get(member, "Student") for member in members}}
     finally:
         cursor.close()
         connection.close()
@@ -870,7 +941,7 @@ def update_team_status(team_id: int, status: str, changed_by: str = "system", no
 def create_milestone(team_id: int, title: str, due_date: str, deliverable: str, deliverable_type: str = "", deliverable_data: bytes = b"") -> dict[str, Any]:
     if not _DB_AVAILABLE:
         mid = max((m["id"] for m in _MEM_MILESTONES), default=0) + 1
-        rec = {"id": mid, "team_id": team_id, "title": title, "due_date": due_date, "status": "Pending", "deliverable": deliverable, "testing_result": ""}
+        rec = {"id": mid, "team_id": team_id, "title": title, "due_date": due_date, "status": "Pending", "deliverable": deliverable, "testing_result": "", "deliverable_type": deliverable_type, "deliverable_data": deliverable_data}
         _MEM_MILESTONES.append(rec)
         return rec
     connection = connect()
@@ -899,7 +970,10 @@ def load_milestones(team_id: int) -> list[dict[str, Any]]:
 
 def get_milestone_deliverable(milestone_id: int) -> tuple[str, bytes] | None:
     if not _DB_AVAILABLE:
-        return None
+        milestone = next((item for item in _MEM_MILESTONES if item["id"] == milestone_id), None)
+        if not milestone or not milestone.get("deliverable_data"):
+            return None
+        return milestone.get("deliverable_type") or "application/octet-stream", bytes(milestone["deliverable_data"])
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -929,6 +1003,21 @@ def load_status_history(team_id: int) -> list[dict[str, Any]]:
 def load_dashboard_metrics() -> dict[str, Any]:
     if not _DB_AVAILABLE:
         from community import ISSUES
+        university_names = {university["id"]: university["name"] for university in _MEM_UNIVERSITIES}
+        university_participation = {}
+        for assignment in _MEM_ASSIGNMENTS.values():
+            name = university_names.get(assignment.get("university_id"), "Unknown university")
+            university_participation[name] = university_participation.get(name, 0) + 1
+        support_by_type = {}
+        for offer in _MEM_OFFERS:
+            support_type = offer.get("support_type", "Other")
+            support_by_type[support_type] = support_by_type.get(support_type, 0) + 1
+        completed_projects = sum(team.get("status") in {"Deployed", "Impact Measured"} for team in _MEM_TEAMS)
+        impact_projects = sum(bool(team.get("impact_summary")) for team in _MEM_TEAMS)
+        patent_outcomes = sum(bool(team.get("ip_outcome")) for team in _MEM_TEAMS)
+        startup_outcomes = sum(bool(team.get("startup_outcome")) for team in _MEM_TEAMS)
+        beneficiary_total = sum(int(team.get("beneficiary_count") or 0) for team in _MEM_TEAMS)
+        measured_outcomes = sum(bool(team.get("outcome_metric")) for team in _MEM_TEAMS)
         return {
             "total_issues": len(ISSUES),
             "moderation": [{"status": "Approved", "total": len([i for i in ISSUES if i.get("moderation_status") == "Approved"])}, {"status": "Pending", "total": len([i for i in ISSUES if i.get("moderation_status") != "Approved"])}],
@@ -939,6 +1028,9 @@ def load_dashboard_metrics() -> dict[str, Any]:
             "support_offers": len(_MEM_OFFERS),
             "project_stages": [{"status": "Prototype", "total": len(_MEM_TEAMS)}],
             "proposals": len(_MEM_PROPOSALS),
+            "university_participation": [{"university": name, "total": total} for name, total in university_participation.items()],
+            "support_by_type": [{"support_type": support_type, "total": total} for support_type, total in support_by_type.items()],
+            "project_outcomes": [{"outcome": "Completed or deployed projects", "total": completed_projects}, {"outcome": "Projects with impact reports", "total": impact_projects}, {"outcome": "IP or patent outcomes", "total": patent_outcomes}, {"outcome": "Startup outcomes", "total": startup_outcomes}, {"outcome": "Beneficiaries reached", "total": beneficiary_total}, {"outcome": "Measured outcomes", "total": measured_outcomes}],
         }
     connection = connect()
     try:
@@ -962,6 +1054,12 @@ def load_dashboard_metrics() -> dict[str, Any]:
         metrics["project_stages"] = cursor.fetchall()
         cursor.execute("SELECT COUNT(*) AS total FROM proposals")
         metrics["proposals"] = cursor.fetchone()["total"]
+        cursor.execute("SELECT u.name AS university, COUNT(a.issue_id) AS total FROM universities u LEFT JOIN issue_assignments a ON a.university_id = u.id GROUP BY u.id, u.name ORDER BY total DESC, u.name")
+        metrics["university_participation"] = cursor.fetchall()
+        cursor.execute("SELECT support_type, COUNT(*) AS total FROM support_offers GROUP BY support_type ORDER BY total DESC, support_type")
+        metrics["support_by_type"] = cursor.fetchall()
+        cursor.execute("SELECT 'Completed or deployed projects' AS outcome, COUNT(*) AS total FROM project_teams WHERE status IN ('Deployed', 'Impact Measured') UNION ALL SELECT 'Projects with impact reports', COUNT(*) FROM project_teams WHERE impact_summary IS NOT NULL AND impact_summary <> '' UNION ALL SELECT 'IP or patent outcomes', COUNT(*) FROM project_teams WHERE ip_outcome IS NOT NULL AND ip_outcome <> '' UNION ALL SELECT 'Startup outcomes', COUNT(*) FROM project_teams WHERE startup_outcome IS NOT NULL AND startup_outcome <> '' UNION ALL SELECT 'Beneficiaries reached', COALESCE(SUM(beneficiary_count), 0) FROM project_teams UNION ALL SELECT 'Measured outcomes', COUNT(*) FROM project_teams WHERE outcome_metric IS NOT NULL AND outcome_metric <> ''")
+        metrics["project_outcomes"] = cursor.fetchall()
         return metrics
     finally:
         cursor.close()
@@ -987,21 +1085,118 @@ def update_milestone(milestone_id: int, status: str, testing_result: str) -> boo
         connection.close()
 
 
-def update_team_outcomes(team_id: int, ip_outcome: str, startup_outcome: str, impact_summary: str) -> bool:
+def update_team_outcomes(team_id: int, ip_outcome: str, startup_outcome: str, impact_summary: str, pilot_location: str = "", pilot_start_date: str = "", pilot_end_date: str = "", beneficiary_count: int = 0, outcome_metric: str = "") -> bool:
     if not _DB_AVAILABLE:
         t = next((item for item in _MEM_TEAMS if item["id"] == team_id), None)
         if t:
             t["ip_outcome"] = ip_outcome
             t["startup_outcome"] = startup_outcome
             t["impact_summary"] = impact_summary
+            t["pilot_location"] = pilot_location
+            t["pilot_start_date"] = pilot_start_date
+            t["pilot_end_date"] = pilot_end_date
+            t["beneficiary_count"] = beneficiary_count
+            t["outcome_metric"] = outcome_metric
             return True
         return False
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("UPDATE project_teams SET ip_outcome = %s, startup_outcome = %s, impact_summary = %s WHERE id = %s", (ip_outcome, startup_outcome, impact_summary, team_id))
+        cursor.execute("UPDATE project_teams SET ip_outcome = %s, startup_outcome = %s, impact_summary = %s, pilot_location = %s, pilot_start_date = NULLIF(%s, ''), pilot_end_date = NULLIF(%s, ''), beneficiary_count = %s, outcome_metric = %s WHERE id = %s", (ip_outcome, startup_outcome, impact_summary, pilot_location, pilot_start_date, pilot_end_date, beneficiary_count, outcome_metric, team_id))
         connection.commit()
-        return cursor.rowcount > 0
+        cursor.execute("SELECT id FROM project_teams WHERE id = %s", (team_id,))
+        return cursor.fetchone() is not None
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_project_review(team_id: int, review_type: str, decision: str, notes: str, reviewed_by: str) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        review = {"id": len(_MEM_PROJECT_REVIEWS) + 1, "team_id": team_id, "review_type": review_type, "decision": decision, "notes": notes, "reviewed_by": reviewed_by, "created_at": "just now"}
+        _MEM_PROJECT_REVIEWS.append(review)
+        return review
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO project_reviews (team_id, review_type, decision, notes, reviewed_by) VALUES (%s, %s, %s, %s, %s)", (team_id, review_type, decision, notes, reviewed_by))
+        connection.commit()
+        return {"id": cursor.lastrowid, "team_id": team_id, "review_type": review_type, "decision": decision, "notes": notes, "reviewed_by": reviewed_by}
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_project_reviews(team_id: int | None = None) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [review for review in _MEM_PROJECT_REVIEWS if team_id is None or review["team_id"] == team_id]
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        if team_id is None:
+            cursor.execute("SELECT id, team_id, review_type, decision, notes, reviewed_by, created_at FROM project_reviews ORDER BY created_at DESC, id DESC")
+        else:
+            cursor.execute("SELECT id, team_id, review_type, decision, notes, reviewed_by, created_at FROM project_reviews WHERE team_id = %s ORDER BY created_at DESC, id DESC", (team_id,))
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_professional_profile(email: str, name: str, organization: str, affiliation: str, verification: str, approval_status: str = "Pending") -> dict[str, Any]:
+    email = email.strip().lower()
+    if not _DB_AVAILABLE:
+        existing = next((item for item in _MEM_PROFESSIONALS if item["email"] == email), None)
+        if existing:
+            raise ValueError("Professional profile already exists")
+        profile = {"email": email, "name": name, "organization": organization, "affiliation": affiliation, "verification": verification, "approval_status": approval_status}
+        _MEM_PROFESSIONALS.append(profile)
+        return profile
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO professional_profiles (email, name, organization, affiliation, verification, approval_status) VALUES (%s, %s, %s, %s, %s, %s)", (email, name, organization, affiliation, verification, approval_status))
+        connection.commit()
+        return {"email": email, "name": name, "organization": organization, "affiliation": affiliation, "verification": verification, "approval_status": approval_status}
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_professional_profiles(approval_status: str | None = None) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [item for item in _MEM_PROFESSIONALS if approval_status is None or item["approval_status"] == approval_status]
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        if approval_status is None:
+            cursor.execute("SELECT email, name, organization, affiliation, verification, approval_status FROM professional_profiles ORDER BY name")
+        else:
+            cursor.execute("SELECT email, name, organization, affiliation, verification, approval_status FROM professional_profiles WHERE approval_status = %s ORDER BY name", (approval_status,))
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def update_professional_approval(email: str, status: str) -> bool:
+    if status not in {"Active", "Rejected", "Pending"}:
+        return False
+    email = email.strip().lower()
+    if not _DB_AVAILABLE:
+        profile = next((item for item in _MEM_PROFESSIONALS if item["email"] == email), None)
+        if profile:
+            profile["approval_status"] = status
+            return True
+        return False
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("UPDATE professional_profiles SET approval_status = %s WHERE email = %s", (status, email))
+        connection.commit()
+        cursor.execute("SELECT approval_status FROM professional_profiles WHERE email = %s", (email,))
+        row = cursor.fetchone()
+        return bool(row and row[0] == status)
     finally:
         cursor.close()
         connection.close()
@@ -1106,6 +1301,38 @@ def load_all_partner_offers() -> list[dict[str, Any]]:
         connection.close()
 
 
+def create_support_request(issue_id: int, university_id: int, requested_by: str, support_type: str, details: str) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        request = {"id": len(_MEM_SUPPORT_REQUESTS) + 1, "issue_id": issue_id, "university_id": university_id, "requested_by": requested_by, "support_type": support_type, "details": details, "status": "Requested"}
+        _MEM_SUPPORT_REQUESTS.append(request)
+        return request
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO support_requests (issue_id, university_id, requested_by, support_type, details) VALUES (%s, %s, %s, %s, %s)", (issue_id, university_id, requested_by, support_type, details))
+        connection.commit()
+        return {"id": cursor.lastrowid, "issue_id": issue_id, "university_id": university_id, "requested_by": requested_by, "support_type": support_type, "details": details, "status": "Requested"}
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_support_requests(university_id: int | None = None) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        return [request for request in _MEM_SUPPORT_REQUESTS if university_id is None or request["university_id"] == university_id]
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        if university_id is None:
+            cursor.execute("SELECT id, issue_id, university_id, requested_by, support_type, details, status, created_at FROM support_requests ORDER BY created_at DESC, id DESC")
+        else:
+            cursor.execute("SELECT id, issue_id, university_id, requested_by, support_type, details, status, created_at FROM support_requests WHERE university_id = %s ORDER BY created_at DESC, id DESC", (university_id,))
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
 def create_support_offer(
     issue_id: int,
     partner_id: int,
@@ -1115,6 +1342,22 @@ def create_support_offer(
     resources: str = "",
     timeline: str = "",
 ) -> dict[str, Any]:
+    if not _DB_AVAILABLE:
+        offer_id = max((offer["id"] for offer in _MEM_OFFERS), default=0) + 1
+        rec = {
+            "id": offer_id,
+            "issue_id": issue_id,
+            "partner_id": partner_id,
+            "support_type": support_type,
+            "details": details,
+            "funding_amount": funding_amount,
+            "resources": resources,
+            "timeline": timeline,
+            "status": "Offered",
+            "commitment_note": "",
+        }
+        _MEM_OFFERS.append(rec)
+        return rec
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1142,18 +1385,18 @@ def create_support_offer(
         connection.close()
 
 
-def create_industry_partner(name: str, partner_type: str, district: str, domains: str, contact_email: str) -> dict[str, Any]:
+def create_industry_partner(name: str, partner_type: str, district: str, domains: str, contact_email: str, approval_status: str = "Pending") -> dict[str, Any]:
     if not _DB_AVAILABLE:
         pid = max((p["id"] for p in _MEM_INDUSTRY), default=0) + 1
-        rec = {"id": pid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email}
+        rec = {"id": pid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email, "approval_status": approval_status}
         _MEM_INDUSTRY.append(rec)
         return rec
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("INSERT INTO industry_partners (name, partner_type, district, domains, contact_email, approval_status) VALUES (%s, %s, %s, %s, %s, 'Pending')", (name, partner_type, district, domains, contact_email))
+        cursor.execute("INSERT INTO industry_partners (name, partner_type, district, domains, contact_email, approval_status) VALUES (%s, %s, %s, %s, %s, %s)", (name, partner_type, district, domains, contact_email, approval_status))
         connection.commit()
-        return {"id": cursor.lastrowid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email, "approval_status": "Pending"}
+        return {"id": cursor.lastrowid, "name": name, "partner_type": partner_type, "district": district, "domains": domains, "contact_email": contact_email, "approval_status": approval_status}
     finally:
         cursor.close()
         connection.close()
@@ -1163,6 +1406,13 @@ def update_institution_approval(kind: str, institution_id: int, status: str) -> 
     table = "universities" if kind == "university" else "industry_partners" if kind == "industry" else ""
     if not table or status not in {"Active", "Rejected", "Pending"}:
         return False
+    if not _DB_AVAILABLE:
+        records = _MEM_UNIVERSITIES if kind == "university" else _MEM_INDUSTRY
+        record = next((item for item in records if item.get("id") == institution_id), None)
+        if record is None:
+            return False
+        record["approval_status"] = status
+        return True
     connection = connect()
     try:
         cursor = connection.cursor()

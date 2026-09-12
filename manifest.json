@@ -1,0 +1,10 @@
+{
+  "name": "Jharkhand Societal Innovation Portal",
+  "short_name": "Civic Map",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f1e8",
+  "theme_color": "#172b28",
+  "description": "Community challenges, university solutions, and industry collaboration across Jharkhand.",
+  "icons": []
+}

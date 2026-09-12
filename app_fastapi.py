@@ -26,11 +26,11 @@ from community import ISSUES, add_issue, render_page, upvote_issue
 from storage import (
     assign_issue, check_rate_limit, create_industry_partner, create_message,
     create_milestone, create_notification, create_session_record,
-    create_support_offer, create_team, create_university, create_university_report, delete_session_record,
-    get_proof, get_proposal_visual, get_session_user, insert_proposal,
-    load_industry_partners, load_milestones, load_teams, load_university_assignments, load_universities,
+    create_support_offer, create_support_request, create_team, create_university, create_university_report, create_professional_profile, delete_session_record,
+    create_project_review, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_project_reviews,
+    load_industry_partners, load_milestones, load_project_reviews, load_support_requests, load_teams, load_university_assignments, load_universities,
     moderate_issue, update_assignment, update_milestone, update_offer_commitment,
-    update_proposal, update_team_outcomes, update_team_status, update_university,
+    update_proposal, update_professional_approval, update_team_outcomes, update_team_status, update_university,
     update_institution_approval,
 )
 from AI_model import inspect_image_proof, sanitize_and_reencode_image
@@ -46,6 +46,26 @@ from map import (
     ADMIN_PAGE, UNIVERSITY_PAGE, CITIZEN_PAGE_FILE, UNIVERSITY_DASHBOARD_FILE,
     INDUSTRY_DASHBOARD_FILE, GOVERNMENT_DASHBOARD_FILE, PROPOSALS
 )
+
+PROPOSAL_VOTERS: dict[int, dict[str, int]] = {}
+
+
+def record_proposal_vote(proposals: list[dict[str, Any]], voters: dict[int, dict[str, int]], proposal_id: int, user: str) -> tuple[str, int, int | None]:
+    proposal = next((item for item in proposals if item.get("id") == proposal_id), None)
+    if proposal is None:
+        return "missing", 0, None
+    issue_id = int(proposal["issue_id"])
+    user_votes = voters.setdefault(issue_id, {})
+    previous_proposal_id = user_votes.get(user)
+    if previous_proposal_id == proposal_id:
+        return "already_voted", int(proposal.get("votes", 0)), previous_proposal_id
+    if previous_proposal_id is not None:
+        previous = next((item for item in proposals if item.get("id") == previous_proposal_id), None)
+        if previous is not None:
+            previous["votes"] = max(0, int(previous.get("votes", 0)) - 1)
+    user_votes[user] = proposal_id
+    proposal["votes"] = int(proposal.get("votes", 0)) + 1
+    return ("changed" if previous_proposal_id is not None else "voted"), proposal["votes"], previous_proposal_id
 
 if FastAPI is not None:
     app = FastAPI(
@@ -95,6 +115,14 @@ if FastAPI is not None:
     async def shared_stylesheet():
         return Response(content=(BASE_DIR / "templates" / "shared.css").read_text(encoding="utf-8"), media_type="text/css")
 
+    @app.get("/manifest.json", response_class=Response)
+    async def pwa_manifest():
+        return Response(content=(BASE_DIR / "manifest.json").read_text(encoding="utf-8"), media_type="application/manifest+json")
+
+    @app.get("/service-worker.js", response_class=Response)
+    async def pwa_service_worker():
+        return Response(content=(BASE_DIR / "service-worker.js").read_text(encoding="utf-8"), media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+
     @app.get("/login", response_class=HTMLResponse)
     async def get_login():
         return HTMLResponse(content=load_login_page(""))
@@ -109,10 +137,11 @@ if FastAPI is not None:
             return HTMLResponse(content=load_login_page('<p class="error">Email or password is incorrect.</p>'), status_code=401)
         session_id = create_session_record(email)
         destination = {
+            "citizen": "/citizen-dashboard",
             "government": "/government-dashboard",
             "university": "/university-dashboard",
             "industry": "/industry-dashboard",
-        }.get(portal_role, "/")
+        }.get(portal_role, "/citizen-dashboard")
         response = RedirectResponse(url=destination, status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
         return response
@@ -276,6 +305,34 @@ if FastAPI is not None:
             return RedirectResponse(url="/login", status_code=303)
         return HTMLResponse(content=build_professionals_page(current_user))
 
+    @app.post("/api/professionals/register")
+    async def register_professional_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        data = await request.json()
+        values = {
+            "email": user,
+            "name": str(data.get("name", "")).strip()[:255],
+            "organization": str(data.get("organization", "")).strip()[:255],
+            "affiliation": str(data.get("affiliation", "")).strip()[:255],
+            "verification": str(data.get("verification", "")).strip()[:255],
+        }
+        if not all(values.values()):
+            return JSONResponse(status_code=400, content={"message": "Name, organization, affiliation, and verification details are required."})
+        try:
+            profile = create_professional_profile(**values)
+        except Exception:
+            return JSONResponse(status_code=400, content={"message": "A professional profile already exists for this account."})
+        return JSONResponse(status_code=201, content={"message": "Professional verification submitted.", "profile": profile})
+
+    @app.post("/api/admin/professionals/{email}/approval")
+    async def approve_professional_api(email: str, request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        require_admin(current_user)
+        data = await request.json()
+        status = str(data.get("status", "")).strip()
+        if not update_professional_approval(email, status):
+            return JSONResponse(status_code=400, content={"message": "Invalid status or professional profile not found."})
+        return JSONResponse(content={"email": email, "status": status})
+
     @app.get("/citizen-dashboard", response_class=HTMLResponse)
     @app.get("/my-issues", response_class=HTMLResponse)
     async def citizen_dashboard(current_user: Optional[str] = Depends(get_current_user)):
@@ -353,6 +410,24 @@ if FastAPI is not None:
         if not visual:
             raise HTTPException(status_code=404, detail="Proposal visual not found")
         return Response(content=visual[1], media_type=visual[0])
+
+    @app.get("/milestone-deliverable/{milestone_id}")
+    async def get_milestone_deliverable_file(milestone_id: int, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        university = university_for_user(user)
+        if university is None:
+            raise HTTPException(status_code=403, detail="University account required")
+        owns_milestone = any(
+            any(milestone["id"] == milestone_id for milestone in load_milestones(team["id"]))
+            for team in load_teams()
+            if team.get("university_id") == university["id"]
+        )
+        if not owns_milestone:
+            raise HTTPException(status_code=403, detail="Milestone does not belong to this university")
+        deliverable = get_milestone_deliverable(milestone_id)
+        if not deliverable:
+            raise HTTPException(status_code=404, detail="Deliverable not found")
+        return Response(content=deliverable[1], media_type=deliverable[0])
 
     @app.get("/api/issues")
     async def list_issues_api():
@@ -535,12 +610,13 @@ if FastAPI is not None:
         name = str(data["name"]).strip()[:150]
         mentor = str(data["faculty_mentor"]).strip()[:255]
         members = [str(m).strip()[:255] for m in data.get("members", []) if str(m).strip()]
+        member_roles = {str(email).strip()[:255]: str(role).strip() for email, role in dict(data.get("member_roles", {})).items() if str(email).strip()}
         if university_id != university["id"]:
             raise HTTPException(status_code=403, detail="University mismatch")
         require_json_issue_membership(issue_id, current_user)
         if not name or not mentor or not members:
             return JSONResponse(status_code=400, content={"message": "Team name, faculty mentor, and student emails are required."})
-        team = create_team(issue_id, university_id, name, mentor, members)
+        team = create_team(issue_id, university_id, name, mentor, members, member_roles)
         return JSONResponse(status_code=201, content={"message": "Project team created.", "team": team})
 
     @app.post("/api/university/team-status")
@@ -574,7 +650,18 @@ if FastAPI is not None:
         title = str(data.get("title", "")).strip()[:200]
         if not title:
             return JSONResponse(status_code=400, content={"message": "Milestone title is required."})
-        milestone = create_milestone(team_id, title, str(data.get("due_date", "")).strip(), str(data.get("deliverable", "")).strip()[:1000])
+        deliverable_type = str(data.get("deliverable_type", "")).strip()[:100]
+        encoded_deliverable = str(data.get("deliverable_data", ""))
+        allowed_types = {"application/pdf", "image/jpeg", "image/png", "image/webp", "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+        if encoded_deliverable and deliverable_type not in allowed_types:
+            return JSONResponse(status_code=415, content={"message": "Unsupported deliverable file type."})
+        try:
+            deliverable_data = base64.b64decode(encoded_deliverable, validate=True) if encoded_deliverable else b""
+        except (ValueError, binascii.Error):
+            return JSONResponse(status_code=400, content={"message": "Invalid deliverable file."})
+        if len(deliverable_data) > 8 * 1024 * 1024:
+            return JSONResponse(status_code=413, content={"message": "Deliverable file is larger than 8 MB."})
+        milestone = create_milestone(team_id, title, str(data.get("due_date", "")).strip(), str(data.get("deliverable", "")).strip()[:1000], deliverable_type, deliverable_data)
         return JSONResponse(status_code=201, content={"message": "Milestone added.", "milestone": milestone})
 
     @app.post("/api/university/milestone-status")
@@ -611,8 +698,77 @@ if FastAPI is not None:
             str(data.get("ip_outcome", "")).strip()[:2000],
             str(data.get("startup_outcome", "")).strip()[:2000],
             str(data.get("impact_summary", "")).strip()[:3000],
+            str(data.get("pilot_location", "")).strip()[:255],
+            str(data.get("pilot_start_date", "")).strip()[:10],
+            str(data.get("pilot_end_date", "")).strip()[:10],
+            max(0, int(data.get("beneficiary_count") or 0)),
+            str(data.get("outcome_metric", "")).strip()[:2000],
         )
         return JSONResponse(content={"team_id": team_id, "status": "saved"})
+
+    @app.post("/api/university/support-requests")
+    async def create_support_request_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        university = university_for_user(user)
+        if university is None:
+            raise HTTPException(status_code=403, detail="University account required")
+        data = await request.json()
+        try:
+            issue_id = int(data["issue_id"])
+        except (KeyError, TypeError, ValueError):
+            return JSONResponse(status_code=400, content={"message": "A valid issue is required."})
+        if issue_id not in {assignment["issue_id"] for assignment in load_university_assignments(user)}:
+            raise HTTPException(status_code=403, detail="Issue is not assigned to this university")
+        support_type = str(data.get("support_type", "")).strip()
+        details = str(data.get("details", "")).strip()[:3000]
+        if support_type not in {"Mentorship", "Funding", "Prototyping", "Testing", "Deployment", "Technology Transfer"} or not details:
+            return JSONResponse(status_code=400, content={"message": "Choose a support type and provide details."})
+        support_request = create_support_request(issue_id, university["id"], user, support_type, details)
+        create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' requested {support_type} support for Issue #{issue_id}.", "support_request", support_request["id"])
+        return JSONResponse(status_code=201, content={"request": support_request})
+
+    @app.get("/api/support-requests")
+    async def list_support_requests_api(current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        if is_admin(user) or industry_for_user(user) is not None:
+            return JSONResponse(content=load_support_requests())
+        university = university_for_user(user)
+        if university is None:
+            raise HTTPException(status_code=403, detail="Authorized collaboration account required")
+        return JSONResponse(content=load_support_requests(university["id"]))
+
+    @app.post("/api/project-reviews")
+    async def create_project_review_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        data = await request.json()
+        try:
+            team_id = int(data["team_id"])
+        except (KeyError, TypeError, ValueError):
+            return JSONResponse(status_code=400, content={"message": "A valid team is required."})
+        team = next((item for item in load_teams() if item.get("id") == team_id), None)
+        if team is None:
+            return JSONResponse(status_code=404, content={"message": "Project team not found."})
+        if not is_admin(user) and (university_for_user(user) is None or team.get("university_id") != university_for_user(user).get("id")):
+            raise HTTPException(status_code=403, detail="You cannot review this project")
+        review_type = str(data.get("review_type", "")).strip()
+        decision = str(data.get("decision", "")).strip()
+        notes = str(data.get("notes", "")).strip()[:3000]
+        if review_type not in {"Testing", "Pilot", "Deployment"} or decision not in {"Pending", "Approved", "Rejected", "Needs changes"} or not notes:
+            return JSONResponse(status_code=400, content={"message": "Choose a review type, decision, and notes."})
+        review = create_project_review(team_id, review_type, decision, notes, user)
+        create_notification("admin@jharkhand.gov.in", f"{review_type} review recorded for project team #{team_id}: {decision}.", "project_review", review["id"])
+        return JSONResponse(status_code=201, content={"review": review})
+
+    @app.get("/api/project-reviews/{team_id}")
+    async def list_project_reviews_api(team_id: int, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        team = next((item for item in load_teams() if item.get("id") == team_id), None)
+        if team is None:
+            raise HTTPException(status_code=404, detail="Project team not found")
+        university = university_for_user(user)
+        if not is_admin(user) and (university is None or team.get("university_id") != university.get("id")):
+            raise HTTPException(status_code=403, detail="You cannot view this project")
+        return JSONResponse(content=load_project_reviews(team_id))
 
     @app.post("/api/industry/offers")
     async def create_industry_offer_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):
@@ -705,7 +861,7 @@ if FastAPI is not None:
         if not all(values.values()) or "@" not in values["contact_email"]:
             return JSONResponse(status_code=400, content={"message": "All partner fields and a valid contact email are required."})
         try:
-            partner = create_industry_partner(**values)
+            partner = create_industry_partner(**values, approval_status="Active")
         except Exception:
             return JSONResponse(status_code=400, content={"message": "A partner with this email may already exist."})
         return JSONResponse(status_code=201, content={"message": "Industry partner registered.", "partner": partner})
@@ -749,12 +905,13 @@ if FastAPI is not None:
             name = str(data["name"]).strip()[:150]
             mentor = str(data["faculty_mentor"]).strip()[:255]
             members = [str(member).strip()[:255] for member in data.get("members", []) if str(member).strip()]
+            member_roles = {str(email).strip()[:255]: str(role).strip() for email, role in dict(data.get("member_roles", {})).items() if str(email).strip()}
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             return JSONResponse(status_code=400, content={"message": "Invalid team data."})
         if not name or not mentor or not members or not university_id:
             return JSONResponse(status_code=400, content={"message": "Team name, faculty mentor, and students are required."})
         try:
-            team = create_team(issue_id, university_id, name, mentor, members)
+            team = create_team(issue_id, university_id, name, mentor, members, member_roles)
         except Exception:
             return JSONResponse(status_code=400, content={"message": "The issue or university assignment is invalid."})
         return JSONResponse(status_code=201, content={"message": "Project team created.", "team": team})
@@ -789,13 +946,20 @@ if FastAPI is not None:
 
     @app.post("/api/proposals/{proposal_id}/vote")
     async def vote_proposal_api(proposal_id: int, current_user: Optional[str] = Depends(get_current_user)):
-        require_user(current_user)
+        user = require_user(current_user)
         proposal = next((item for item in PROPOSALS if item["id"] == proposal_id), None)
         if proposal is None:
             return JSONResponse(status_code=404, content={"message": "Proposal not found."})
-        proposal["votes"] += 1
+        result, votes, previous_id = record_proposal_vote(PROPOSALS, PROPOSAL_VOTERS, proposal_id, user)
+        if result == "already_voted":
+            return JSONResponse(content={"votes": votes, "result": result})
+        if result == "changed":
+            if previous_id is not None:
+                previous = next((item for item in PROPOSALS if item.get("id") == previous_id), None)
+                if previous is not None:
+                    update_proposal(previous)
         update_proposal(proposal)
-        return JSONResponse(content={"votes": proposal["votes"], "result": "voted"})
+        return JSONResponse(content={"votes": votes, "result": result})
 
     @app.post("/api/proposals/{proposal_id}/review")
     async def review_proposal_api(proposal_id: int, request: Request, current_user: Optional[str] = Depends(get_current_user)):

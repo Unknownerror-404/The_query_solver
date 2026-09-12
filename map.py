@@ -8,6 +8,7 @@ import secrets
 import threading
 import webbrowser
 import base64
+import binascii
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -28,13 +29,13 @@ GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
 HOST = "127.0.0.1"
@@ -395,7 +396,7 @@ def render_university_dashboard(user):
             team_cards.append(
                 f"<div class='section-card'><div class='card-header-row'><div><h3>{html.escape(team['name'])}</h3><p class='muted'>Faculty mentor: {html.escape(team['faculty_mentor'])}</p></div><span class='status-pill assigned'>{html.escape(team['status'])}</span></div>"
                 f"<p class='meta-row'><span class='meta-item'><strong>{len(team.get('members', []))}</strong> student members</span><span class='meta-item'><strong>{len(team_milestones)}</strong> milestones</span></p>"
-                f"<form data-endpoint='/api/university/team-status' class='approval'><input type='hidden' name='team_id' value='{team['id']}'><label>Project stage<select name='status'>{option_values(['Team Formed', 'Prototype', 'Pilot', 'Deployed', 'Impact Measured'], team.get('status', 'Team Formed'))}</select></label><input name='note' placeholder='Stage update note'><button class='btn-primary'>Update stage</button></form></div>"
+                f"<form data-endpoint='/api/university/team-status' class='approval'><input type='hidden' name='team_id' value='{team['id']}'><label>Project stage<select name='status'>{option_values(['Team Formed', 'Prototype', 'Pilot', 'Deployed', 'Impact Measured'], team.get('status', 'Team Formed'))}</select></label><input name='note' placeholder='Stage update note'><button class='btn-primary'>Update stage</button></form><form data-endpoint='/api/university/team-outcomes' class='approval'><input type='hidden' name='team_id' value='{team['id']}'><input name='pilot_location' placeholder='Pilot location' value='{html.escape(team.get('pilot_location') or '')}'><input name='pilot_start_date' type='date' value='{html.escape(str(team.get('pilot_start_date') or ''))}'><input name='pilot_end_date' type='date' value='{html.escape(str(team.get('pilot_end_date') or ''))}'><input name='beneficiary_count' type='number' min='0' placeholder='Beneficiaries reached' value='{team.get('beneficiary_count', 0)}'><input name='outcome_metric' placeholder='Measured outcome' value='{html.escape(team.get('outcome_metric') or '')}'><textarea name='impact_summary' placeholder='Community impact summary'>{html.escape(team.get('impact_summary') or '')}</textarea><button class='btn-primary'>Save impact evidence</button></form></div>"
             )
         teams_content = "".join(team_cards)
     else:
@@ -637,6 +638,16 @@ def render_government_dashboard():
     )
     stage_totals = {str(row.get("status") or "Unknown"): int(row.get("total", 0)) for row in metrics["project_stages"]}
     stages_chart = f"<div class='chart-panel'><h3>Teams by project stage</h3>{chart_rows(stage_totals, 'var(--gold)')}</div>"
+    university_totals = {str(row.get("university") or "Unknown university"): int(row.get("total", 0)) for row in metrics["university_participation"]}
+    support_totals = {str(row.get("support_type") or "Other"): int(row.get("total", 0)) for row in metrics["support_by_type"]}
+    outcome_totals = {str(row.get("outcome") or "Other"): int(row.get("total", 0)) for row in metrics["project_outcomes"]}
+    collaboration_chart = (
+        "<div class='chart-grid'>"
+        f"<div class='chart-panel'><h3>University participation</h3>{chart_rows(university_totals, 'var(--blue)')}</div>"
+        f"<div class='chart-panel'><h3>Industry support by type</h3>{chart_rows(support_totals, 'var(--accent)')}</div>"
+        f"<div class='chart-panel'><h3>Project outcomes</h3>{chart_rows(outcome_totals, 'var(--green)')}</div>"
+        "</div>"
+    )
     responses = load_university_assignment_responses()
     response_items = []
     for resp in responses:
@@ -657,6 +668,7 @@ def render_government_dashboard():
         f"<section><h2>Moderation</h2><ul>{moderation or '<li>No issue data</li>'}</ul></section>"
         f"<section><h2>District and domain distribution</h2><div>{distribution_chart or '<p>No issue data</p>'}</div><details><summary>View data list</summary><ul>{distribution or '<li>No issue data</li>'}</ul></details></section>"
         f"<section><h2>Project progress</h2><div>{stages_chart or '<p>No project teams</p>'}</div><details><summary>View data list</summary><ul>{stages or '<li>No project teams</li>'}</ul></details></section>"
+        f"<section><h2>Institutional participation and outcomes</h2>{collaboration_chart}</section>"
     )
 def notification_markup(user):
     notifications = load_notifications(user)
@@ -781,7 +793,7 @@ PAGE = PAGE.replace(
 )
 PAGE = PAGE.replace(
     "</style>",
-    ".map-search{display:grid;gap:6px;margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.65)}.map-search label{font:700 11px Arial,sans-serif;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}.map-search input{margin:0;background:var(--card)}.search-hint{font:11px Arial,sans-serif;color:var(--muted)}",
+    ".map-search{display:grid;gap:6px;margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.65)}.map-search label{font:700 11px Arial,sans-serif;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}.map-search input{margin:0;background:var(--card)}.search-hint{font:11px Arial,sans-serif;color:var(--muted)}</style>",
     1,
 )
 PAGE = PAGE.replace(
@@ -908,6 +920,12 @@ class MapHandler(BaseHTTPRequestHandler):
         if path == "/templates/shared.css":
             self.send_payload((BASE_DIR / "templates" / "shared.css").read_bytes(), content_type="text/css; charset=utf-8")
             return
+        if path == "/manifest.json":
+            self.send_payload((BASE_DIR / "manifest.json").read_bytes(), content_type="application/manifest+json")
+            return
+        if path == "/service-worker.js":
+            self.send_payload((BASE_DIR / "service-worker.js").read_bytes(), content_type="application/javascript; charset=utf-8")
+            return
         if path == "/login":
             self.send_html(load_login_page(""))
             return
@@ -954,6 +972,31 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 return
             self.send_payload(visual[1], content_type=visual[0])
+            return
+        if path.startswith("/milestone-deliverable/"):
+            user = self.session_user()
+            university = university_for_user(user or "")
+            if university is None:
+                self.send_error(403)
+                return
+            try:
+                milestone_id = int(path.split("/", 2)[2])
+            except (IndexError, ValueError):
+                self.send_error(404)
+                return
+            owns_milestone = any(
+                any(milestone["id"] == milestone_id for milestone in load_milestones(team["id"]))
+                for team in load_teams()
+                if team.get("university_id") == university["id"]
+            )
+            if not owns_milestone:
+                self.send_error(403)
+                return
+            deliverable = get_milestone_deliverable(milestone_id)
+            if deliverable is None:
+                self.send_error(404)
+                return
+            self.send_payload(deliverable[1], content_type=deliverable[0])
             return
         if path == "/community":
             if self.session_user() is None:
@@ -1121,7 +1164,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_html(load_industry_register_page(f'<p class="error">{html.escape(message)}</p>'), status=400)
                 return
             try:
-                create_industry_partner(**values)
+                create_industry_partner(**values, approval_status="Pending")
             except Exception:
                 self.send_html(load_industry_register_page('<p class="error">The organization profile could not be created.</p>'), status=400)
                 return
@@ -1376,7 +1419,12 @@ class MapHandler(BaseHTTPRequestHandler):
                 ip_outcome = str(data.get("ip_outcome", "")).strip()[:2000]
                 startup_outcome = str(data.get("startup_outcome", "")).strip()[:2000]
                 impact_summary = str(data.get("impact_summary", "")).strip()[:3000]
-                update_team_outcomes(team_id, ip_outcome, startup_outcome, impact_summary)
+                pilot_location = str(data.get("pilot_location", "")).strip()[:255]
+                pilot_start_date = str(data.get("pilot_start_date", "")).strip()[:10]
+                pilot_end_date = str(data.get("pilot_end_date", "")).strip()[:10]
+                beneficiary_count = max(0, int(data.get("beneficiary_count") or 0))
+                outcome_metric = str(data.get("outcome_metric", "")).strip()[:2000]
+                update_team_outcomes(team_id, ip_outcome, startup_outcome, impact_summary, pilot_location, pilot_start_date, pilot_end_date, beneficiary_count, outcome_metric)
                 self.send_json({"team_id": team_id, "status": "saved"})
                 return
             title = str(data.get("title", "")).strip()[:200]
@@ -1385,7 +1433,21 @@ class MapHandler(BaseHTTPRequestHandler):
             if not title:
                 self.send_json({"message": "Milestone title is required."}, status=400)
                 return
-            milestone = create_milestone(team_id, title, due_date, deliverable)
+            deliverable_type = str(data.get("deliverable_type", "")).strip()[:100]
+            encoded_deliverable = str(data.get("deliverable_data", ""))
+            allowed_types = {"application/pdf", "image/jpeg", "image/png", "image/webp", "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+            if encoded_deliverable and deliverable_type not in allowed_types:
+                self.send_json({"message": "Unsupported deliverable file type."}, status=415)
+                return
+            try:
+                deliverable_data = base64.b64decode(encoded_deliverable, validate=True) if encoded_deliverable else b""
+            except (ValueError, binascii.Error):
+                self.send_json({"message": "Invalid deliverable file."}, status=400)
+                return
+            if len(deliverable_data) > 8 * 1024 * 1024:
+                self.send_json({"message": "Deliverable file is larger than 8 MB."}, status=413)
+                return
+            milestone = create_milestone(team_id, title, due_date, deliverable, deliverable_type, deliverable_data)
             self.send_json({"message": "Milestone added.", "milestone": milestone}, status=201)
             return
         if path == "/api/industry/offers":
@@ -1536,7 +1598,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"message": "All partner fields and a valid contact email are required."}, status=400)
                 return
             try:
-                partner = create_industry_partner(**values)
+                partner = create_industry_partner(**values, approval_status="Active")
             except Exception:
                 self.send_json({"message": "A partner with this email may already exist."}, status=400)
                 return
@@ -1800,10 +1862,11 @@ class MapHandler(BaseHTTPRequestHandler):
         session_id = secrets.token_urlsafe(32)
         SESSIONS[session_id] = email
         destination = {
+                    "citizen": "/citizen-dashboard",
           "government": "/government-dashboard",
           "university": "/university-dashboard",
           "industry": "/industry-dashboard",
-        }.get(portal_role, "/")
+                }.get(portal_role, "/citizen-dashboard")
         self.redirect(destination,f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
     def send_html(self,page,status=200):
         self.send_payload(page.encode("utf-8"),status)

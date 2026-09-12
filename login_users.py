@@ -15,9 +15,9 @@ import secrets
 from pathlib import Path
 
 try:
-    from .storage import create_account_record, get_account, import_account, initialise
+    from .storage import create_account_record, get_account, import_account, initialise, load_professional_profiles
 except ImportError:
-    from storage import create_account_record, get_account, import_account, initialise
+    from storage import create_account_record, get_account, import_account, initialise, load_professional_profiles
 
 ACCOUNTS_FILE = Path(__file__).with_name("accounts.csv")
 ADMIN_EMAILS = {"admin@jharkhand.gov.in"}
@@ -105,7 +105,15 @@ def create_account(email: str, password: str) -> tuple[bool, str]:
 
 
 def professional_profile(email: str) -> dict | None:
-    return VERIFIED_PROFESSIONALS.get(email.strip().lower())
+    normalized_email = email.strip().lower()
+    try:
+        profile = next((item for item in load_professional_profiles("Active") if item.get("email", "").casefold() == normalized_email), None)
+        if profile:
+            profile.pop("approval_status", None)
+            return profile
+    except Exception:
+        pass
+    return VERIFIED_PROFESSIONALS.get(normalized_email)
 
 
 def is_admin(email: str) -> bool:
