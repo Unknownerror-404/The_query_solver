@@ -31,9 +31,15 @@ from storage import (
     load_industry_partners, load_milestones, load_teams, load_university_assignments, load_universities,
     moderate_issue, update_assignment, update_milestone, update_offer_commitment,
     update_proposal, update_team_outcomes, update_team_status, update_university,
-    update_institution_approval,
+    update_institution_approval, load_solution, save_solution_classification,
+    load_partner_categories, assign_solution_to_partner,
 )
 from AI_model import inspect_image_proof, sanitize_and_reencode_image
+from classifier import SolutionClassifier
+
+# Load the saved TF-IDF + LinearSVC pipeline once when the API starts.
+CLASSIFIER_MODEL_PATH = BASE_DIR / "models" / "linear_svc_model.pkl"
+solution_classifier = SolutionClassifier(CLASSIFIER_MODEL_PATH)
 from evidence_review import review_issue_evidence
 from map import (
     load_login_page, load_university_login_page, load_university_register_page, load_register_page,
@@ -765,6 +771,125 @@ if FastAPI is not None:
         except Exception:
             return JSONResponse(status_code=400, content={"message": "The issue or university assignment is invalid."})
         return JSONResponse(status_code=201, content={"message": "Project team created.", "team": team})
+
+    @app.post("/api/university/solutions/{sol_id}/classify")
+    async def classify_university_solution_api(
+        sol_id: int,
+        current_user: Optional[str] = Depends(get_current_user),
+    ):
+        """
+        Classify a university-submitted solution with the trained LinearSVC
+        model, save the predicted category, assign it to a matching industry
+        partner, and notify that partner.
+
+        This endpoint uses the existing `solutions` storage table/helpers.
+        The current application does not expose a separate solution-creation
+        endpoint in app_fastapi.py, so this is intentionally kept separate
+        from /api/proposals.
+        """
+        user = require_user(current_user)
+
+        university = university_for_user(user)
+        if university is None:
+            raise HTTPException(status_code=403, detail="University account required")
+
+        solution = load_solution(sol_id)
+        if solution is None:
+            raise HTTPException(status_code=404, detail="Solution not found")
+
+        # If the solution record has an author/owner field, enforce ownership.
+        # Older records without one are allowed because the existing schema
+        # may not contain that field.
+        owner = solution.get("author") or solution.get("submitted_by") or solution.get("user_email")
+        if owner and str(owner).casefold() != str(user).casefold():
+            raise HTTPException(status_code=403, detail="Solution does not belong to this university account")
+
+        # Prefer the richer report field when present, then fall back to the
+        # existing description/solution text fields.
+        text = (
+            solution.get("training_text_report")
+            or solution.get("mini_report")
+            or solution.get("solution_text")
+            or solution.get("description")
+            or solution.get("summary")
+            or ""
+        )
+        text = str(text).strip()
+
+        if not text:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "The solution has no text available for classification."},
+            )
+
+        try:
+            category = solution_classifier.classify(text)
+        except (ValueError, TypeError) as exc:
+            return JSONResponse(status_code=400, content={"message": str(exc)})
+        except Exception:
+            return JSONResponse(
+                status_code=500,
+                content={"message": "The solution classifier could not analyse this solution."},
+            )
+
+        save_solution_classification(sol_id, category)
+
+        # Find partners whose configured category exactly matches the model
+        # output. Category names therefore need to match the model labels.
+        partner_categories = load_partner_categories()
+        matching_partner_ids = partner_categories.get(category, [])
+
+        if not matching_partner_ids:
+            create_notification(
+                user,
+                f"Solution #{sol_id} was classified as '{category}', but no industry partner is configured for this category.",
+                "solution_classification",
+                sol_id,
+            )
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "solution_id": sol_id,
+                    "category": category,
+                    "assigned": False,
+                    "message": "Classification saved, but no matching industry partner is configured.",
+                },
+            )
+
+        # Keep the first-match behaviour from the routing design.
+        partner_id = int(matching_partner_ids[0])
+        assign_solution_to_partner(sol_id, partner_id)
+
+        partner = next(
+            (item for item in load_industry_partners() if int(item.get("id", -1)) == partner_id),
+            None,
+        )
+
+        if partner and partner.get("contact_email"):
+            create_notification(
+                partner["contact_email"],
+                f"University solution #{sol_id} was classified as '{category}' and assigned to your organization.",
+                "solution_assignment",
+                sol_id,
+            )
+
+        create_notification(
+            user,
+            f"Solution #{sol_id} was classified as '{category}' and routed to an industry partner.",
+            "solution_assignment",
+            sol_id,
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "solution_id": sol_id,
+                "category": category,
+                "assigned": True,
+                "partner_id": partner_id,
+                "partner_name": partner.get("name") if partner else None,
+            },
+        )
 
     @app.post("/api/proposals")
     async def create_proposal_api(request: Request, current_user: Optional[str] = Depends(get_current_user)):

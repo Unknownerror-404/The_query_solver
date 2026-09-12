@@ -30,6 +30,11 @@ ADMIN_PAGE_FILE = BASE_DIR / "templates" / "admin.html"
 INDUSTRY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "industry_admin.html"
 UNIVERSITY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "university_admin.html"
 MAIN_MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
+
+# Compatibility aliases used by the FastAPI app import surface.
+MAP_PAGE = MAIN_MAP_PAGE_FILE
+ADMIN_PAGE = ADMIN_PAGE_FILE
+UNIVERSITY_PAGE = UNIVERSITY_DASHBOARD_FILE
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
@@ -466,6 +471,7 @@ def render_industry_dashboard(user):
         f"{messages_feed}"
         f"</section>"
     )
+
 def render_government_dashboard():
     metrics = load_dashboard_metrics()
     moderation = "".join(f"<li>{html.escape(str(row['status']))}: {row['total']}</li>" for row in metrics["moderation"])

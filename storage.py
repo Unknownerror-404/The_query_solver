@@ -1,6 +1,7 @@
 """MySQL persistence for the civic-map application."""
 
 from __future__ import annotations
+from typing import Iterable, Any
 
 import os
 import secrets
@@ -1357,4 +1358,201 @@ def load_university_assignment_responses() -> list[dict[str, Any]]:
         cursor.close()
         connection.close()
 
+def ensure_new_tables() -> None:
+    """
+    Create tables required by solution-to-industry routing.
 
+    Existing application tables and logic are not modified.
+    """
+
+    connection = connect()
+    cursor = connection.cursor()
+
+    try:
+        # Stores the classifier's predicted category for a solution.
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS solution_classifications (
+                solution_id INTEGER PRIMARY KEY,
+                category VARCHAR(255) NOT NULL,
+                classified_at DATETIME DEFAULT NOW()
+            )
+            """
+        )
+
+        # Maps industry partners to one or more categories.
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS industry_partner_categories (
+                partner_id INTEGER NOT NULL,
+                category VARCHAR(255) NOT NULL,
+                UNIQUE(partner_id, category)
+            )
+            """
+        )
+
+        # Stores which partner a solution has been assigned to.
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS solution_assignments (
+                solution_id INTEGER NOT NULL,
+                partner_id INTEGER NOT NULL,
+                assigned_at DATETIME DEFAULT NOW(),
+                PRIMARY KEY (solution_id, partner_id)
+            )
+            """
+        )
+
+        connection.commit()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+# Run when storage.py is imported so the tables are available
+# when the application starts.
+ensure_new_tables()
+
+
+# ---------------------------------------------------------------------------
+# Helpers for solution-to-industry routing
+# ---------------------------------------------------------------------------
+
+def load_solution(solution_id: int) -> dict | None:
+    """
+    Load a solution by ID.
+
+    Returns:
+        A dictionary containing the solution row, or None if it does not exist.
+    """
+
+    connection = connect()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT *
+            FROM solutions
+            WHERE id = %s
+            """,
+            (solution_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def assign_solution_to_partner(
+    solution_id: int,
+    partner_id: int,
+) -> None:
+    """
+    Assign a solution to an industry partner.
+
+    Repeated assignments of the same solution to the same partner
+    are ignored rather than causing a duplicate-key error.
+    """
+
+    connection = connect()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO solution_assignments (
+                solution_id,
+                partner_id
+            )
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE
+                assigned_at = assigned_at
+            """,
+            (
+                solution_id,
+                partner_id,
+            ),
+        )
+
+        connection.commit()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def save_solution_classification(
+    solution_id: int,
+    category: str,
+) -> None:
+    """
+    Save or update the classifier's category for a solution.
+    """
+
+    connection = connect()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO solution_classifications (
+                solution_id,
+                category
+            )
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE
+                category = VALUES(category),
+                classified_at = NOW()
+            """,
+            (
+                solution_id,
+                category,
+            ),
+        )
+
+        connection.commit()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_partner_categories() -> dict[str, list[int]]:
+    """
+    Load the partner/category mapping.
+
+    Returns:
+
+        {
+            "Renewable Energy": [1, 4],
+            "Manufacturing": [2, 5],
+            "Water Infrastructure": [1, 7]
+        }
+    """
+
+    connection = connect()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT partner_id, category
+            FROM industry_partner_categories
+            ORDER BY category, partner_id
+            """
+        )
+
+        mapping: dict[str, list[int]] = {}
+
+        for partner_id, category in cursor.fetchall():
+            mapping.setdefault(category, []).append(partner_id)
+
+        return mapping
+
+    finally:
+        cursor.close()
+        connection.close()
