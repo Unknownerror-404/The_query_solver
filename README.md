@@ -318,3 +318,23 @@ Pin exact versions after testing on the deployment machine. The embedding model 
 - Decide whether to retain or strip EXIF metadata after verification.
 - Do not treat automatic duplicate detection as a final moderation decision.
 - Use a persistent database and authenticated user IDs before relying on supporter counts.
+
+## External-only schema objects for the solution classifier route
+
+The repository creates the following routing support tables automatically in [storage.py](storage.py):
+
+- `solution_classifications`
+- `industry_partner_categories`
+- `solution_assignments`
+
+Those tables are created by `ensure_new_tables()` and are meant to hold the classifier result, the category-to-partner mapping, and the assignment log.
+
+For the route to run end-to-end, you must also ensure one external table exists in the MySQL database:
+
+- `solutions`: the row lookup source for `load_solution()` in [storage.py](storage.py). It must contain a solution row with `id = <sol_id>` and at least one non-empty text field chosen from `training_text_report`, `mini_report`, `solution_text`, `description`, or `summary`.
+
+The `industry_partner_categories` table must be seeded externally with rows such as:
+
+```sql
+INSERT INTO industry_partner_categories (partner_id, category)
+VALUES (1, 'Water Infrastructure');
