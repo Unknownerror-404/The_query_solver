@@ -306,7 +306,7 @@ form button{margin-top:5px}
   min-height:3px;
   height:var(--bar-height,0%);
   border-radius:7px 7px 2px 2px;
-  background:linear-gradient(180deg,var(--bar-color,var(--blue)),rgba(49,124,145,.55));
+  background:var(--bar-color,var(--blue));
   box-shadow:0 7px 16px color-mix(in srgb,var(--bar-color,var(--blue)) 18%,transparent);
   transition:height .8s cubic-bezier(.2,.8,.2,1),transform .2s ease;
 }
@@ -353,7 +353,7 @@ form button{margin-top:5px}
   height:100%;
   width:var(--width,0%);
   border-radius:999px;
-  background:linear-gradient(90deg,var(--bar-color,var(--blue)),var(--accent-2));
+  background:var(--bar-color,var(--blue));
   transition:width .8s cubic-bezier(.2,.8,.2,1)
 }
 .dist-value{text-align:right;font-weight:700;color:var(--ink)}

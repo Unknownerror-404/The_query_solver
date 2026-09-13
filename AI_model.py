@@ -49,6 +49,25 @@ try:
 except ImportError:
     from community import distance_km
 
+# #region agent log
+def _agent_log(hypothesis_id: str, location: str, message: str, data: dict | None = None) -> None:
+    try:
+        import time
+        payload = {
+            "sessionId": "0d8a0a",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data or {},
+            "timestamp": int(time.time() * 1000),
+            "runId": "pre-fix",
+        }
+        with open(Path(__file__).resolve().parent / "debug-0d8a0a.log", "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# #endregion
+
 
 # ---------------------------------------------------------------------------
 # Duplicate detection
@@ -934,10 +953,14 @@ DEFAULT_CLIP_MODEL_DIR = (
 
 CLIP_MODEL_DIR = Path(
     os.environ.get(
-        "./models/civic_clip_pothole_model",
+        "CIVIC_CLIP_MODEL_DIR",
         str(DEFAULT_CLIP_MODEL_DIR)
     )
 )
+if not CLIP_MODEL_DIR.exists():
+    alt = BASE_DIR / "models" / "civic_clip_pothole_model"
+    if alt.exists():
+        CLIP_MODEL_DIR = alt
 
 _CLIP_MODEL: Any = None
 
@@ -946,6 +969,10 @@ _CLIP_PROCESSOR: Any = None
 _CLIP_MODEL_LOADED = False
 
 _CLIP_LABELS: list[str] = []
+
+_CLIP_FALLBACK: Any = None
+
+_CLIP_FALLBACK_LOADED = False
 
 
 def _load_finetuned_clip() -> bool:
@@ -978,6 +1005,9 @@ def _load_finetuned_clip() -> bool:
             f"model not found at "
             f"{CLIP_MODEL_DIR}"
         )
+        # #region agent log
+        _agent_log("A", "AI_model.py:_load_finetuned_clip", "CLIP dir missing", {"clip_dir": str(CLIP_MODEL_DIR), "env_civic": os.environ.get("CIVIC_CLIP_MODEL_DIR"), "env_wrong_key": os.environ.get("./models/civic_clip_pothole_model")})
+        # #endregion
 
         return False
 
@@ -1105,6 +1135,9 @@ def _load_finetuned_clip() -> bool:
             _CLIP_LABELS
         )
 
+        # #region agent log
+        _agent_log("A", "AI_model.py:_load_finetuned_clip", "CLIP loaded", {"clip_dir": str(CLIP_MODEL_DIR), "labels": list(_CLIP_LABELS)[:12], "num_labels": len(_CLIP_LABELS)})
+        # #endregion
         return True
 
     except (
@@ -1119,6 +1152,9 @@ def _load_finetuned_clip() -> bool:
             "[AI_model] Could not load "
             f"fine-tuned CLIP: {exc}"
         )
+        # #region agent log
+        _agent_log("A", "AI_model.py:_load_finetuned_clip", "CLIP load failed", {"clip_dir": str(CLIP_MODEL_DIR), "error": str(exc)})
+        # #endregion
 
         _CLIP_MODEL = None
 
@@ -1214,6 +1250,49 @@ def _visual_domain_for(
 # Single image inference
 # ---------------------------------------------------------------------------
 
+def _predict_clip_fallback(images: list[Any]) -> dict[str, Any]:
+    """Zero-shot CLIP ViT when the fine-tuned civic_clip weights are absent."""
+    global _CLIP_FALLBACK, _CLIP_FALLBACK_LOADED
+    if not images:
+        return {}
+    if not _CLIP_FALLBACK_LOADED:
+        _CLIP_FALLBACK_LOADED = True
+        try:
+            from sentence_transformers import SentenceTransformer
+            _CLIP_FALLBACK = SentenceTransformer("clip-ViT-B-32")
+            # #region agent log
+            _agent_log("A", "AI_model.py:_predict_clip_fallback", "fallback CLIP loaded", {"model": "clip-ViT-B-32"})
+            # #endregion
+        except (ImportError, OSError, RuntimeError) as exc:
+            _CLIP_FALLBACK = None
+            # #region agent log
+            _agent_log("A", "AI_model.py:_predict_clip_fallback", "fallback CLIP failed", {"error": str(exc)})
+            # #endregion
+    if _CLIP_FALLBACK is None:
+        return {}
+    try:
+        labels = list(VISUAL_DOMAIN_MAP.keys())
+        prompts = [f"a photo of {label.replace('_', ' ')}" for label in labels]
+        image_vectors = _CLIP_FALLBACK.encode(images, normalize_embeddings=True)
+        text_vectors = _CLIP_FALLBACK.encode(prompts, normalize_embeddings=True)
+        pooled = image_vectors.mean(axis=0)
+        scores = [float(pooled @ vector) for vector in text_vectors]
+        best_index = max(range(len(scores)), key=lambda index: scores[index])
+        predicted_label = labels[best_index]
+        confidence = max(0.0, min(0.99, (scores[best_index] + 1) / 2))
+        return {
+            "issue_type": predicted_label,
+            "predicted_category": _visual_domain_for(predicted_label),
+            "category_confidence": round(confidence, 2),
+            "matching_explanation": f"CLIP ViT fallback matched frames to {predicted_label}.",
+        }
+    except (OSError, RuntimeError, ValueError, TypeError) as exc:
+        # #region agent log
+        _agent_log("A", "AI_model.py:_predict_clip_fallback", "fallback inference failed", {"error": str(exc)})
+        # #endregion
+        return {}
+
+
 def _predict_clip_images(
     images: list[Any],
 ) -> dict[str, Any]:
@@ -1224,7 +1303,7 @@ def _predict_clip_images(
 
     if not _load_finetuned_clip():
 
-        return {}
+        return _predict_clip_fallback(images)
 
     try:
 
@@ -1503,6 +1582,15 @@ def extract_video_frames(
 
     except ImportError:
 
+        # #region agent log
+        _agent_log("B", "AI_model.py:extract_video_frames", "cv2 or PIL missing", {"nbytes": len(video_bytes)})
+        # #endregion
+        return []
+
+    if not hasattr(cv2, "VideoCapture"):
+        # #region agent log
+        _agent_log("B", "AI_model.py:extract_video_frames", "cv2 stub without VideoCapture", {"nbytes": len(video_bytes)})
+        # #endregion
         return []
 
     path = ""
@@ -1528,6 +1616,9 @@ def extract_video_frames(
 
         if not capture.isOpened():
 
+            # #region agent log
+            _agent_log("B", "AI_model.py:extract_video_frames", "VideoCapture failed", {"nbytes": len(video_bytes), "path": path})
+            # #endregion
             return []
 
         total = int(
@@ -1597,12 +1688,16 @@ def extract_video_frames(
                 image
             )
 
+        # #region agent log
+        _agent_log("B", "AI_model.py:extract_video_frames", "frames sampled", {"nbytes": len(video_bytes), "total": total, "nframes": len(frames)})
+        # #endregion
         return frames
 
     except (
         OSError,
         ValueError,
         RuntimeError,
+        AttributeError,
     ):
 
         return []
@@ -1653,6 +1748,9 @@ def classify_video_proof(
 
     if not frames:
 
+        # #region agent log
+        _agent_log("B", "AI_model.py:classify_video_proof", "no frames; skip CLIP", {"nbytes": len(video_bytes)})
+        # #endregion
         return {
 
             "status":
@@ -1682,6 +1780,10 @@ def classify_video_proof(
     result.update(
         visual
     )
+
+    # #region agent log
+    _agent_log("A", "AI_model.py:classify_video_proof", "video classified", {"nbytes": len(video_bytes), "nframes": len(frames), "visual_keys": list(visual.keys()), "predicted": visual.get("predicted_category"), "issue_type": visual.get("issue_type")})
+    # #endregion
 
     if visual:
 

@@ -1,4 +1,4 @@
-﻿"""A small civic-issues map inspired by Swaraj's public accountability map.
+"""A small civic-issues map inspired by Swaraj's public accountability map.
 Run with ``python map.py`` and open http://localhost:8000 in a browser.
 The map uses OpenStreetMap tiles through Leaflet, so an internet connection is needed for the basemap.
 """
@@ -61,7 +61,7 @@ NEXT_PROPOSAL_ID = max((proposal["id"] for proposal in PROPOSALS), default=0) + 
 UNIVERSITY_CACHE = None
 CACHE_LOCK = threading.Lock()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s', filename='app.log')
-UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration Â· Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace Â· <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
+UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
 def parse_multipart_form(headers, body: bytes) -> tuple[dict[str, str], tuple[str, str, bytes] | None]:
     """Parse text fields and one uploaded file without the removed cgi module."""
     content_type = headers.get("Content-Type", "")
@@ -557,14 +557,24 @@ def render_contractor_dashboard(contact_email: str) -> str:
                     f"<button type='submit' class='action-btn' style='margin-top:8px'>Update Status</button>"
                     f"</form>"
                 )
+            progress_link = ""
+            if a.get("progress_image_type"):
+                progress_link = (
+                    "<p style='margin:12px 0 0;font:13px Arial,sans-serif'>"
+                    f"<a href='/contractor-progress/{a['id']}' target='_blank' rel='noopener'>View latest progress image</a>"
+                    "</p>"
+                )
+            block_suffix = ""
+            if a.get("block"):
+                block_suffix = " · " + html.escape(a.get("block", ""))
             cards.append(
                 f"<div class='project-card {css_cls}'>"
                 f"<div class='project-header'><h3 class='project-title'>{html.escape(a.get('issue_title','Untitled'))}</h3>"
                 f"<span class='status-badge {badge_cls}'>{s}</span></div>"
-                f"<div class='project-meta'>📍 {html.escape(a.get('district',''))} {('· ' + html.escape(a.get('block',''))) if a.get('block') else ''} &nbsp;|&nbsp; 🏷️ {html.escape(a.get('category',''))}</div>"
+                f"<div class='project-meta'>📍 {html.escape(a.get('district',''))}{block_suffix} &nbsp;|&nbsp; 🏷️ {html.escape(a.get('category',''))}</div>"
                 f"<p class='project-desc'>{html.escape(a.get('issue_description',''))[:300]}</p>"
                 f"{form_html}"
-                f"{('<p style=\"margin:12px 0 0;font:13px Arial,sans-serif\"><a href=\"/contractor-progress/' + str(a['id']) + '\" target=\"_blank\" rel=\"noopener\">View latest progress image</a></p>' if a.get('progress_image_type') else '')}</div>"
+                f"{progress_link}</div>"
             )
         assignments_html = "<div class='project-grid'>" + "".join(cards) + "</div>"
     else:
@@ -838,7 +848,7 @@ def industry_match_markup(partner, issue):
     return (
         f"<div style='background:#edf7f6;border-left:4px solid #317c91;border-radius:8px;padding:10px 12px;margin:10px 0;font-size:12px;'>"
         f"<strong>AI-assisted partner match: {score} points</strong><br>"
-        f"Expertise signals: {html.escape(expertise_text)} Â· Location: {html.escape(location_text)}"
+        f"Expertise signals: {html.escape(expertise_text)}  Location: {html.escape(location_text)}"
         f"</div>"
     )
 
@@ -900,9 +910,9 @@ def auto_assign_issue_to_best_university(issue, assigned_by="ai-assignment"):
 def render_dashboard_team(team):
     milestones = load_milestones(team["id"])
     history = load_status_history(team["id"])
-    milestone_markup = "".join(f"<p>Milestone: {html.escape(milestone['title'])} Â· {html.escape(str(milestone['status']))} Â· {html.escape(str(milestone['due_date'] or 'No due date'))}</p><form data-endpoint='/api/university/milestone-status'><input type='hidden' name='milestone_id' value='{milestone['id']}'><select name='status'><option>Pending</option><option>In Progress</option><option>Completed</option></select><input name='testing_result' placeholder='Testing result'><button>Save milestone</button></form>" for milestone in milestones)
-    history_markup = "".join(f"<p>History: {html.escape(item['status'])} Â· {html.escape(item['changed_by'])} Â· {html.escape(str(item['changed_at']))}</p>" for item in history)
-    return f"<p><strong>{html.escape(team['name'])}</strong> Â· Mentor: <em>{html.escape(team['faculty_mentor'])}</em> Â· Stage: {html.escape(team['status'])} Â· Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
+    milestone_markup = "".join(f"<p>Milestone: {html.escape(milestone['title'])}  {html.escape(str(milestone['status']))}  {html.escape(str(milestone['due_date'] or 'No due date'))}</p><form data-endpoint='/api/university/milestone-status'><input type='hidden' name='milestone_id' value='{milestone['id']}'><select name='status'><option>Pending</option><option>In Progress</option><option>Completed</option></select><input name='testing_result' placeholder='Testing result'><button>Save milestone</button></form>" for milestone in milestones)
+    history_markup = "".join(f"<p>History: {html.escape(item['status'])}  {html.escape(item['changed_by'])}  {html.escape(str(item['changed_at']))}</p>" for item in history)
+    return f"<p><strong>{html.escape(team['name'])}</strong>  Mentor: <em>{html.escape(team['faculty_mentor'])}</em>  Stage: {html.escape(team['status'])}  Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
 def render_university_dashboard(user):
     page = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
 
@@ -982,7 +992,7 @@ def render_university_dashboard(user):
             f"<article>"
             f"<h2>{html.escape(assignment['title'])}</h2>"
             f"<p>{html.escape(assignment['description'])}</p>"
-            f"<p>District: <strong>{html.escape(assignment['district'])}</strong> Â· Block: <strong>{html.escape(assignment['block'])}</strong> Â· Category: <strong>{html.escape(assignment['category'])}</strong></p>"
+            f"<p>District: <strong>{html.escape(assignment['district'])}</strong>  Block: <strong>{html.escape(assignment['block'])}</strong>  Category: <strong>{html.escape(assignment['category'])}</strong></p>"
             f"<p>Request Status: {status_badge}</p>"
             f"<h3>1. Accept or Reject Request (Passed to Government)</h3>"
             f"<form data-endpoint='/api/university/assignment-response'>"
@@ -1065,7 +1075,15 @@ def render_university_dashboard(user):
 
     message_cards = "".join(f"<div class='section-card'><div class='card-header-row'><div><h3>{html.escape('Message from ' + item['sender'] if item['recipient'].casefold() == user.casefold() else 'Message to ' + item['recipient'])}</h3><p class='muted'>{html.escape(str(item.get('created_at', '')))}</p></div></div><p>{html.escape(item['message'])}</p></div>" for item in messages_for_user[:12])
     notification_cards = "".join(f"<div class='final-report'><strong>{html.escape(item['message'])}</strong><br><small>{html.escape(str(item.get('created_at', '')))}</small></div>" for item in notifications[:8])
-    messages_content = f"<div class='section-card'><h3>Send a project message</h3><form data-endpoint='/api/messages'><label>Recipient<input name='recipient' type='email' value='admin@jharkhand.gov.in' required></label><label>Message<textarea name='message' placeholder='Write an update or request' required></textarea><button class='btn-primary'>Send message</button></form></div>{notification_cards}{message_cards or '<div class=\"empty-state\"><h3>No messages yet</h3><p>Your project communication will appear here.</p></div>'}"
+    empty_messages = "<div class=\"empty-state\"><h3>No messages yet</h3><p>Your project communication will appear here.</p></div>"
+    messages_content = (
+        "<div class='section-card'><h3>Send a project message</h3>"
+        "<form data-endpoint='/api/messages'><label>Recipient"
+        "<input name='recipient' type='email' value='admin@jharkhand.gov.in' required></label>"
+        "<label>Message<textarea name='message' placeholder='Write an update or request' required></textarea>"
+        "<button class='btn-primary'>Send message</button></form></div>"
+        f"{notification_cards}{message_cards or empty_messages}"
+    )
 
     profile_content = f"<div class='section-card'><p class='eyebrow'>Institutional profile</p><h2>{html.escape(university['name'])}</h2><p class='hero-desc'>Your university workspace is connected to the civic innovation network.</p><div class='inst-badges'><span class='inst-tag'>Contact: {html.escape(university.get('contact_email', user))}</span><span class='inst-tag'>District: {html.escape(university.get('district', 'Not specified'))}</span><span class='inst-tag'>Status: {html.escape(university.get('approval_status', 'Active'))}</span></div></div>"
     return render_shell(challenge_content, hero, metrics, teams_content, milestones_content, offers_content, messages_content, profile_content)
@@ -1308,7 +1326,7 @@ def notification_markup(user):
     notifications = load_notifications(user)
     if not notifications:
         return "<h2>Notifications</h2><p>No notifications.</p>"
-    return "<h2>Notifications</h2>" + "".join(f"<p>{html.escape(item['message'])} Â· {html.escape(str(item['created_at']))}</p>" for item in notifications)
+    return "<h2>Notifications</h2>" + "".join(f"<p>{html.escape(item['message'])}  {html.escape(str(item['created_at']))}</p>" for item in notifications)
 def known_recipients():
     return {"admin@jharkhand.gov.in", "citizen@example.com", "engineer@example.gov"} | {str(item.get("contact_email")) for item in load_universities() if item.get("contact_email")} | {str(item.get("contact_email")) for item in load_industry_partners() if item.get("contact_email")}
 def render_messages(user):
@@ -1388,7 +1406,7 @@ def render_admin_issues():
     if not pending:
         return "<p>No pending issues.</p>" + render_admin_proposals()
     return "".join(
-        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
+        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} {html.escape(str(issue.get('block', '')))} {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
         for issue in pending
     ) + render_admin_proposals()
 
@@ -1422,7 +1440,7 @@ def render_university_issues():
         current = f"<p>Assigned to university ID {assignment['university_id']} ({html.escape(assignment['status'])}).</p><p>{html.escape(str(assignment.get('response_reason') or ''))}</p><form class='response'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='status'><option>Accepted</option><option>Rejected</option><option>Needs clarification</option></select><input name='reason' placeholder='University response' required><button type='submit'>Save response</button></form>" if assignment else "<p>Not assigned.</p>"
         issue_teams = [team for team in teams if team["issue_id"] == issue["id"]]
         team_markup = "".join(render_dashboard_team(team) for team in issue_teams)
-        cards.append(f"<article><h2>{html.escape(str(issue['title']))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p>{recommendation}{current}<form class='assignment'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='university_id' required>{options}</select><button type='submit'>Assign university</button></form>{team_markup}<form class='team'><input type='hidden' name='issue_id' value='{issue['id']}'><input type='hidden' name='university_id' value='{assignment['university_id'] if assignment else ''}'><input name='name' placeholder='Team name' required><input name='faculty_mentor' placeholder='Faculty mentor email' required><input name='members' placeholder='Student emails, comma separated' required><button type='submit'>Create project team</button></form></article>")
+        cards.append(f"<article><h2>{html.escape(str(issue['title']))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} {html.escape(str(issue.get('block', '')))} {html.escape(str(issue.get('category', '')))}</p>{recommendation}{current}<form class='assignment'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='university_id' required>{options}</select><button type='submit'>Assign university</button></form>{team_markup}<form class='team'><input type='hidden' name='issue_id' value='{issue['id']}'><input type='hidden' name='university_id' value='{assignment['university_id'] if assignment else ''}'><input name='name' placeholder='Team name' required><input name='faculty_mentor' placeholder='Faculty mentor email' required><input name='members' placeholder='Student emails, comma separated' required><button type='submit'>Create project team</button></form></article>")
     return directory + "".join(cards)
 SAMPLE_ISSUES = [
     {"title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
@@ -1441,11 +1459,8 @@ PAGE = PAGE.replace(
     "<label>Details<textarea name=\"description\" placeholder=\"Add useful context\"></textarea></label>",
     "<label>District<select name=\"district\">" + district_options + "</select></label><label>Block or city<input name=\"block\" placeholder=\"Block, municipality, or ward\"></label><label>Details<textarea name=\"description\" placeholder=\"Add useful context\"></textarea></label>",
 ).replace(
-    'accept=\"image/jpeg,image/png,image/webp\"',
-    'accept=\"image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf,.doc,.docx\"',
-).replace(
-    'Photo proof<input name=\"proof_image\" type=\"file\"',
-    'Photo, video, or document proof<input name=\"proof_image\" type=\"file\"',
+    "<label>Photo proof<input name=\"proof_image\" type=\"file\" accept=\"image/jpeg,image/png,image/webp\"><small>Geotagged photos receive a location verification badge.</small></label>",
+    "<label>Geotagged photo<input name=\"proof_image\" type=\"file\" accept=\"image/jpeg,image/png,image/webp\"><small>Optional JPEG, PNG, or WebP. GPS in the photo verifies the map pin.</small></label><label>Video evidence<input name=\"proof_video\" type=\"file\" accept=\"video/mp4,video/webm\"><small>Optional MP4 or WebM. Not geotagged. Used as evidence; CLIP ViT reads the problem type from sampled frames.</small></label>",
 ).replace(
     "description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
     "description:form.get('description'),area:form.get('block')||form.get('district'),district:form.get('district'),block:form.get('block'),lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
@@ -1454,8 +1469,13 @@ PAGE = PAGE.replace(
     "alert(result.assignment?`Your issue was added and matched with ${result.assignment.university_name}.`:'Your issue was added to the map. AI will match it when a suitable university is available.')",
 )
 PAGE = PAGE.replace(
+    "document.getElementById('report').onsubmit=async event=>{event.preventDefault();",
+    "document.getElementById('report').onsubmit=async event=>{event.preventDefault();fetch('http://127.0.0.1:7702/ingest/a50f380c-436d-456f-97e8-f1ef4c5069f0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0d8a0a'},body:JSON.stringify({sessionId:'0d8a0a',hypothesisId:'C',location:'map.py:report.onsubmit',message:'report form submit',data:{hasProof:!!(event.target.proof_image&&event.target.proof_image.files&&event.target.proof_image.files[0]),proofType:(event.target.proof_image&&event.target.proof_image.files[0]&&event.target.proof_image.files[0].type)||'',proofSize:(event.target.proof_image&&event.target.proof_image.files[0]&&event.target.proof_image.files[0].size)||0,hasVideoField:!!event.target.proof_video,videoType:(event.target.proof_video&&event.target.proof_video.files&&event.target.proof_video.files[0]&&event.target.proof_video.files[0].type)||''},timestamp:Date.now(),runId:'pre-fix'})}).catch(()=>{});",
+    1,
+)
+PAGE = PAGE.replace(
     "</style>",
-    ".map-search{display:grid;gap:6px;margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.65)}.map-search label{font:700 11px Arial,sans-serif;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}.map-search input{margin:0;background:var(--card)}.search-hint{font:11px Arial,sans-serif;color:var(--muted)}",
+    ".map-search{display:grid;gap:6px;margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.65)}.map-search label{font:700 11px Arial,sans-serif;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}.map-search input{margin:0;background:var(--card)}.search-hint{font:11px Arial,sans-serif;color:var(--muted)}</style>",
     1,
 )
 PAGE = PAGE.replace(
@@ -1479,6 +1499,14 @@ PAGE = PAGE.replace(
     "document.getElementById('map-search').addEventListener('input',event=>{searchQuery=event.target.value.trim().toLowerCase();render()});function buildFilters(){",
     1,
 )
+# #region agent log
+try:
+    import time
+    with open(BASE_DIR / "debug-0d8a0a.log", "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"sessionId":"0d8a0a","hypothesisId":"C","location":"map.py:PAGE","message":"report form fields after replace","data":{"has_proof_image":"name=\"proof_image\"" in PAGE,"has_proof_video":"name=\"proof_video\"" in PAGE,"mixed_accept":"video/mp4" in PAGE and "name=\"proof_video\"" not in PAGE,"popup_has_video_tag":"<video src=" in PAGE},"timestamp":int(time.time()*1000),"runId":"pre-fix"})+"\n")
+except Exception:
+    pass
+# #endregion
 MAP_PAGE = PAGE
 def proposal_issue(issue_id: int):
     for issue in ISSUES:
@@ -1492,7 +1520,7 @@ def render_proposal_issues():
     output = []
     for index, issue in enumerate(ranked, start=1):
         issue_id = issue.get("id", index)
-        output.append(f'<article class="issue"><div class="rank">#{index} Â· {html.escape(str(issue.get("category","Other")))}</div><h2>{html.escape(str(issue.get("title","Untitled issue")))}</h2><p>{html.escape(str(issue.get("description","")))}</p><p><strong>{issue.get("supporters",0)} supporters</strong> Â· {html.escape(str(issue.get("area","Nearby")))}</p><small>Issue ID: {issue_id}</small></article>')
+        output.append(f'<article class="issue"><div class="rank">#{index} {html.escape(str(issue.get("category","Other")))}</div><h2>{html.escape(str(issue.get("title","Untitled issue")))}</h2><p>{html.escape(str(issue.get("description","")))}</p><p><strong>{issue.get("supporters",0)} supporters</strong> {html.escape(str(issue.get("area","Nearby")))}</p><small>Issue ID: {issue_id}</small></article>')
     return "".join(output)
 def render_proposal_options():
     if not ISSUES:
@@ -1501,7 +1529,7 @@ def render_proposal_options():
     options = []
     for index, issue in enumerate(ranked, start=1):
         issue_id = issue.get("id", index)
-        options.append(f'<option value="{issue_id}">{html.escape(str(issue.get("title","Untitled issue")))} Â· {issue.get("supporters",0)} supporters</option>')
+        options.append(f'<option value="{issue_id}">{html.escape(str(issue.get("title","Untitled issue")))} {issue.get("supporters",0)} supporters</option>')
     return "".join(options)
 def render_proposals():
     if not PROPOSALS:
@@ -2681,6 +2709,17 @@ class MapHandler(BaseHTTPRequestHandler):
                     return
                 proof_bytes = base64.b64decode(encoded_proof,validate=True) if encoded_proof else b""
                 video_bytes = base64.b64decode(encoded_video,validate=True) if encoded_video else b""
+                if proof_bytes and str(proof_type).startswith("video/") and not video_bytes:
+                    video_bytes, video_type = proof_bytes, proof_type
+                    proof_bytes, proof_type = b"", "image/jpeg"
+                # #region agent log
+                try:
+                    import time
+                    with open(BASE_DIR / "debug-0d8a0a.log", "a", encoding="utf-8") as handle:
+                        handle.write(json.dumps({"sessionId":"0d8a0a","hypothesisId":"C","location":"map.py:/api/issues","message":"incoming media","data":{"proof_type":proof_type,"video_type":video_type,"proof_len":len(proof_bytes),"video_len":len(video_bytes),"encoded_video":bool(encoded_video)},"timestamp":int(time.time()*1000),"runId":"post-fix"})+"\n")
+                except Exception:
+                    pass
+                # #endregion
                 if len(proof_bytes) > 25 * 1024 * 1024 or len(video_bytes) > 25 * 1024 * 1024:
                     self.send_error(413,"Proof file is larger than 25 MB")
                     return

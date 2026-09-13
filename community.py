@@ -103,8 +103,19 @@ def add_issue(issue: dict) -> dict:
         issue["proof_message"] = " ".join(
             part for part in (issue.get("proof_message", ""), visual.get("message", "")) if part
         ).strip() or visual.get("message")
+    elif str(issue.get("_proof_type", "")).startswith("video/") and issue.get("_proof_data"):
+        visual = classify_video_proof(issue["_proof_data"])
     elif str(issue.get("_proof_type", "")).startswith("image/") and issue.get("_proof_data"):
         visual = classify_image_problem(issue["_proof_data"])
+    # #region agent log
+    try:
+        import json, time
+        from pathlib import Path
+        with open(Path(__file__).resolve().parent / "debug-0d8a0a.log", "a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"sessionId":"0d8a0a","hypothesisId":"D","location":"community.py:add_issue","message":"media classification branch","data":{"proof_type":issue.get("_proof_type"),"has_proof":bool(issue.get("_proof_data")),"has_video":bool(issue.get("_video_data")),"visual_predicted":(visual or {}).get("predicted_category"),"text_predicted":classification.get("predicted_category")},"timestamp":int(time.time()*1000),"runId":"pre-fix"})+"\n")
+    except Exception:
+        pass
+    # #endregion
     issue.update(merge_text_and_visual_classification(classification, visual))
     if not str(issue.get("category", "")).strip():
         issue["category"] = issue.get("predicted_category") or "Urban Infrastructure"

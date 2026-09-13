@@ -28,7 +28,8 @@ from storage import (
     create_milestone, create_notification, create_session_record,
     create_support_offer, create_team, create_university, create_university_report, delete_session_record,
     get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal,
-    load_contractors, load_industry_partners, load_milestones, load_teams, load_university_assignments, load_universities,
+    load_contractors, load_communication_summary, load_industry_partners, load_milestones, load_teams,
+    load_university_assignments, load_universities,
     moderate_issue, review_contractor_complaint, update_assignment, update_milestone, update_offer_commitment,
     update_proposal, update_team_outcomes, update_team_status, update_university,
     update_institution_approval, update_contractor_assignment, update_contractor_status,
@@ -425,6 +426,11 @@ if FastAPI is not None:
     async def messages_page(current_user: Optional[str] = Depends(get_current_user)):
         user = require_user(current_user)
         return HTMLResponse(content=f"<!doctype html><html><body>{render_messages(user)}<script>document.querySelector('#message-form').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/messages',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Message failed')}};</script></body></html>")
+
+    @app.get("/api/communications/summary")
+    async def communication_summary_api(current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        return JSONResponse(content=load_communication_summary(user))
 
     @app.get("/proof/{proof_id}")
     async def get_proof_image(proof_id: str):
