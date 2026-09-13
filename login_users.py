@@ -20,8 +20,13 @@ except ImportError:
     from storage import create_account_record, get_account, import_account, initialise, load_professional_profiles
 
 ACCOUNTS_FILE = Path(__file__).with_name("accounts.csv")
-ADMIN_EMAILS = {"admin@jharkhand.gov.in"}
+DEMO_EMAIL = "citizen@example.com"
+DEMO_PASSWORD = "map123"
 PROFESSIONAL_DEMO_EMAIL = "engineer@example.gov"
+PROFESSIONAL_DEMO_PASSWORD = "gov12345"
+ADMIN_DEMO_EMAIL = "admin@jharkhand.gov.in"
+ADMIN_DEMO_PASSWORD = "admin12345"
+ADMIN_EMAILS = {"admin@jharkhand.gov.in"}
 VERIFIED_PROFESSIONALS = {
     PROFESSIONAL_DEMO_EMAIL: {
         "name": "Arun Mehta",
@@ -31,9 +36,9 @@ VERIFIED_PROFESSIONALS = {
     }
 }
 DEFAULT_ACCOUNTS = {
-    "citizen@example.com": "map123",
-    "engineer@example.gov": "gov12345",
-    "admin@jharkhand.gov.in": "gov12345",
+    "citizen@example.com": DEMO_PASSWORD,
+    "engineer@example.gov": PROFESSIONAL_DEMO_PASSWORD,
+    "admin@jharkhand.gov.in": ADMIN_DEMO_PASSWORD,
     "innovation@bitmesra.ac.in": "map12345",
     "innovation@cuj.ac.in": "map12345",
     "innovation@nitjsr.ac.in": "map12345",

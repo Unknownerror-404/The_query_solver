@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contractor Administration · Civic Map</title>
+<meta name="description" content="Manage government contractors — assign issues, review complaints, and manage contractor performance scores.">
+<link rel="stylesheet" href="/templates/shared.css">
+<style>
+body { font-family: Georgia, serif; background: var(--paper); color: var(--ink); }
+header { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+main { max-width: 1200px; }
+
+.admin-intro { margin-bottom: 30px; }
+.admin-intro h1 { margin: 8px 0 6px; font-size: clamp(32px, 4vw, 44px); font-weight: 500; letter-spacing: -1.5px; }
+.admin-intro p { max-width: 760px; color: var(--muted); font: 14px/1.6 Arial, sans-serif; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 22px; flex-wrap: wrap; }
+.tab-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--muted);
+  font: 700 12px Arial, sans-serif;
+  cursor: pointer;
+  transition: all .2s;
+}
+.tab-btn.active, .tab-btn:hover { background: var(--ink); color: white; border-color: var(--ink); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Leaderboard */
+.leaderboard-grid { display: grid; gap: 14px; }
+.contractor-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 14px rgba(23,43,40,.06);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0 20px;
+  align-items: center;
+}
+.contractor-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+}
+.contractor-card.active::before { background: linear-gradient(90deg, var(--success), var(--blue)); }
+.contractor-card.blocked::before { background: linear-gradient(90deg, var(--danger), #8b2a20); }
+.contractor-card.pending::before { background: linear-gradient(90deg, var(--gold), #b87e1a); }
+.rank-badge {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  font: 700 14px Arial, sans-serif;
+  flex-shrink: 0;
+}
+.rank-badge.top { background: var(--gold); }
+.contractor-info h3 { margin: 0 0 4px; font-size: 17px; font-weight: 500; }
+.contractor-info p { margin: 0; color: var(--muted); font: 12px Arial, sans-serif; }
+.contractor-info .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.contractor-info .tag {
+  padding: 3px 8px;
+  background: rgba(49,124,145,.1);
+  color: var(--blue);
+  border-radius: 999px;
+  font: 700 10px Arial, sans-serif;
+}
+.contractor-score-col { text-align: right; }
+.score-num { font: 700 28px Arial, sans-serif; color: var(--accent); }
+.score-num.neg { color: var(--danger); }
+.score-meta { font: 11px Arial, sans-serif; color: var(--muted); }
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font: 700 10px Arial, sans-serif;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+.badge-active { background: #e6f4ea; color: var(--success); }
+.badge-blocked { background: #fce8e6; color: var(--danger); }
+.badge-pending { background: #fff4d6; color: #8a6414; }
+
+.contractor-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.block-form, .activate-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.block-form input { flex: 1; min-width: 200px; padding: 8px 11px; font: 13px Arial, sans-serif; border: 1px solid var(--line); border-radius: 8px; }
+.block-btn { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--danger); color: white; font: 700 12px Arial, sans-serif; cursor: pointer; transition: opacity .2s; }
+.block-btn:hover { opacity: .85; }
+.activate-btn { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--success); color: white; font: 700 12px Arial, sans-serif; cursor: pointer; transition: opacity .2s; }
+.activate-btn:hover { opacity: .85; }
+.assign-btn { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--blue); color: white; font: 700 12px Arial, sans-serif; cursor: pointer; transition: background .2s; }
+.assign-btn:hover { background: #27677e; }
+
+/* Assignment panel */
+.assign-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 26px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.assign-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--blue), var(--accent));
+}
+.assign-panel h2 { margin: 4px 0 18px; font-size: 22px; font-weight: 500; }
+.assign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field.full { grid-column: 1 / -1; }
+label { font: 700 10px Arial, sans-serif; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+select, input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.9); font: 13px Arial, sans-serif; color: var(--ink); }
+.submit-btn { padding: 11px 22px; border: 0; border-radius: 8px; background: var(--ink); color: white; font: 700 13px Arial, sans-serif; cursor: pointer; transition: background .2s, transform .15s; }
+.submit-btn:hover { background: var(--ink-soft); transform: translateY(-1px); }
+
+/* Assignments list */
+.assignments-list { display: grid; gap: 12px; }
+.assignment-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.assignment-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
+.assignment-card p { margin: 3px 0; color: var(--muted); font: 12px Arial, sans-serif; }
+.asn-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 700 10px Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.asn-assigned { background: #fff4d6; color: #8a6414; }
+.asn-in-progress { background: #e3f1f6; color: var(--blue); }
+.asn-completed { background: #e6f4ea; color: var(--success); }
+
+/* Complaints */
+.complaint-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--danger);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+.complaint-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
+.complaint-card p { margin: 3px 0; color: var(--muted); font: 13px Arial, sans-serif; }
+.complaint-card .ctype {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #fce8e6;
+  color: var(--danger);
+  border-radius: 999px;
+  font: 700 10px Arial, sans-serif;
+  text-transform: uppercase;
+}
+.complaint-card .status-reviewed { color: var(--success); }
+.complaint-card .status-dismissed { color: var(--muted); }
+.complaint-actions { margin-top: 10px; display: flex; gap: 8px; }
+.review-btn { padding: 8px 14px; border: 0; border-radius: 8px; background: var(--danger); color: white; font: 700 11px Arial, sans-serif; cursor: pointer; }
+.dismiss-btn { padding: 8px 14px; border: 0; border-radius: 8px; background: var(--muted); color: white; font: 700 11px Arial, sans-serif; cursor: pointer; }
+
+.empty {
+  padding: 28px;
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+  font: 14px Arial, sans-serif;
+  text-align: center;
+}
+
+@media(max-width:760px) {
+  header { align-items: flex-start; flex-direction: column; }
+  .nav { width: 100%; }
+  .nav-button { flex: 1 1 auto; text-align: center; }
+  .contractor-card { grid-template-columns: 1fr; }
+  .assign-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-mark">G</div>
+    <div>
+      <div class="brand-name">Civic Map</div>
+      <div class="brand-sub">Government Administration</div>
+    </div>
+  </div>
+  <div class="tagline">Admin workspace · <a href="/logout" style="color:var(--muted)">Log out</a></div>
+  <nav class="nav">
+    <a class="nav-button" href="/">Live Map</a>
+    <a class="nav-button" href="/admin">Moderation</a>
+    <a class="nav-button" href="/universities">Universities</a>
+    <a class="nav-button" href="/industry-admin">Industry</a>
+    <a class="nav-button active" href="/contractor-admin">Contractors</a>
+    <a class="nav-button" href="/government-dashboard">Analytics</a>
+  </nav>
+</header>
+<main>
+  <div class="admin-intro">
+    <p class="eyebrow">Infrastructure management</p>
+    <h1>Contractor Administration.</h1>
+    <p>Approve contractor registrations, assign civic issues to contractors, review quality complaints, and monitor the contractor leaderboard.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('leaderboard', this)" id="tab-leaderboard">🏆 Leaderboard</button>
+    <button class="tab-btn" onclick="showTab('assign', this)" id="tab-assign">📋 Assign Issue</button>
+    <button class="tab-btn" onclick="showTab('assignments', this)" id="tab-assignments">📂 Active Assignments</button>
+    <button class="tab-btn" onclick="showTab('complaints', this)" id="tab-complaints">⚠️ Complaints</button>
+    <button class="tab-btn" onclick="showTab('pending', this)" id="tab-pending">⏳ Pending Approvals</button>
+  </div>
+
+  __CONTENT__
+</main>
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Assign form
+const assignForm = document.getElementById('assign-form');
+if (assignForm) {
+  assignForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Assigning…';
+    const resp = await fetch('/api/admin/contractor-assignments', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(Object.fromEntries(new FormData(this)))
+    });
+    if (resp.ok) { location.reload(); }
+    else { btn.disabled = false; btn.textContent = 'Assign to Contractor'; alert((await resp.json()).message || 'Assignment failed'); }
+  });
+}
+
+async function responseMessage(response, fallback) {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const result = await response.json();
+    return result.message || result.detail || fallback;
+  }
+  return response.status === 403 ? 'Your admin session has expired. Please sign in again.' : fallback;
+}
+
+// Block / Activate forms
+document.querySelectorAll('.block-form').forEach(form => {
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    const button = this.querySelector('button');
+    button.disabled = true;
+    try {
+      const resp = await fetch('/api/admin/contractors/' + data.contractor_id + '/status', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ status: 'Blocked', reason: data.reason })
+      });
+      if (resp.ok) location.reload();
+      else { button.disabled = false; alert(await responseMessage(resp, 'Block failed')); }
+    } catch (error) { button.disabled = false; alert('Block request failed. Please try again.'); }
+  });
+});
+document.querySelectorAll('.activate-form').forEach(form => {
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    const button = this.querySelector('button');
+    button.disabled = true;
+    try {
+      const resp = await fetch('/api/admin/contractors/' + data.contractor_id + '/status', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ status: 'Active', reason: '' })
+      });
+      if (resp.ok) location.reload();
+      else { button.disabled = false; alert(await responseMessage(resp, 'Reactivate failed')); }
+    } catch (error) { button.disabled = false; alert('Reactivate request failed. Please try again.'); }
+  });
+});
+
+// Complaint review
+document.querySelectorAll('.complaint-review-form').forEach(form => {
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    const button = this.querySelector('button');
+    button.disabled = true;
+    try {
+      const resp = await fetch('/api/admin/contractor-complaints/' + data.complaint_id + '/review', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ status: data.action === 'confirm' ? 'Reviewed' : 'Dismissed' })
+      });
+      const result = await resp.json();
+      if (resp.ok) location.reload();
+      else { button.disabled = false; alert(result.message || result.detail || 'Review failed'); }
+    } catch (error) { button.disabled = false; alert('Complaint review request failed. Please try again.'); }
+  });
+});
+
+// Approval buttons
+document.querySelectorAll('.contractor-approval-form').forEach(form => {
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    const resp = await fetch('/api/admin/contractors/' + data.contractor_id + '/status', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ status: data.status === 'Rejected' ? 'Blocked' : data.status, reason: data.status === 'Rejected' ? 'Registration rejected by administrator.' : '' })
+    });
+    if (resp.ok) location.reload();
+    else alert((await resp.json().catch(() => ({}))).message || 'Approval update failed');
+  });
+});
+</script>
+</body>
+</html>

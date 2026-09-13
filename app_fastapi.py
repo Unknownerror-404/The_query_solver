@@ -24,7 +24,7 @@ except ImportError:
 from login_users import authenticate, create_account, is_admin, professional_profile
 from community import ISSUES, add_issue, render_page, upvote_issue
 from storage import (
-    assign_issue, check_rate_limit, create_industry_partner, create_message,
+    assign_issue, check_rate_limit, create_contractor, create_industry_partner, create_message,
     create_milestone, create_notification, create_session_record,
     create_support_offer, create_support_request, create_team, create_university, create_university_report, create_professional_profile, delete_session_record,
     create_project_review, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_project_reviews,
@@ -38,14 +38,37 @@ from evidence_review import review_issue_evidence
 from map import (
     load_login_page, load_university_login_page, load_university_register_page, load_register_page,
     load_industry_login_page, load_industry_register_page,
+    load_contractor_login_page, load_contractor_register_page,
     build_proposals_page, build_professionals_page,
     render_admin_issues, render_industry_admin, render_university_issues, proposal_issue, known_recipients,
     render_university_dashboard, render_industry_dashboard, render_government_dashboard,
+    render_contractor_dashboard, render_contractor_admin,
     auto_assign_issue_to_best_university, auto_assign_tasks_to_university,
     notification_markup, render_messages, render_user_issues, MAP_PAGE, university_for_user, industry_for_user,
+    contractor_for_user,
     ADMIN_PAGE, UNIVERSITY_PAGE, CITIZEN_PAGE_FILE, UNIVERSITY_DASHBOARD_FILE,
-    INDUSTRY_DASHBOARD_FILE, GOVERNMENT_DASHBOARD_FILE, PROPOSALS
+    INDUSTRY_DASHBOARD_FILE, GOVERNMENT_DASHBOARD_FILE, CONTRACTOR_DASHBOARD_FILE, CONTRACTOR_ADMIN_FILE, PROPOSALS
 )
+
+PROPOSAL_VOTERS: dict[int, dict[str, int]] = {}
+
+
+def record_proposal_vote(proposals: list[dict[str, Any]], voters: dict[int, dict[str, int]], proposal_id: int, user: str) -> tuple[str, int, int | None]:
+    proposal = next((item for item in proposals if item.get("id") == proposal_id), None)
+    if proposal is None:
+        return "missing", 0, None
+    issue_id = int(proposal["issue_id"])
+    user_votes = voters.setdefault(issue_id, {})
+    previous_proposal_id = user_votes.get(user)
+    if previous_proposal_id == proposal_id:
+        return "already_voted", int(proposal.get("votes", 0)), previous_proposal_id
+    if previous_proposal_id is not None:
+        previous = next((item for item in proposals if item.get("id") == previous_proposal_id), None)
+        if previous is not None:
+            previous["votes"] = max(0, int(previous.get("votes", 0)) - 1)
+    user_votes[user] = proposal_id
+    proposal["votes"] = int(proposal.get("votes", 0)) + 1
+    return ("changed" if previous_proposal_id is not None else "voted"), proposal["votes"], previous_proposal_id
 
 PROPOSAL_VOTERS: dict[int, dict[str, int]] = {}
 
@@ -124,17 +147,18 @@ if FastAPI is not None:
         return Response(content=(BASE_DIR / "service-worker.js").read_text(encoding="utf-8"), media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
     @app.get("/login", response_class=HTMLResponse)
-    async def get_login():
-        return HTMLResponse(content=load_login_page(""))
+    async def get_login(request: Request):
+        next_path = "/contractor-admin" if request.query_params.get("next") == "/contractor-admin" else ""
+        return HTMLResponse(content=load_login_page("", next_path))
 
     @app.post("/login")
     async def post_login(request: Request):
         form = await request.form()
         email = str(form.get("email", "")).strip().lower()
         password = str(form.get("password", ""))
-        portal_role = str(form.get("portal_role", "citizen"))
         if not authenticate(email, password):
-            return HTMLResponse(content=load_login_page('<p class="error">Email or password is incorrect.</p>'), status_code=401)
+            next_path = "/contractor-admin" if form.get("next") == "/contractor-admin" else ""
+            return HTMLResponse(content=load_login_page('<p class="error">Email or password is incorrect.</p>', next_path), status_code=401)
         session_id = create_session_record(email)
         destination = {
             "citizen": "/citizen-dashboard",
@@ -199,6 +223,89 @@ if FastAPI is not None:
         except Exception:
             return HTMLResponse(content=load_industry_register_page('<p class="error">The organization profile could not be created.</p>'), status_code=400)
         return HTMLResponse(content=load_industry_register_page('<p class="success">Registration submitted. An administrator must approve your organization before you can sign in.</p>'))
+
+    # -----------------------------------------------------------------------
+    # Contractor registration & login
+    # -----------------------------------------------------------------------
+
+    @app.get("/contractor/register", response_class=HTMLResponse)
+    @app.get("/contractor-register", response_class=HTMLResponse)
+    async def get_contractor_register():
+        return HTMLResponse(content=load_contractor_register_page(""))
+
+    @app.post("/contractor/register")
+    @app.post("/contractor-register")
+    async def post_contractor_register(request: Request):
+        form = await request.form()
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+        confirm_password = str(form.get("confirm_password", ""))
+        values = {
+            "company_name": str(form.get("company_name", "")).strip()[:255],
+            "owner_name": str(form.get("owner_name", "")).strip()[:255],
+            "license_no": str(form.get("license_no", "")).strip()[:100],
+            "district": str(form.get("district", "")).strip()[:100],
+            "specializations": str(form.get("specializations", "")).strip()[:500],
+            "contact_email": email,
+            "phone": str(form.get("phone", "")).strip()[:20],
+        }
+        if password != confirm_password:
+            return HTMLResponse(content=load_contractor_register_page('<p class="message error">Passwords do not match.</p>'), status_code=400)
+        if not all(values.values()) or "@" not in email:
+            return HTMLResponse(content=load_contractor_register_page('<p class="message error">All fields including a valid email are required.</p>'), status_code=400)
+        if any(str(c.get("contact_email", "")).casefold() == email.casefold() for c in load_contractors()):
+            return HTMLResponse(content=load_contractor_register_page('<p class="message error">A contractor profile already uses this email.</p>'), status_code=400)
+        created, message = create_account(email, password)
+        if not created:
+            return HTMLResponse(content=load_contractor_register_page(f'<p class="message error">{html.escape(message)}</p>'), status_code=400)
+        try:
+            create_contractor(**values)
+        except Exception:
+            return HTMLResponse(content=load_contractor_register_page('<p class="message error">The contractor profile could not be created. License number may already be registered.</p>'), status_code=400)
+        return HTMLResponse(content=load_contractor_register_page('<p class="message success"><strong>Registration submitted.</strong> A government administrator must approve your application before you can sign in.</p>'))
+
+    @app.get("/contractor/login", response_class=HTMLResponse)
+    @app.get("/contractor-login", response_class=HTMLResponse)
+    async def get_contractor_login():
+        return HTMLResponse(content=load_contractor_login_page(""))
+
+    @app.post("/contractor/login")
+    @app.post("/contractor-login")
+    async def post_contractor_login(request: Request):
+        form = await request.form()
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+        if not authenticate(email, password):
+            return HTMLResponse(content=load_contractor_login_page('<p class="message error">Email or password is incorrect.</p>'), status_code=401)
+        contractor = _contractor_for_user_storage(email)
+        if contractor is None:
+            return HTMLResponse(content=load_contractor_login_page('<p class="message error">This account is not linked to a registered contractor profile.</p>'), status_code=403)
+        if contractor.get("approval_status") == "Pending":
+            return HTMLResponse(content=load_contractor_login_page('<p class="message error">Your registration is pending administrator approval.</p>'), status_code=403)
+        if contractor.get("approval_status") == "Blocked":
+            reason = html.escape(contractor.get("block_reason") or "Your account has been blocked.")
+            return HTMLResponse(content=load_contractor_login_page(f'<p class="message error">⛔ Account blocked: {reason}</p>'), status_code=403)
+        session_id = create_session_record(email)
+        response = RedirectResponse(url="/contractor-dashboard", status_code=303)
+        response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
+        return response
+
+    @app.get("/contractor-dashboard", response_class=HTMLResponse)
+    async def contractor_dashboard(current_user: Optional[str] = Depends(get_current_user)):
+        if not current_user:
+            return RedirectResponse(url="/contractor/login", status_code=303)
+        contractor = contractor_for_user(current_user)
+        if contractor is None:
+            raise HTTPException(status_code=403, detail="Contractor account required")
+        template = CONTRACTOR_DASHBOARD_FILE.read_text(encoding="utf-8")
+        return HTMLResponse(content=template.replace("__CONTENT__", render_contractor_dashboard(current_user)))
+
+    @app.get("/contractor-admin", response_class=HTMLResponse)
+    async def contractor_admin_page(current_user: Optional[str] = Depends(get_current_user)):
+        if not current_user or not is_admin(current_user):
+            raise HTTPException(status_code=403, detail="Admin authorization required")
+        template = CONTRACTOR_ADMIN_FILE.read_text(encoding="utf-8")
+        return HTMLResponse(content=template.replace("__CONTENT__", render_contractor_admin()))
 
     @app.get("/university/register", response_class=HTMLResponse)
     @app.get("/university-register", response_class=HTMLResponse)
@@ -293,12 +400,6 @@ if FastAPI is not None:
             return RedirectResponse(url="/login", status_code=303)
         return HTMLResponse(content=build_proposals_page(current_user))
 
-    @app.get("/universities", response_class=HTMLResponse)
-    async def universities(current_user: Optional[str] = Depends(get_current_user)):
-        if not current_user or not is_admin(current_user):
-            raise HTTPException(status_code=403, detail="Admin authorization required")
-        return HTMLResponse(content=UNIVERSITY_PAGE.replace("__ISSUES__", render_university_issues()))
-
     @app.get("/professionals", response_class=HTMLResponse)
     async def professionals(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user:
@@ -345,18 +446,20 @@ if FastAPI is not None:
     async def university_dashboard(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user or university_for_user(current_user) is None:
             raise HTTPException(status_code=403, detail="University account required")
-        return HTMLResponse(content=render_university_dashboard(current_user))
+        template = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
+        return HTMLResponse(content=template.replace("__ASSIGNMENTS__", render_university_dashboard(current_user)))
 
     @app.get("/industry-dashboard", response_class=HTMLResponse)
     async def industry_dashboard(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user or industry_for_user(current_user) is None:
             raise HTTPException(status_code=403, detail="Industry account required")
-        return HTMLResponse(content=render_industry_dashboard(current_user))
+        template = INDUSTRY_DASHBOARD_FILE.read_text(encoding="utf-8")
+        return HTMLResponse(content=template.replace("__CONTENT__", render_industry_dashboard(current_user)))
 
     @app.get("/government-dashboard", response_class=HTMLResponse)
     async def government_dashboard(current_user: Optional[str] = Depends(get_current_user)):
-        if not current_user or (not is_admin(current_user) and industry_for_user(current_user) is None):
-            raise HTTPException(status_code=403, detail="Government or industry account required")
+        if not current_user or not is_admin(current_user):
+            raise HTTPException(status_code=403, detail="Admin authorization required")
         template = GOVERNMENT_DASHBOARD_FILE.read_text(encoding="utf-8")
         return HTMLResponse(content=template.replace("__CONTENT__", render_government_dashboard()))
 
@@ -404,6 +507,13 @@ if FastAPI is not None:
             raise HTTPException(status_code=404, detail="Proof not found")
         return Response(content=proof[1], media_type=proof[0])
 
+    @app.get("/video/{video_id}")
+    async def get_video_evidence(video_id: str):
+        video = get_video(video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        return Response(content=video[1], media_type=video[0])
+
     @app.get("/proposal-visual/{proposal_id}")
     async def get_proposal_visual_image(proposal_id: int):
         visual = get_proposal_visual(proposal_id)
@@ -446,14 +556,20 @@ if FastAPI is not None:
             data["reporter"] = current_user
             encoded_proof = data.pop("proof_image", "")
             proof_type = data.pop("proof_type", "image/jpeg")
+            encoded_video = data.pop("proof_video", "")
+            video_type = data.pop("proof_video_type", "video/mp4")
             allowed_proof_types = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+            allowed_video_types = {"video/mp4", "video/webm"}
             if proof_type not in allowed_proof_types:
                 return JSONResponse(status_code=415, content={"message": "Unsupported proof file type"})
+            if encoded_video and video_type not in allowed_video_types:
+                return JSONResponse(status_code=415, content={"message": "Unsupported video file type"})
             proof_bytes = base64.b64decode(encoded_proof, validate=True) if encoded_proof else b""
+            video_bytes = base64.b64decode(encoded_video, validate=True) if encoded_video else b""
         except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error):
             return JSONResponse(status_code=400, content={"message": "Invalid issue data."})
-        if len(proof_bytes) > 8 * 1024 * 1024:
-            return JSONResponse(status_code=413, content={"message": "Proof image is larger than 8 MB"})
+        if len(proof_bytes) > 25 * 1024 * 1024 or len(video_bytes) > 25 * 1024 * 1024:
+            return JSONResponse(status_code=413, content={"message": "Proof file is larger than 25 MB"})
         if proof_bytes:
             if proof_type.startswith("image/"):
                 proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
@@ -462,10 +578,14 @@ if FastAPI is not None:
                     return JSONResponse(status_code=422, content=proof)
                 data.update({"proof_status": proof["status"], "proof_message": proof["message"]})
             else:
-                data.update({"proof_status": "unverified", "proof_message": "Supporting file uploaded; location verification is available for images."})
+                data.update({"proof_status": "unverified", "proof_message": "Supporting file uploaded; location verification is available for geotagged photos."})
             data["proof_id"] = secrets.token_urlsafe(12)
             data["_proof_type"] = proof_type
             data["_proof_data"] = proof_bytes
+        if video_bytes:
+            data["video_id"] = secrets.token_urlsafe(12)
+            data["_video_type"] = video_type
+            data["_video_data"] = video_bytes
         created = add_issue(data)
         if created.get("result") == "new" and created.get("issue"):
             assignment = auto_assign_issue_to_best_university(created["issue"])
@@ -1000,6 +1120,115 @@ if FastAPI is not None:
         if result == "missing":
             return JSONResponse(status_code=404, content={"message": "Issue not found."})
         return JSONResponse(content={"message": "Evidence review saved.", "result": result, "issue": issue})
+
+    # -----------------------------------------------------------------------
+    # Contractor APIs
+    # -----------------------------------------------------------------------
+
+    @app.post("/api/admin/contractor-assignments")
+    async def api_assign_contractor(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        require_admin(current_user)
+        try:
+            data = await request.json()
+            issue_id = int(data.get("issue_id", 0))
+            contractor_id = int(data.get("contractor_id", 0))
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid assignment data."})
+        if not assign_issue_to_contractor(issue_id, contractor_id, current_user):
+            return JSONResponse(status_code=500, content={"message": "Failed to assign issue to contractor."})
+        return JSONResponse(content={"message": "Issue assigned successfully."})
+
+    @app.post("/api/admin/contractors/{contractor_id}/status")
+    async def api_contractor_status(contractor_id: int, request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        require_admin(current_user)
+        try:
+            data = await request.json()
+            status = str(data.get("status", "")).strip()
+            reason = str(data.get("reason", "")).strip()
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid status data."})
+        try:
+            updated = update_contractor_status(contractor_id, status, reason)
+        except Exception:
+            return JSONResponse(status_code=500, content={"message": "Could not update contractor status. Check the database schema and try again."})
+        if not updated:
+            return JSONResponse(status_code=404, content={"message": "Contractor not found."})
+        return JSONResponse(content={"message": "Contractor status updated."})
+
+    @app.post("/api/contractor/assignment-status")
+    async def api_update_contractor_assignment(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        contractor = _contractor_for_user_storage(user)
+        if not contractor:
+            return JSONResponse(status_code=403, content={"message": "Contractor account required."})
+        try:
+            form = await request.form()
+            assignment_id = int(form.get("assignment_id", 0))
+            status = str(form.get("status", "")).strip()
+            note = str(form.get("note", "")).strip()[:4000]
+            upload = form.get("progress_image")
+            image_type = ""
+            image_data = b""
+            if upload and getattr(upload, "filename", ""):
+                image_type = str(getattr(upload, "content_type", ""))
+                if image_type not in {"image/jpeg", "image/png", "image/webp"}:
+                    return JSONResponse(status_code=400, content={"message": "Progress image must be JPEG, PNG, or WebP."})
+                image_data = await upload.read()
+                if len(image_data) > 8 * 1024 * 1024:
+                    return JSONResponse(status_code=413, content={"message": "Progress image is larger than 8 MB."})
+        except (ValueError, TypeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid update data."})
+        
+        # Verify ownership (we load all assignments for this contractor and check if the assignment_id belongs to them)
+        my_assignments = load_contractor_assignments(contractor["id"])
+        if not any(a["id"] == assignment_id for a in my_assignments):
+            return JSONResponse(status_code=403, content={"message": "Not authorized to update this assignment."})
+            
+        if status not in {"Assigned", "In Progress", "Completed", "Rejected"}:
+            return JSONResponse(status_code=400, content={"message": "Invalid assignment status."})
+        try:
+            updated = update_contractor_assignment(assignment_id, status, note, image_type, image_data)
+        except Exception:
+            return JSONResponse(status_code=500, content={"message": "Could not save the status update and image."})
+        if not updated:
+            return JSONResponse(status_code=500, content={"message": "Failed to update assignment."})
+        return JSONResponse(content={"message": "Assignment updated."})
+
+    @app.post("/api/complaints/contractor")
+    async def api_file_contractor_complaint(request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        try:
+            data = await request.json()
+            contractor_id = int(data.get("contractor_id", 0))
+            issue_id = int(data.get("issue_id", 0))
+            complaint_type = str(data.get("complaint_type", "")).strip()
+            description = str(data.get("description", "")).strip()
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid complaint data."})
+            
+        if not complaint_type or not description:
+            return JSONResponse(status_code=400, content={"message": "Type and description are required."})
+            
+        create_contractor_complaint(contractor_id, issue_id, user, complaint_type, description)
+        return JSONResponse(content={"message": "Complaint filed successfully."})
+
+    @app.post("/api/admin/contractor-complaints/{complaint_id}/review")
+    async def api_review_contractor_complaint(complaint_id: int, request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        require_admin(current_user)
+        try:
+            data = await request.json()
+            status = str(data.get("status", "")).strip()
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid review data."})
+            
+        try:
+            reviewed = review_contractor_complaint(complaint_id, status, current_user)
+        except Exception:
+            return JSONResponse(status_code=500, content={"message": "Could not update complaint status. Check the database schema and try again."})
+        if not reviewed:
+            return JSONResponse(status_code=404, content={"message": "Complaint not found."})
+        return JSONResponse(content={"message": "Complaint reviewed."})
+
 
 else:
     app = None

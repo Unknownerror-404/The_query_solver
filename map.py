@@ -1,7 +1,9 @@
-"""A small civic-issues map inspired by Swaraj's public accountability map.
+﻿"""A small civic-issues map inspired by Swaraj's public accountability map.
 Run with ``python map.py`` and open http://localhost:8000 in a browser.
 The map uses OpenStreetMap tiles through Leaflet, so an internet connection is needed for the basemap.
 """
+
+
 from __future__ import annotations
 import json
 import secrets
@@ -10,6 +12,9 @@ import webbrowser
 import base64
 import binascii
 import html
+import logging
+from email import policy
+from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 from pathlib import Path
@@ -25,24 +30,59 @@ UNIVERSITY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "university_register.ht
 INDUSTRY_DASHBOARD_FILE = BASE_DIR / "templates" / "industry.html"
 INDUSTRY_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "industry_login.html"
 INDUSTRY_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "industry_register.html"
+INDUSTRY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "industry_admin.html"
 GOVERNMENT_DASHBOARD_FILE = BASE_DIR / "templates" / "government.html"
+UNIVERSITY_ADMIN_PAGE_FILE = BASE_DIR / "templates" / "university_admin.html"
+MAIN_MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
+ADMIN_PAGE_FILE = BASE_DIR / "templates" / "admin.html"
+MAP_PAGE_FILE = BASE_DIR / "templates" / "map.html"
+CONTRACTOR_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "contractor_login.html"
+CONTRACTOR_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "contractor_register.html"
+CONTRACTOR_DASHBOARD_FILE = BASE_DIR / "templates" / "contractor_dashboard.html"
+CONTRACTOR_ADMIN_FILE = BASE_DIR / "templates" / "contractor_admin.html"
 try:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
+    from .tagging import tag_issue
 except ImportError:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, check_rate_limit, create_account_record, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_all_partner_offers, load_assignments, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, update_assignment, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university
+    from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from AI_model import inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
+    from tagging import tag_issue
 HOST = "127.0.0.1"
 PORT = 8000
 SESSIONS: dict[str, str] = {}
 PROPOSALS: list[dict] = load_proposals()
 NEXT_PROPOSAL_ID = max((proposal["id"] for proposal in PROPOSALS), default=0) + 1
+UNIVERSITY_CACHE = None
+CACHE_LOCK = threading.Lock()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s', filename='app.log')
+UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration Â· Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace Â· <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
+def parse_multipart_form(headers, body: bytes) -> tuple[dict[str, str], tuple[str, str, bytes] | None]:
+    """Parse text fields and one uploaded file without the removed cgi module."""
+    content_type = headers.get("Content-Type", "")
+    message = BytesParser(policy=policy.default).parsebytes(
+        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode() + body
+    )
+    fields: dict[str, str] = {}
+    upload = None
+    for part in message.iter_parts():
+        disposition = part.get_content_disposition()
+        name = part.get_param("name", header="content-disposition")
+        if disposition != "form-data" or not name:
+            continue
+        filename = part.get_filename()
+        payload = part.get_payload(decode=True) or b""
+        if filename:
+            upload = (filename, part.get_content_type(), payload)
+        else:
+            fields[name] = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+    return fields, upload
 ADMIN_PAGE = """<!doctype html>
 <html lang='en'>
 <head>
@@ -72,7 +112,6 @@ main{max-width:1150px}
 <script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(event.submitter&&event.submitter.name)data.status=event.submitter.value;let endpoint='/api/admin/issues';if(form.className==='proposal-moderation')endpoint='/api/admin/proposals';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';if(form.className==='industry-create')endpoint='/api/admin/industry-partners';if(form.className==='offer-update')endpoint='/api/admin/offer-commitments';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Admin operation failed')})</script>
 </body>
 </html>"""
-UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration · Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace · <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button' href='/admin'>Moderation</a><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.response').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/assignment-response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Response failed')});</script></body></html>")
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Approval update failed')});</script></body></html>")
 UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("</script></body></html>", "document.querySelectorAll('.university-profile').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/admin/universities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Profile update failed')});</script></body></html>")
@@ -82,9 +121,17 @@ UNIVERSITY_PAGE = UNIVERSITY_PAGE.replace("<main>", "<main><div class='admin-por
 UNIVERSITY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>University dashboard</h1><p>Assigned challenges, university decisions, project teams, and proposed solutions.</p>__ASSIGNMENTS__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);const response=await fetch(form.dataset.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'Request failed')})</script></body></html>"""
 INDUSTRY_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Industry dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#172b28}article{border:1px solid #d9d7cd;padding:18px;margin:14px 0}select,input,textarea,button{padding:9px;margin:4px 4px 4px 0}textarea{width:95%;min-height:70px}</style></head><body><h1>Industry partnership dashboard</h1><p>Offer practical support to approved societal challenges.</p>__CONTENT__<script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const response=await fetch('/api/industry/offers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(response.ok)location.reload();else alert((await response.json()).message||'Offer failed')})</script></body></html>"""
 GOVERNMENT_DASHBOARD = """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Government dashboard</title><style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;color:#172b28}section{border:1px solid #d9d7cd;padding:18px;margin:14px 0}li{margin:7px 0}</style></head><body>__CONTENT__</body></html>"""
-def load_login_page(error=""):
+def load_login_page(error="", next_path="", portal_role="citizen"):
     page = LOGIN_PAGE_FILE.read_text(encoding="utf-8")
-    return page.replace("__ERROR__", error)
+    selected_role = (portal_role or "citizen").strip().lower()
+    if selected_role not in {"citizen", "government", "university", "industry", "contractor"}:
+        selected_role = "citizen"
+    return (
+        page
+        .replace("__ERROR__", error)
+        .replace("__NEXT__", html.escape(next_path, quote=True))
+        .replace("__PORTAL_ROLE__", html.escape(selected_role, quote=True))
+    )
 def load_university_login_page(error=""):
     page = UNIVERSITY_LOGIN_PAGE_FILE.read_text(encoding="utf-8")
     return page.replace("__ERROR__", error)
@@ -121,6 +168,594 @@ def known_recipients() -> set[str]:
 
 def university_for_user(user):
     return next((university for university in load_universities() if university.get("approval_status", "Active") == "Active" and str(university.get("contact_email", "")).casefold() == user.casefold()), None)
+def industry_for_user(user):
+    return next((partner for partner in load_industry_partners() if str(partner.get("contact_email", "")).casefold() == user.casefold() and partner.get("approval_status") == "Active"), None)
+def contractor_for_user(user: str):
+    """Return the contractor record for a logged-in user, or None if not a contractor."""
+    return _contractor_for_user_storage(user)
+
+
+def portal_role_for_user(user: str) -> str:
+    """Return the single portal role represented by a logged-in account."""
+    email = (user or "").strip().casefold()
+    if not email:
+        return "citizen"
+    if is_admin(email):
+        return "government"
+    if contractor_for_user(email) is not None:
+        return "contractor"
+    if university_for_user(email) is not None:
+        return "university"
+    if industry_for_user(email) is not None:
+        return "industry"
+    return "citizen"
+
+
+def user_can_access_portal(user: str, portal: str) -> bool:
+    """Allow each role into its own portal; admins use government/admin workspaces."""
+    if is_admin(user):
+        return portal in {"citizen", "government"}
+    return portal_role_for_user(user) == portal
+
+
+def render_role_nav(user: str, active: str = "") -> str:
+    """Render navigation links appropriate to the signed-in user's role."""
+    role = portal_role_for_user(user)
+
+    links = [
+        ("/", "Live Map", "map"),
+        ("/community", "Community", "community"),
+        ("/proposals", "Solutions", "proposals"),
+    ]
+
+    portal_links = {
+        "citizen": ("/citizen-dashboard", "My Dashboard", "citizen"),
+        "university": ("/university-dashboard", "University", "university"),
+        "industry": ("/industry-dashboard", "Industry", "industry"),
+        "contractor": ("/contractor-dashboard", "Contractor", "contractor"),
+    }
+
+    if role == "government":
+        # Government/Admin uses the government and admin workspaces.
+        # Do not expose the institution-specific dashboards.
+        links.extend([
+            ("/citizen-dashboard", "Citizen", "citizen"),
+            ("/government-dashboard", "Government", "government"),
+
+            # Government/Admin workspace pages.
+            ("/admin", "Moderation", "admin"),
+            ("/universities", "Universities Admin", "universities-admin"),
+            ("/industry-admin", "Industry Admin", "industry-admin"),
+            ("/contractor-admin", "Contractor Admin", "contractor-admin"),
+        ])
+    else:
+        links.append(portal_links[role])
+
+    nav_links = "".join(
+        f"<a class='nav-button{' active' if key == active else ''}' "
+        f"href='{href}'>{label}</a>"
+        for href, label, key in links
+    )
+
+    notification_ui = """
+    <div class="notification-wrap" id="notification-wrap">
+        <button class="notification-bell" type="button" aria-label="Notifications"
+                onclick="toggleNotifications(event)">
+            <span class="notification-icon">🔔</span>
+            <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+        <div class="notification-dropdown" id="notification-dropdown" hidden>
+            <div class="notification-head">
+                <strong>Notifications</strong>
+                <button type="button" onclick="markAllNotificationsRead()">Mark all read</button>
+            </div>
+            <div id="notification-list">
+                <div class="notification-empty">Loading notifications...</div>
+            </div>
+            <a class="notification-footer" href="/notifications">View all notifications</a>
+        </div>
+    </div>
+    <style>
+        .notification-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+
+        .notification-bell {
+            position: relative;
+            border: 1px solid rgba(255,255,255,.25);
+            background: rgba(255,255,255,.08);
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 8px 10px;
+            line-height: 1;
+            border-radius: 10px;
+            transition: .2s ease;
+        }
+
+        .notification-bell:hover {
+            background: rgba(255,255,255,.18);
+            transform: translateY(-1px);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -3px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #c0392b;
+            color: #ffffff;
+            font: 700 10px/18px Arial, sans-serif;
+            text-align: center;
+            border: 2px solid #ffffff;
+        }
+
+        .notification-dropdown {
+            position: absolute;
+            z-index: 9999;
+            right: 0;
+            top: calc(100% + 10px);
+            width: 360px;
+            max-width: calc(100vw - 28px);
+            background: #173b35;
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,.22);
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(0,0,0,.35);
+            overflow: hidden;
+        }
+
+        .notification-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: #102f2a;
+            border-bottom: 1px solid rgba(255,255,255,.15);
+        }
+
+        .notification-head strong {
+            color: #ffffff;
+            font-size: 15px;
+        }
+
+        .notification-head button {
+            border: 0;
+            background: transparent;
+            color: #e6c76a;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .notification-head button:hover {
+            text-decoration: underline;
+        }
+
+        .notification-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: 0;
+            border-bottom: 1px solid rgba(255,255,255,.10);
+            background: #173b35;
+            color: #d7e2df;
+            padding: 13px 16px;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+        .notification-item:hover {
+            background: #214c44;
+        }
+
+        .notification-item.unread {
+            background: #24584e;
+            color: #ffffff;
+            border-left: 4px solid #e6c76a;
+            padding-left: 12px;
+        }
+
+        .notification-message {
+            display: block;
+            color: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .notification-time {
+            display: block;
+            margin-top: 5px;
+            color: #a9bfba;
+            font-size: 11px;
+        }
+
+        .notification-item.unread .notification-time {
+            color: #d5ddd9;
+        }
+
+        .notification-empty {
+            padding: 20px 16px;
+            color: #b8c9c5;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .notification-footer {
+            display: block;
+            padding: 13px 14px;
+            background: #102f2a;
+            color: #e6c76a;
+            text-align: center;
+            text-decoration: none;
+            border-top: 1px solid rgba(255,255,255,.15);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .notification-footer:hover {
+            background: #214c44;
+            color: #ffffff;
+        }
+    </style>
+    <script>
+    (function () {
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, function (c) {
+                return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+            });
+        }
+
+        window.loadNotifications = async function () {
+            try {
+                const response = await fetch('/api/notifications?_=' + Date.now(), {credentials: 'same-origin', cache: 'no-store'});
+                if (!response.ok) return;
+                const data = await response.json();
+                const badge = document.getElementById('notification-badge');
+                const list = document.getElementById('notification-list');
+                if (!badge || !list) return;
+
+                const unread = Number(data.unread_count || 0);
+                badge.textContent = unread > 99 ? '99+' : String(unread);
+                badge.hidden = unread === 0;
+
+                const items = data.notifications || [];
+                if (!items.length) {
+                    list.innerHTML = '<div class="notification-empty">No notifications yet.</div>';
+                    return;
+                }
+
+                list.innerHTML = items.slice(0, 8).map(function (item) {
+                    const cls = item.is_read ? 'notification-item' : 'notification-item unread';
+                    return '<button class="' + cls + '" type="button" onclick="readNotification('
+                        + Number(item.id) + ')">'
+                        + '<span class="notification-message">' + escapeHtml(item.message) + '</span>'
+                        + '<span class="notification-time">' + escapeHtml(item.created_at) + '</span>'
+                        + '</button>';
+                }).join('');
+            } catch (error) {
+                console.warn('Could not load notifications', error);
+            }
+        };
+
+        window.toggleNotifications = function (event) {
+            if (event) event.stopPropagation();
+            const dropdown = document.getElementById('notification-dropdown');
+            if (!dropdown) return;
+            dropdown.hidden = !dropdown.hidden;
+            if (!dropdown.hidden) window.loadNotifications();
+        };
+
+        window.readNotification = async function (id) {
+            try {
+                await fetch('/api/notifications/' + encodeURIComponent(id) + '/read', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                window.loadNotifications();
+            } catch (error) {
+                console.warn('Could not mark notification as read', error);
+            }
+        };
+
+        window.markAllNotificationsRead = async function () {
+            try {
+                await fetch('/api/notifications/read-all', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                window.loadNotifications();
+            } catch (error) {
+                console.warn('Could not mark notifications as read', error);
+            }
+        };
+
+        document.addEventListener('click', function (event) {
+            const wrap = document.getElementById('notification-wrap');
+            const dropdown = document.getElementById('notification-dropdown');
+            if (wrap && dropdown && !wrap.contains(event.target)) dropdown.hidden = true;
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.loadNotifications();
+            setInterval(window.loadNotifications, 30000);
+        });
+    })();
+    </script>
+    """
+
+    return nav_links + notification_ui
+
+def load_contractor_login_page(message: str = "") -> str:
+    return CONTRACTOR_LOGIN_PAGE_FILE.read_text(encoding="utf-8").replace("__MESSAGE__", message)
+def load_contractor_register_page(message: str = "") -> str:
+    page = CONTRACTOR_REGISTER_PAGE_FILE.read_text(encoding="utf-8")
+    district_options = "".join(f"<option>{html.escape(d)}</option>" for d in JHARKHAND_DISTRICTS)
+    return page.replace("__MESSAGE__", message).replace("__DISTRICTS__", district_options)
+
+def render_contractor_dashboard(contact_email: str) -> str:
+    """Build the HTML content injected into contractor_dashboard.html's __CONTENT__ slot."""
+    contractor = _contractor_for_user_storage(contact_email)
+    if not contractor:
+        return "<p>Contractor profile not found.</p>"
+    cid = contractor["id"]
+    score = contractor.get("performance_score", 0)
+    completed = contractor.get("completed_projects", 0)
+    complaints_filed = contractor.get("complaint_count", 0)
+    status = contractor.get("approval_status", "Pending")
+    is_blocked = status == "Blocked"
+
+    # Score banner
+    neg_class = " negative" if score < 0 else ""
+    block_html = ""
+    if is_blocked:
+        reason = html.escape(contractor.get("block_reason") or "Blocked by government administrator.")
+        block_html = f"<div style='margin-bottom:18px;padding:14px 18px;background:#fce8e6;border:1px solid #f5c6c4;border-radius:10px;font:14px Arial,sans-serif;color:#b83226;'><strong>⛔ Your account has been blocked.</strong> {reason} Contact the government administrator for appeal.</div>"
+    score_html = (
+        f"{block_html}"
+        f"<div class='score-banner'>"
+        f"<div class='score-number{neg_class}'>{score}</div>"
+        f"<div class='score-info'>"
+        f"<h2>{html.escape(contractor['company_name'])}</h2>"
+        f"<p>Owner: {html.escape(contractor['owner_name'])} &nbsp;·&nbsp; District: {html.escape(contractor['district'])}</p>"
+        f"<div class='stat-chips'>"
+        f"<span class='stat-chip chip-green'>✅ {completed} Completed</span>"
+        f"<span class='stat-chip chip-red'>⚠️ {complaints_filed} Complaints</span>"
+        f"<span class='stat-chip chip-blue'>📋 {contractor['specializations']}</span>"
+        f"</div></div></div>"
+    )
+
+    # Assignments
+    assignments = load_contractor_assignments(cid)
+    if assignments:
+        cards = []
+        for a in assignments:
+            s = a.get("status", "Assigned")
+            css_cls = {"Assigned": "assigned", "In Progress": "in-progress", "Completed": "completed", "Rejected": "rejected"}.get(s, "assigned")
+            badge_cls = {"Assigned": "badge-assigned", "In Progress": "badge-in-progress", "Completed": "badge-completed", "Rejected": "badge-rejected"}.get(s, "badge-assigned")
+            note_val = html.escape(a.get("completion_note") or "")
+            form_html = ""
+            if s not in {"Completed", "Rejected"}:
+                form_html = (
+                    f"<form class='update-form' style='margin-top:12px'>"
+                    f"<input type='hidden' name='assignment_id' value='{a.get('id')}'>"
+                    f"<div class='action-row'>"
+                    f"<select name='status'>"
+                    f"<option value='In Progress'{' selected' if s=='In Progress' else ''}>In Progress</option>"
+                    f"<option value='Completed'>Mark Completed</option>"
+                    f"</select>"
+                    f"</div>"
+                    f"<div style='margin-top:8px'>"
+                    f"<textarea name='note' placeholder='Completion note or progress update…' style='width:100%;min-height:60px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:13px Arial,sans-serif;resize:vertical'>{note_val}</textarea>"
+                    f"<label style='display:block;margin-top:8px;font:700 10px Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--muted)'>Progress image<input name='progress_image' type='file' accept='image/jpeg,image/png,image/webp' style='display:block;margin-top:6px;font:13px Arial,sans-serif'></label>"
+                    f"</div>"
+                    f"<button type='submit' class='action-btn' style='margin-top:8px'>Update Status</button>"
+                    f"</form>"
+                )
+            cards.append(
+                f"<div class='project-card {css_cls}'>"
+                f"<div class='project-header'><h3 class='project-title'>{html.escape(a.get('issue_title','Untitled'))}</h3>"
+                f"<span class='status-badge {badge_cls}'>{s}</span></div>"
+                f"<div class='project-meta'>📍 {html.escape(a.get('district',''))} {('· ' + html.escape(a.get('block',''))) if a.get('block') else ''} &nbsp;|&nbsp; 🏷️ {html.escape(a.get('category',''))}</div>"
+                f"<p class='project-desc'>{html.escape(a.get('issue_description',''))[:300]}</p>"
+                f"{form_html}"
+                f"{('<p style=\"margin:12px 0 0;font:13px Arial,sans-serif\"><a href=\"/contractor-progress/' + str(a['id']) + '\" target=\"_blank\" rel=\"noopener\">View latest progress image</a></p>' if a.get('progress_image_type') else '')}</div>"
+            )
+        assignments_html = "<div class='project-grid'>" + "".join(cards) + "</div>"
+    else:
+        assignments_html = "<div class='empty-state'><div class='icon'>📋</div><p>No projects assigned yet. Check back after the government assigns you a project.</p></div>"
+
+    # Complaints
+    c_list = load_contractor_complaints(cid)
+    if c_list:
+        cc_html = "".join(
+            f"<div class='complaint-card'>"
+            f"<h4>{html.escape(c.get('complaint_type',''))}</h4>"
+            f"<p>Issue: <strong>{html.escape(c.get('issue_title',''))}</strong></p>"
+            f"<p>{html.escape(c.get('description',''))}</p>"
+            f"<p>Status: <span class='status-{'reviewed' if c.get('status')=='Reviewed' else 'dismissed'}'>{c.get('status','Pending')}</span></p>"
+            f"<p style='color:var(--muted);font-size:11px'>Filed by: {html.escape(c.get('filed_by',''))}</p>"
+            f"</div>"
+            for c in c_list
+        )
+    else:
+        cc_html = "<div class='empty-state'><p>No complaints filed against you.</p></div>"
+
+    return (
+        score_html
+        + f"<h2 class='section-title'>Assigned Projects <span>{len(assignments)}</span></h2>" + assignments_html
+        + f"<h2 class='section-title'>Complaints Filed Against You <span>{len(c_list)}</span></h2>" + cc_html
+    )
+
+
+def render_contractor_admin() -> str:
+    """Build the HTML injected into contractor_admin.html's __CONTENT__ slot (5 tab panels)."""
+    contractors = load_contractor_leaderboard()
+    all_assignments = load_all_contractor_assignments()
+    all_complaints = load_contractor_complaints()
+    issues = ISSUES
+
+    # --- TAB 1: Leaderboard ---
+    lb_cards = []
+    for rank, c in enumerate(contractors, 1):
+        s = c.get("approval_status", "Pending")
+        score = c.get("performance_score", 0)
+        badge_cls = {"Active": "badge-active", "Blocked": "badge-blocked", "Pending": "badge-pending"}.get(s, "badge-pending")
+        card_cls = {"Active": "active", "Blocked": "blocked", "Pending": "pending"}.get(s, "pending")
+        rank_cls = " top" if rank <= 3 and s == "Active" else ""
+        specs = [html.escape(sp.strip()) for sp in (c.get("specializations") or "").split(",") if sp.strip()]
+        spec_tags = "".join(f"<span class='tag'>{sp}</span>" for sp in specs)
+        score_cls = " neg" if score < 0 else ""
+        # Action buttons
+        if s == "Active":
+            action = (
+                f"<form class='block-form' style='margin-top:8px'>"
+                f"<input type='hidden' name='contractor_id' value='{c.get('id')}'>"
+                f"<input type='text' name='reason' placeholder='Reason for blocking…' required>"
+                f"<button type='submit' class='block-btn'>Block</button>"
+                f"</form>"
+            )
+        elif s == "Blocked":
+            action = (
+                f"<form class='activate-form' style='margin-top:8px'>"
+                f"<input type='hidden' name='contractor_id' value='{c.get('id')}'>"
+                f"<button type='submit' class='activate-btn'>✅ Reactivate</button>"
+                f"</form>"
+            )
+        else:
+            action = ""
+        block_note = ""
+        if s == "Blocked" and c.get("block_reason"):
+            block_note = f"<p style='color:var(--danger);font:12px Arial,sans-serif;margin-top:4px'>⛔ {html.escape(c['block_reason'])}</p>"
+        lb_cards.append(
+            f"<div class='contractor-card {card_cls}'>"
+            f"<div class='rank-badge{rank_cls}'>#{rank}</div>"
+            f"<div class='contractor-info'>"
+            f"<h3>{html.escape(c['company_name'])}</h3>"
+            f"<p>{html.escape(c['owner_name'])} &nbsp;·&nbsp; {html.escape(c['district'])}</p>"
+            f"<div class='tags'>{spec_tags}</div>"
+            f"{block_note}{action}</div>"
+            f"<div class='contractor-score-col'>"
+            f"<div class='score-num{score_cls}'>{score}</div>"
+            f"<div class='score-meta'>{c.get('completed_projects',0)} done · {c.get('complaint_count',0)} complaints</div>"
+            f"<span class='status-badge {badge_cls}'>{s}</span>"
+            f"</div></div>"
+        )
+    leaderboard_panel = (
+        "<div id='panel-leaderboard' class='tab-panel active'>"
+        + ("<div class='leaderboard-grid'>" + "".join(lb_cards) + "</div>" if lb_cards else "<div class='empty'>No contractors registered yet.</div>")
+        + "</div>"
+    )
+
+    # --- TAB 2: Assign Issue ---
+    active_contractors = [c for c in contractors if c.get("approval_status") == "Active"]
+    contractor_options = "".join(
+        f"<option value='{c['id']}'>{html.escape(c['company_name'])} (Score: {c.get('performance_score', 0)})</option>"
+        for c in active_contractors
+    )
+    approved_issues = [i for i in issues if i.get("moderation_status") == "Approved"]
+    issue_options = "".join(
+        f"<option value='{i['id']}'>{html.escape(i.get('title',''))[:70]} — {html.escape(i.get('district',''))}</option>"
+        for i in approved_issues
+    )
+    assign_panel = (
+        "<div id='panel-assign' class='tab-panel'>"
+        "<div class='assign-panel'>"
+        "<h2>Assign an Issue to a Contractor</h2>"
+        "<form id='assign-form'>"
+        "<div class='assign-grid'>"
+        "<div class='field'><label>Select Issue</label>"
+        f"<select name='issue_id' required><option value='' disabled selected>Choose approved issue…</option>{issue_options}</select></div>"
+        "<div class='field'><label>Select Contractor</label>"
+        f"<select name='contractor_id' required><option value='' disabled selected>Choose active contractor…</option>{contractor_options}</select></div>"
+        "</div>"
+        "<button type='submit' class='submit-btn' style='margin-top:14px'>Assign to Contractor</button>"
+        "</form></div></div>"
+    )
+
+    # --- TAB 3: Active Assignments ---
+    if all_assignments:
+        asn_cards = []
+        for a in all_assignments:
+            s = a.get("status", "Assigned")
+            s_cls = {"Assigned": "asn-assigned", "In Progress": "asn-in-progress", "Completed": "asn-completed"}.get(s, "asn-assigned")
+            asn_cards.append(
+                f"<div class='assignment-card'>"
+                f"<h4>{html.escape(a.get('issue_title',''))}</h4>"
+                f"<p>Contractor: <strong>{html.escape(a.get('company_name',''))}</strong></p>"
+                f"<p>District: {html.escape(a.get('district',''))} &nbsp;|&nbsp; Category: {html.escape(a.get('category',''))}</p>"
+                f"<p>Assigned by: {html.escape(a.get('assigned_by',''))} &nbsp;|&nbsp; Score: {a.get('performance_score',0)}</p>"
+                f"<p><span class='asn-status {s_cls}'>{s}</span></p>"
+                + (f"<p style='color:var(--muted);font:12px Arial,sans-serif'>Note: {html.escape(a.get('completion_note') or '')}</p>" if a.get("completion_note") else "")
+                + "</div>"
+            )
+        asn_html = "<div class='assignments-list'>" + "".join(asn_cards) + "</div>"
+    else:
+        asn_html = "<div class='empty'>No contractor assignments yet.</div>"
+    assignments_panel = "<div id='panel-assignments' class='tab-panel'>" + asn_html + "</div>"
+
+    # --- TAB 4: Complaints ---
+    pending_complaints = [c for c in all_complaints if c.get("status") == "Pending"]
+    reviewed_complaints = [c for c in all_complaints if c.get("status") != "Pending"]
+
+    def _complaint_card(c: dict, show_actions: bool) -> str:
+        actions = ""
+        if show_actions:
+            actions = (
+                f"<div class='complaint-actions'>"
+                f"<form class='complaint-review-form' style='display:inline'>"
+                f"<input type='hidden' name='complaint_id' value='{c.get('id')}'>"
+                f"<input type='hidden' name='action' value='confirm'>"
+                f"<button type='submit' class='review-btn'>⚠️ Confirm (deduct score)</button></form>"
+                f"<form class='complaint-review-form' style='display:inline'>"
+                f"<input type='hidden' name='complaint_id' value='{c.get('id')}'>"
+                f"<input type='hidden' name='action' value='dismiss'>"
+                f"<button type='submit' class='dismiss-btn'>Dismiss</button></form>"
+                f"</div>"
+            )
+        return (
+            f"<div class='complaint-card'>"
+            f"<h4>{html.escape(c.get('company_name',''))}</h4>"
+            f"<span class='ctype'>{html.escape(c.get('complaint_type',''))}</span>"
+            f"<p>Issue: <strong>{html.escape(c.get('issue_title',''))}</strong></p>"
+            f"<p>{html.escape(c.get('description',''))}</p>"
+            f"<p style='color:var(--muted);font:11px Arial,sans-serif'>Filed by: {html.escape(c.get('filed_by',''))} · Status: {c.get('status','')}</p>"
+            f"{actions}</div>"
+        )
+
+    complaints_html = (
+        ("<h3 style='margin:0 0 12px'>Pending Review</h3>" + "".join(_complaint_card(c, True) for c in pending_complaints) if pending_complaints else "<div class='empty'>No pending complaints.</div>")
+        + ("<h3 style='margin:18px 0 12px'>Previously Reviewed</h3>" + "".join(_complaint_card(c, False) for c in reviewed_complaints) if reviewed_complaints else "")
+    )
+    complaints_panel = "<div id='panel-complaints' class='tab-panel'>" + complaints_html + "</div>"
+
+    # --- TAB 5: Pending Approvals ---
+    pending_contractors = [c for c in contractors if c.get("approval_status") == "Pending"]
+    if pending_contractors:
+        pend_cards = "".join(
+            f"<div class='assign-panel'>"
+            f"<h3 style='margin:0 0 8px'>{html.escape(p['company_name'])}</h3>"
+            f"<p style='color:var(--muted);font:13px Arial,sans-serif'>Owner: {html.escape(p['owner_name'])} &nbsp;·&nbsp; License: {html.escape(p['license_no'])} &nbsp;·&nbsp; District: {html.escape(p['district'])}</p>"
+            f"<p style='color:var(--muted);font:13px Arial,sans-serif'>Specializations: {html.escape(p.get('specializations',''))}</p>"
+            f"<div class='contractor-actions'>"
+            f"<form class='contractor-approval-form'><input type='hidden' name='contractor_id' value='{p['id']}'><input type='hidden' name='status' value='Active'><button type='submit' class='activate-btn'>✅ Approve</button></form>"
+            f"<form class='contractor-approval-form'><input type='hidden' name='contractor_id' value='{p['id']}'><input type='hidden' name='status' value='Rejected'><button type='submit' class='block-btn'>❌ Reject</button></form>"
+            f"</div></div>"
+            for p in pending_contractors
+        )
+    else:
+        pend_cards = "<div class='empty'>No pending contractor registrations.</div>"
+    pending_panel = "<div id='panel-pending' class='tab-panel'>" + pend_cards + "</div>"
+
+    return leaderboard_panel + assign_panel + assignments_panel + complaints_panel + pending_panel
+
+
 DISTRICT_COORDS = {
     "Bokaro": (23.6693, 85.9563),
     "Chatra": (24.2120, 84.8715),
@@ -204,7 +839,7 @@ def industry_match_markup(partner, issue):
     return (
         f"<div style='background:#edf7f6;border-left:4px solid #317c91;border-radius:8px;padding:10px 12px;margin:10px 0;font-size:12px;'>"
         f"<strong>AI-assisted partner match: {score} points</strong><br>"
-        f"Expertise signals: {html.escape(expertise_text)} · Location: {html.escape(location_text)}"
+        f"Expertise signals: {html.escape(expertise_text)} Â· Location: {html.escape(location_text)}"
         f"</div>"
     )
 
@@ -236,10 +871,21 @@ def auto_assign_tasks_to_university(university, assigned_by="ai-assignment"):
             if assign_issue(issue["id"], university["id"], assigned_by):
                 assigned.append({"issue": issue, "score": score})
     return assigned
+def _cached_universities() -> list[dict]:
+    global UNIVERSITY_CACHE
+    with CACHE_LOCK:
+        if UNIVERSITY_CACHE is None:
+            UNIVERSITY_CACHE = [u for u in load_universities() if u.get("approval_status") == "Active"]
+        return UNIVERSITY_CACHE
+
 def auto_assign_issue_to_best_university(issue, assigned_by="ai-assignment"):
     if issue.get("id") in load_assignments():
         return None
-    recommended, score = best_university_for_issue(issue, load_universities())
+    try:
+        recommended, score = best_university_for_issue(issue, _cached_universities())
+    except Exception as exc:
+        logging.error(f"Ranking failed for issue {issue.get('id')}: {exc}")
+        return None
     if not recommended:
         return None
     if not assign_issue(issue["id"], recommended["id"], assigned_by):
@@ -255,9 +901,9 @@ def auto_assign_issue_to_best_university(issue, assigned_by="ai-assignment"):
 def render_dashboard_team(team):
     milestones = load_milestones(team["id"])
     history = load_status_history(team["id"])
-    milestone_markup = "".join(f"<p>Milestone: {html.escape(milestone['title'])} · {html.escape(str(milestone['status']))} · {html.escape(str(milestone['due_date'] or 'No due date'))}</p><form data-endpoint='/api/university/milestone-status'><input type='hidden' name='milestone_id' value='{milestone['id']}'><select name='status'><option>Pending</option><option>In Progress</option><option>Completed</option></select><input name='testing_result' placeholder='Testing result'><button>Save milestone</button></form>" for milestone in milestones)
-    history_markup = "".join(f"<p>History: {html.escape(item['status'])} · {html.escape(item['changed_by'])} · {html.escape(str(item['changed_at']))}</p>" for item in history)
-    return f"<p><strong>{html.escape(team['name'])}</strong> · Mentor: <em>{html.escape(team['faculty_mentor'])}</em> · Stage: {html.escape(team['status'])} · Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
+    milestone_markup = "".join(f"<p>Milestone: {html.escape(milestone['title'])} Â· {html.escape(str(milestone['status']))} Â· {html.escape(str(milestone['due_date'] or 'No due date'))}</p><form data-endpoint='/api/university/milestone-status'><input type='hidden' name='milestone_id' value='{milestone['id']}'><select name='status'><option>Pending</option><option>In Progress</option><option>Completed</option></select><input name='testing_result' placeholder='Testing result'><button>Save milestone</button></form>" for milestone in milestones)
+    history_markup = "".join(f"<p>History: {html.escape(item['status'])} Â· {html.escape(item['changed_by'])} Â· {html.escape(str(item['changed_at']))}</p>" for item in history)
+    return f"<p><strong>{html.escape(team['name'])}</strong> Â· Mentor: <em>{html.escape(team['faculty_mentor'])}</em> Â· Stage: {html.escape(team['status'])} Â· Members: {html.escape(', '.join(team['members']))}</p><form data-endpoint='/api/university/team-status'><input type='hidden' name='team_id' value='{team['id']}'><select name='status'><option>Team Formed</option><option>Prototype</option><option>Pilot</option><option>Deployed</option><option>Impact Measured</option></select><input name='note' placeholder='Stage update note'><button>Update stage</button></form><form data-endpoint='/api/university/milestones'><input type='hidden' name='team_id' value='{team['id']}'><input name='title' placeholder='Milestone title' required><input name='due_date' type='date'><input name='deliverable' placeholder='Deliverable'><button>Add milestone</button></form>{milestone_markup}<h4>Status history</h4>{history_markup}<form data-endpoint='/api/university/team-outcomes'><input type='hidden' name='team_id' value='{team['id']}'><input name='ip_outcome' placeholder='IP or patent outcome'><input name='startup_outcome' placeholder='Startup outcome'><textarea name='impact_summary' placeholder='Community impact summary'></textarea><button>Save outcomes</button></form>"
 def render_university_dashboard(user):
     page = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
 
@@ -337,7 +983,7 @@ def render_university_dashboard(user):
             f"<article>"
             f"<h2>{html.escape(assignment['title'])}</h2>"
             f"<p>{html.escape(assignment['description'])}</p>"
-            f"<p>District: <strong>{html.escape(assignment['district'])}</strong> · Block: <strong>{html.escape(assignment['block'])}</strong> · Category: <strong>{html.escape(assignment['category'])}</strong></p>"
+            f"<p>District: <strong>{html.escape(assignment['district'])}</strong> Â· Block: <strong>{html.escape(assignment['block'])}</strong> Â· Category: <strong>{html.escape(assignment['category'])}</strong></p>"
             f"<p>Request Status: {status_badge}</p>"
             f"<h3>1. Accept or Reject Request (Passed to Government)</h3>"
             f"<form data-endpoint='/api/university/assignment-response'>"
@@ -674,7 +1320,7 @@ def notification_markup(user):
     notifications = load_notifications(user)
     if not notifications:
         return "<h2>Notifications</h2><p>No notifications.</p>"
-    return "<h2>Notifications</h2>" + "".join(f"<p>{html.escape(item['message'])} · {html.escape(str(item['created_at']))}</p>" for item in notifications)
+    return "<h2>Notifications</h2>" + "".join(f"<p>{html.escape(item['message'])} Â· {html.escape(str(item['created_at']))}</p>" for item in notifications)
 def known_recipients():
     return {"admin@jharkhand.gov.in", "citizen@example.com", "engineer@example.gov"} | {str(item.get("contact_email")) for item in load_universities() if item.get("contact_email")} | {str(item.get("contact_email")) for item in load_industry_partners() if item.get("contact_email")}
 def render_messages(user):
@@ -691,6 +1337,26 @@ def render_user_issues(user):
         proposal_text = ", ".join(f"{proposal['title']} ({proposal['status']})" for proposal in proposals) or "No proposals submitted"
         mod_status = str(issue.get("moderation_status", "Pending"))
         status_class = f"badge-{mod_status.lower()}" if mod_status in {"Approved", "Pending", "Rejected", "Archived"} else "badge-pending"
+        contractor_image = ""
+        if issue.get("contractor_assignment_id") and issue.get("contractor_progress_image_type"):
+            assignment_id = issue["contractor_assignment_id"]
+            contractor_image = (
+                f"<div class='contractor-progress' style='margin-top:16px;padding-top:14px;border-top:1px solid var(--line)'>"
+                f"<strong>Contractor progress photo</strong>"
+                f"<a href='/public-contractor-progress/{assignment_id}' target='_blank' rel='noopener'>"
+                f"<img src='/public-contractor-progress/{assignment_id}' alt='Latest progress photo for {html.escape(issue['title'])}' style='display:block;max-width:100%;width:420px;margin-top:10px;border-radius:8px;border:1px solid var(--line)'>"
+                f"</a></div>"
+            )
+        contractor_update = ""
+        if issue.get("contractor_assignment_id"):
+            contractor_status = html.escape(str(issue.get("contractor_assignment_status") or "Assigned"))
+            contractor_name = html.escape(str(issue.get("contractor_name") or "Assigned contractor"))
+            contractor_note = issue.get("contractor_completion_note")
+            note_markup = f"<p><strong>Update:</strong> {html.escape(str(contractor_note))}</p>" if contractor_note else ""
+            contractor_update = (
+                f"<div class='contractor-progress' style='margin-top:16px;padding-top:14px;border-top:1px solid var(--line)'>"
+                f"<strong>Contractor progress: {contractor_name} · {contractor_status}</strong>{note_markup}</div>"
+            )
         cards.append(
             f'<article class="issue-card">'
             f'<div class="issue-top"><h3 class="issue-title">{html.escape(issue["title"])}</h3>'
@@ -703,9 +1369,17 @@ def render_user_issues(user):
             f'<span class="issue-meta-item">University: <strong>{html.escape(issue.get("university_name") or "Not assigned")}</strong></span>'
             f'<span class="issue-meta-item">Stage: <strong>{html.escape(issue.get("team_status") or "Pending assignment")}</strong></span>'
             f'<span class="issue-meta-item">Solutions: <strong>{html.escape(proposal_text)}</strong></span>'
-            f'</div></article>'
+            f'</div>'
+            f'{contractor_update}'
+            f'{contractor_image}'
+            + (f"<form class='contractor-complaint-form' data-issue-id='{issue['id']}' data-contractor-id='{issue['contractor_id']}' style='margin-top:16px;padding-top:14px;border-top:1px solid var(--line)'>"
+               f"<strong>Report this contractor</strong> <span style='color:var(--muted);font:12px Arial,sans-serif'>Your complaint will be reviewed by contractor administration.</span>"
+               f"<select name='complaint_type' required><option value='' disabled selected>Choose complaint type</option><option>Poor quality work</option><option>Incomplete work</option><option>Unsafe work</option><option>Delay</option><option>Other</option></select>"
+               f"<textarea name='description' required minlength='10' placeholder='Describe the problem with this road/project'></textarea>"
+               f"<button type='submit'>File Complaint</button></form>" if issue.get('contractor_id') else '')
+            + f'</article>'
         )
-    return "".join(cards)
+    return "".join(cards) + "<script>document.querySelectorAll('.contractor-complaint-form').forEach(form=>form.addEventListener('submit',async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));data.issue_id=form.dataset.issueId;data.contractor_id=form.dataset.contractorId;const response=await fetch('/api/complaints/contractor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok){alert('Complaint filed for contractor administration review.');location.reload();}else{alert((await response.json()).message||'Complaint failed');}}));</script>"
 def render_admin_proposals():
     pending = [proposal for proposal in PROPOSALS if proposal.get("moderation_status", "Pending") == "Pending"]
     if not pending:
@@ -721,15 +1395,15 @@ def render_admin_proposals():
         )
     return "".join(cards)
 
-
 def render_admin_issues():
     pending = [issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Pending"]
     if not pending:
         return "<p>No pending issues.</p>" + render_admin_proposals()
     return "".join(
-        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} · {html.escape(str(issue.get('block', '')))} · {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
+        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
         for issue in pending
     ) + render_admin_proposals()
+
 def render_industry_admin():
     partners = load_industry_partners()
     offers = load_all_partner_offers()
@@ -760,8 +1434,8 @@ def render_university_issues():
         current = f"<p>Assigned to university ID {assignment['university_id']} ({html.escape(assignment['status'])}).</p><p>{html.escape(str(assignment.get('response_reason') or ''))}</p><form class='response'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='status'><option>Accepted</option><option>Rejected</option><option>Needs clarification</option></select><input name='reason' placeholder='University response' required><button type='submit'>Save response</button></form>" if assignment else "<p>Not assigned.</p>"
         issue_teams = [team for team in teams if team["issue_id"] == issue["id"]]
         team_markup = "".join(render_dashboard_team(team) for team in issue_teams)
-        cards.append(f"<article><h2>{html.escape(str(issue['title']))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} · {html.escape(str(issue.get('block', '')))} · {html.escape(str(issue.get('category', '')))}</p>{recommendation}{current}<form class='assignment'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='university_id' required>{options}</select><button type='submit'>Assign university</button></form>{team_markup}<form class='team'><input type='hidden' name='issue_id' value='{issue['id']}'><input type='hidden' name='university_id' value='{assignment['university_id'] if assignment else ''}'><input name='name' placeholder='Team name' required><input name='faculty_mentor' placeholder='Faculty mentor email' required><input name='members' placeholder='Student emails, comma separated' required><button type='submit'>Create project team</button></form></article>")
-    return directory + "<details class='admin-collapsible'><summary><span><b>Approved challenge assignments</b><small>Assign approved civic challenges to universities.</small></span><i>⌄</i></summary>" + "".join(cards) + "</details>"
+        cards.append(f"<article><h2>{html.escape(str(issue['title']))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p>{recommendation}{current}<form class='assignment'><input type='hidden' name='issue_id' value='{issue['id']}'><select name='university_id' required>{options}</select><button type='submit'>Assign university</button></form>{team_markup}<form class='team'><input type='hidden' name='issue_id' value='{issue['id']}'><input type='hidden' name='university_id' value='{assignment['university_id'] if assignment else ''}'><input name='name' placeholder='Team name' required><input name='faculty_mentor' placeholder='Faculty mentor email' required><input name='members' placeholder='Student emails, comma separated' required><button type='submit'>Create project team</button></form></article>")
+    return directory + "".join(cards)
 SAMPLE_ISSUES = [
     {"title": "Pothole on Main Road", "category": "Roads", "area": "Morabadi, Ranchi", "lat": 23.3441, "lng": 85.3096, "supporters": 28, "age": "5h ago", "description": "A deep pothole is slowing traffic near the service road."},
     {"title": "Garbage uncollected for four days", "category": "Waste", "area": "Bank More, Dhanbad", "lat": 23.7957, "lng": 86.4304, "supporters": 18, "age": "4d ago", "description": "Household waste has accumulated beside the community park."},
@@ -830,7 +1504,7 @@ def render_proposal_issues():
     output = []
     for index, issue in enumerate(ranked, start=1):
         issue_id = issue.get("id", index)
-        output.append(f'<article class="issue"><div class="rank">#{index} · {html.escape(str(issue.get("category","Other")))}</div><h2>{html.escape(str(issue.get("title","Untitled issue")))}</h2><p>{html.escape(str(issue.get("description","")))}</p><p><strong>{issue.get("supporters",0)} supporters</strong> · {html.escape(str(issue.get("area","Nearby")))}</p><small>Issue ID: {issue_id}</small></article>')
+        output.append(f'<article class="issue"><div class="rank">#{index} Â· {html.escape(str(issue.get("category","Other")))}</div><h2>{html.escape(str(issue.get("title","Untitled issue")))}</h2><p>{html.escape(str(issue.get("description","")))}</p><p><strong>{issue.get("supporters",0)} supporters</strong> Â· {html.escape(str(issue.get("area","Nearby")))}</p><small>Issue ID: {issue_id}</small></article>')
     return "".join(output)
 def render_proposal_options():
     if not ISSUES:
@@ -839,7 +1513,7 @@ def render_proposal_options():
     options = []
     for index, issue in enumerate(ranked, start=1):
         issue_id = issue.get("id", index)
-        options.append(f'<option value="{issue_id}">{html.escape(str(issue.get("title","Untitled issue")))} · {issue.get("supporters",0)} supporters</option>')
+        options.append(f'<option value="{issue_id}">{html.escape(str(issue.get("title","Untitled issue")))} Â· {issue.get("supporters",0)} supporters</option>')
     return "".join(options)
 def render_proposals():
     if not PROPOSALS:
@@ -866,11 +1540,13 @@ def render_professional_proposals():
     return "".join(output)
 def build_proposals_page(user):
     page = load_proposals_page()
-    page = page.replace("__USER__",html.escape(user))
-    page = page.replace("__ISSUES__",render_proposal_issues())
-    page = page.replace("__OPTIONS__",render_proposal_options())
-    page = page.replace("__PROPOSALS__",render_proposals())
-    page = page.replace("__MESSAGE__","")
+    page = page.replace("__USER__", html.escape(user))
+    page = page.replace("__ISSUES__", render_proposal_issues())
+    page = page.replace("__OPTIONS__", render_proposal_options())
+    page = page.replace("__PROPOSALS__", render_proposals())
+    page = page.replace("__MESSAGE__", "")
+    page = page.replace("__NAV__", render_role_nav(user, "proposals"))
+    return page
     return page
 def build_professionals_page(user):
     page = load_professionals_page()
@@ -935,6 +1611,12 @@ class MapHandler(BaseHTTPRequestHandler):
         if path == "/industry/register" or path == "/industry-register":
             self.send_html(load_industry_register_page(""))
             return
+        if path == "/contractor/login" or path == "/contractor-login":
+            self.send_html(load_contractor_login_page(""))
+            return
+        if path == "/contractor/register" or path == "/contractor-register":
+            self.send_html(load_contractor_register_page(""))
+            return
         if path == "/university/login" or path == "/university-login":
             self.send_html(load_university_login_page(""))
             return
@@ -960,6 +1642,26 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 return
             self.send_payload(proof[1],content_type=proof[0])
+            return
+        if path.startswith("/video/"):
+            video_id = path.split("/",2)[2]
+            video = get_video(video_id)
+            if video is None:
+                self.send_error(404)
+                return
+            self.send_payload(video[1],content_type=video[0])
+            return
+        if path.startswith("/public-contractor-progress/"):
+            try:
+                assignment_id = int(path.split("/", 2)[2])
+            except (IndexError, ValueError):
+                self.send_error(404)
+                return
+            image = get_contractor_progress_image(assignment_id)
+            if image is None:
+                self.send_error(404)
+                return
+            self.send_payload(image[1], content_type=image[0])
             return
         if path.startswith("/proposal-visual/"):
             try:
@@ -1008,7 +1710,68 @@ class MapHandler(BaseHTTPRequestHandler):
                 longitude = float(query["lng"][0])
             except (KeyError,ValueError):
                 latitude = longitude = None
-            self.send_html(render_page(self.session_user() or "",latitude,longitude))
+            user = self.session_user() or ""
+            community_page = render_page(user, latitude, longitude)
+            community_page = community_page.replace("__NAV__", render_role_nav(user, "community"))
+            self.send_html(community_page)
+            return
+        if path == "/api/notifications":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            notifications = load_notifications(user)
+            safe_notifications = [
+                {
+                    "id": item.get("id"),
+                    "message": str(item.get("message", "")),
+                    "related_type": item.get("related_type", ""),
+                    "related_id": item.get("related_id"),
+                    "is_read": bool(item.get("is_read", False)),
+                    "created_at": str(item.get("created_at", "")),
+                }
+                for item in notifications
+            ]
+            unread_count = sum(1 for item in safe_notifications if not item["is_read"])
+            self.send_json({
+                "notifications": safe_notifications,
+                "unread_count": unread_count,
+            })
+            return
+        if path == "/notifications":
+            user = self.session_user()
+            if user is None:
+                self.redirect("/login")
+                return
+            notifications = load_notifications(user)
+            cards = []
+            for item in notifications:
+                unread_class = " unread" if not item.get("is_read", False) else ""
+                cards.append(
+                    f"<div class='section-card notification-page-item{unread_class}'>"
+                    f"<strong>{html.escape(str(item.get('message', '')))}</strong>"
+                    f"<p class='muted'>{html.escape(str(item.get('created_at', '')))}</p>"
+                    f"</div>"
+                )
+            content = "".join(cards) or (
+                "<div class='empty-state'><h3>No notifications yet</h3>"
+                "<p>Project and collaboration updates will appear here.</p></div>"
+            )
+            page = (
+                "<!doctype html><html><head><meta charset='utf-8'>"
+                "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>Notifications</title>"
+                "<link rel='stylesheet' href='/templates/shared.css'>"
+                "<style>.notification-page{max-width:1100px;margin:30px auto;padding:0 18px}"
+                ".notification-page .top-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:22px}"
+                ".notification-page-item.unread{border-left:4px solid #2b6cb0}</style>"
+                "</head><body><main class='notification-page'>"
+                f"<nav class='top-nav'>{render_role_nav(user, 'notifications')}</nav>"
+                "<div class='section-card'><p class='eyebrow'>Updates</p>"
+                "<h1>Notifications</h1><p class='muted'>Project and collaboration activity for your account.</p>"
+                f"{content}</div></main></body></html>"
+            )
+            self.send_html(page)
             return
         if path == "/proposals":
             user = self.session_user()
@@ -1032,14 +1795,19 @@ class MapHandler(BaseHTTPRequestHandler):
             if not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(ADMIN_PAGE.replace("__ISSUES__", render_admin_issues() + render_industry_admin()))
+            admin_page = ADMIN_PAGE_FILE.read_text(encoding="utf-8")
+            content = render_admin_issues() + render_industry_admin()
+            self.send_html(admin_page.replace("__ISSUES__", content))
             return
         if path == "/industry-admin":
             user = self.session_user()
             if user is None or not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(f"<!doctype html><html><head><link rel='stylesheet' href='/templates/shared.css'></head><body><main>{render_industry_admin()}</main><script>document.querySelector('.industry-create').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/industry-partners',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Registration failed')}};document.querySelectorAll('.offer-update').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/offer-commitments',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Commitment update failed')}});document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(form)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Approval update failed')}})</script></body></html>")
+            template = INDUSTRY_ADMIN_PAGE_FILE.read_text(encoding="utf-8")
+            template = template.replace("__USER__", html.escape(user))
+            self.send_html(template)
+            return
             return
         if path == "/universities":
             user = self.session_user()
@@ -1049,46 +1817,82 @@ class MapHandler(BaseHTTPRequestHandler):
             if not is_admin(user):
                 self.send_error(403)
                 return
-            self.send_html(UNIVERSITY_PAGE.replace("__ISSUES__", render_university_issues()))
+            template = UNIVERSITY_ADMIN_PAGE_FILE.read_text(encoding="utf-8")
+            self.send_html(template.replace("__ISSUES__", render_university_issues()))
             return
         if path == "/citizen-dashboard" or path == "/my-issues":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
+            if not user_can_access_portal(user, "citizen"):
+                self.send_error(403)
+                return
             template = CITIZEN_PAGE_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__USER__", html.escape(user)).replace("__ISSUES__", render_user_issues(user)))
+            self.send_html(
+                template.replace("__USER__", html.escape(user))
+                .replace("__ISSUES__", render_user_issues(user))
+                .replace("__NAV__", render_role_nav(user, "citizen"))
+            )
             return
         if path == "/university-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
-            if university_for_user(user) is None:
+            if not user_can_access_portal(user, "university"):
                 self.send_error(403)
                 return
-            self.send_html(render_university_dashboard(user))
+            self.send_html(render_university_dashboard(user).replace("__NAV__", render_role_nav(user, "university")))
             return
         if path == "/industry-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
-            if industry_for_user(user) is None:
+            if not user_can_access_portal(user, "industry"):
                 self.send_error(403)
                 return
-            self.send_html(render_industry_dashboard(user))
+            self.send_html(render_industry_dashboard(user).replace("__NAV__", render_role_nav(user, "industry")))
+            return
+        if path == "/contractor-dashboard":
+            user = self.session_user()
+            if user is None:
+                self.redirect("/contractor/login")
+                return
+            if not user_can_access_portal(user, "contractor"):
+                self.send_error(403)
+                return
+            template = CONTRACTOR_DASHBOARD_FILE.read_text(encoding="utf-8")
+            self.send_html(
+                template.replace("__CONTENT__", render_contractor_dashboard(user))
+                .replace("__NAV__", render_role_nav(user, "contractor"))
+            )
+            return
+        if path == "/contractor-admin":
+            user = self.session_user()
+            if user is None:
+                self.redirect("/login")
+                return
+            if not is_admin(user):
+                self.send_error(403)
+                return
+            template = CONTRACTOR_ADMIN_FILE.read_text(encoding="utf-8")
+            self.send_html(template.replace("__CONTENT__", render_contractor_admin()))
             return
         if path == "/government-dashboard":
             user = self.session_user()
             if user is None:
                 self.redirect("/login")
                 return
-            if not is_admin(user) and industry_for_user(user) is None:
+            if not user_can_access_portal(user, "government"):
                 self.send_error(403)
                 return
             template = GOVERNMENT_DASHBOARD_FILE.read_text(encoding="utf-8")
-            self.send_html(template.replace("__CONTENT__", render_government_dashboard()))
+            self.send_html(
+                template.replace("__CONTENT__", render_government_dashboard())
+                .replace("__NAV__", render_role_nav(user, "government"))
+            )
             return
         if path not in ("/","/index.html"):
             self.send_error(404)
@@ -1098,7 +1902,18 @@ class MapHandler(BaseHTTPRequestHandler):
             self.redirect("/login")
             return
         issues_json = json.dumps(ISSUES).replace("</", "<\\/")
-        payload = MAP_PAGE.replace("__ISSUES__", issues_json).replace("__USER__", html.escape(user)).encode("utf-8")
+        template = MAIN_MAP_PAGE_FILE.read_text(encoding="utf-8")
+        district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
+        domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
+        payload = (
+            template
+            .replace("__ISSUES__", issues_json)
+            .replace("__USER__", html.escape(user))
+            .replace("__DISTRICT_OPTIONS__", district_options)
+            .replace("__DOMAIN_OPTIONS__", domain_options)
+            .replace("__NAV__", render_role_nav(user, "map"))
+            .encode("utf-8")
+        )
         self.send_payload(payload)
     def do_POST(self) -> None:
         global NEXT_PROPOSAL_ID
@@ -1170,6 +1985,64 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.send_html(load_industry_register_page('<p class="success">Registration submitted. An administrator must approve your organization before you can sign in.</p>'))
             return
+        if path == "/contractor/login" or path == "/contractor-login":
+            length = int(self.headers.get("Content-Length", "0"))
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            email = form.get("email", [""])[0].strip().lower()
+            password = form.get("password", [""])[0]
+            if not authenticate(email, password):
+                self.send_html(load_contractor_login_page('<p class="message error">Email or password is incorrect.</p>'), status=401)
+                return
+            contractor = contractor_for_user(email)
+            if contractor is None:
+                self.send_html(load_contractor_login_page('<p class="message error">This account is not linked to a registered contractor profile.</p>'), status=403)
+                return
+            if contractor.get("approval_status") == "Pending":
+                self.send_html(load_contractor_login_page('<p class="message error">Your registration is pending administrator approval.</p>'), status=403)
+                return
+            if contractor.get("approval_status") == "Blocked":
+                reason = html.escape(contractor.get("block_reason") or "Your account has been blocked.")
+                self.send_html(load_contractor_login_page(f'<p class="message error">⛔ Account blocked: {reason}</p>'), status=403)
+                return
+            session_id = create_session_record(email)
+            SESSIONS[session_id] = email
+            self.redirect("/contractor-dashboard", f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
+            return
+        if path == "/contractor/register" or path == "/contractor-register":
+            length = int(self.headers.get("Content-Length", "0"))
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            email = form.get("email", [""])[0].strip().lower()
+            password = form.get("password", [""])[0]
+            confirm_password = form.get("confirm_password", [""])[0]
+            values = {
+                "company_name": form.get("company_name", [""])[0].strip()[:255],
+                "owner_name": form.get("owner_name", [""])[0].strip()[:255],
+                "license_no": form.get("license_no", [""])[0].strip()[:100],
+                "district": form.get("district", [""])[0].strip()[:100],
+                "specializations": form.get("specializations", [""])[0].strip()[:500],
+                "contact_email": email,
+                "phone": form.get("phone", [""])[0].strip()[:20],
+            }
+            if password != confirm_password:
+                self.send_html(load_contractor_register_page('<p class="message error">Passwords do not match.</p>'), status=400)
+                return
+            if not all(values.values()) or "@" not in email:
+                self.send_html(load_contractor_register_page('<p class="message error">All fields including a valid email are required.</p>'), status=400)
+                return
+            if any(str(contractor.get("contact_email", "")).casefold() == email.casefold() for contractor in load_contractors()):
+                self.send_html(load_contractor_register_page('<p class="message error">A contractor profile already uses this email.</p>'), status=400)
+                return
+            created, message = create_account(email, password)
+            if not created:
+                self.send_html(load_contractor_register_page(f'<p class="message error">{html.escape(message)}</p>'), status=400)
+                return
+            try:
+                create_contractor(**values)
+            except Exception:
+                self.send_html(load_contractor_register_page('<p class="message error">The contractor profile could not be created. License number may already be registered.</p>'), status=400)
+                return
+            self.send_html(load_contractor_register_page('<p class="message success"><strong>Registration submitted.</strong> A government administrator must approve your application before you can sign in.</p>'))
+            return
         if path == "/university/register" or path == "/university-register":
             length = int(self.headers.get("Content-Length", "0"))
             form = parse_qs(self.rfile.read(length).decode("utf-8"))
@@ -1203,6 +2076,129 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             university = create_university(**values)
             self.send_html(load_university_register_page(f'<p class="success"><strong>Registration acknowledged.</strong> {html.escape(university["name"])} has been submitted for administrator approval. Reference email: <strong>{html.escape(email)}</strong>. You can sign in after the approval status becomes Active.</p>'))
+            return
+        if path == "/api/admin/contractor-assignments":
+            user = self.session_user()
+            if user is None or not is_admin(user):
+                self.send_error(403)
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                issue_id = int(data.get("issue_id", 0))
+                contractor_id = int(data.get("contractor_id", 0))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid assignment data."}, status=400)
+                return
+            issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
+            contractor = next((item for item in load_contractors() if item.get("id") == contractor_id), None)
+            if issue is None or issue.get("moderation_status") != "Approved":
+                self.send_json({"message": "Only approved issues can be assigned."}, status=400)
+                return
+            if contractor is None or contractor.get("approval_status") != "Active":
+                self.send_json({"message": "Only active contractors can receive assignments."}, status=400)
+                return
+            if not assign_issue_to_contractor(issue_id, contractor_id, user):
+                self.send_json({"message": "Failed to assign issue to contractor."}, status=500)
+                return
+            create_notification(contractor.get("contact_email", ""), f"A civic issue was assigned to {contractor.get('company_name', 'your company')}: {issue.get('title', 'New project')}.", "contractor_assignment", issue_id)
+            self.send_json({"message": "Issue assigned successfully."})
+            return
+        if path == "/api/contractor/assignment-status":
+            user = self.session_user()
+            contractor = _contractor_for_user_storage(user) if user else None
+            if contractor is None:
+                self.send_json({"message": "Contractor account required."}, status=403)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                form, upload = parse_multipart_form(self.headers, self.rfile.read(length))
+                assignment_id = int(form.get("assignment_id", "0"))
+                status = str(form.get("status", "")).strip()
+                note = str(form.get("note", "")).strip()[:4000]
+                image_type = ""
+                image_data = b""
+                if upload is not None and upload[0]:
+                    image_type = upload[1]
+                    if image_type not in {"image/jpeg", "image/png", "image/webp"}:
+                        self.send_json({"message": "Progress image must be JPEG, PNG, or WebP."}, status=400)
+                        return
+                    image_data = upload[2]
+                    if len(image_data) > 8 * 1024 * 1024:
+                        self.send_json({"message": "Progress image is larger than 8 MB."}, status=413)
+                        return
+            except (TypeError, ValueError):
+                self.send_json({"message": "Invalid update data."}, status=400)
+                return
+            if status not in {"Assigned", "In Progress", "Completed", "Rejected"}:
+                self.send_json({"message": "Invalid assignment status."}, status=400)
+                return
+            assignments = load_contractor_assignments(contractor["id"])
+            if not any(item.get("id") == assignment_id for item in assignments):
+                self.send_json({"message": "Not authorized to update this assignment."}, status=403)
+                return
+            try:
+                updated = update_contractor_assignment(assignment_id, status, note, image_type, image_data)
+            except Exception:
+                self.send_json({"message": "Could not save the status update and image."}, status=500)
+                return
+            if not updated:
+                self.send_json({"message": "Failed to update assignment."}, status=500)
+                return
+            self.send_json({"message": "Assignment updated."})
+            return
+        if path == "/api/complaints/contractor":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "You must be signed in."}, status=401)
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                contractor_id = int(data.get("contractor_id", 0))
+                issue_id = int(data.get("issue_id", 0))
+                complaint_type = str(data.get("complaint_type", "")).strip()[:50]
+                description = str(data.get("description", "")).strip()[:3000]
+            except (TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid complaint data."}, status=400)
+                return
+            if not complaint_type or len(description) < 10:
+                self.send_json({"message": "Complaint type and at least 10 characters of detail are required."}, status=400)
+                return
+            assignment = next((item for item in load_all_contractor_assignments() if item.get("issue_id") == issue_id and item.get("contractor_id") == contractor_id), None)
+            if assignment is None:
+                self.send_json({"message": "That contractor is not assigned to this issue."}, status=400)
+                return
+            complaint = create_contractor_complaint(contractor_id, issue_id, user, complaint_type, description)
+            create_notification("admin@jharkhand.gov.in", f"Citizen complaint filed against contractor '{assignment.get('company_name', 'contractor')}' for Issue #{issue_id}; review required.", "contractor_complaint", complaint["id"])
+            self.send_json({"message": "Complaint filed for contractor administration review.", "complaint_id": complaint["id"]}, status=201)
+            return
+        if path.startswith("/api/admin/contractor-complaints/") and path.endswith("/review"):
+            user = self.session_user()
+            if user is None or not is_admin(user):
+                self.send_json({"message": "Admin authorization required."}, status=403)
+                return
+            parts = path.strip("/").split("/")
+            try:
+                complaint_id = int(parts[3])
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                status = str(data.get("status", "")).strip()
+            except (IndexError, TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid review data."}, status=400)
+                return
+            if status not in {"Reviewed", "Dismissed"}:
+                self.send_json({"message": "Invalid complaint review status."}, status=400)
+                return
+            try:
+                reviewed = review_contractor_complaint(complaint_id, status, user)
+            except Exception:
+                self.send_json({"message": "Could not update complaint status."}, status=500)
+                return
+            if not reviewed:
+                self.send_json({"message": "Complaint not found."}, status=404)
+                return
+            self.send_json({"message": "Complaint reviewed."})
             return
         if path == "/api/admin/proposals":
             user = self.session_user()
@@ -1486,6 +2482,31 @@ class MapHandler(BaseHTTPRequestHandler):
             create_notification("admin@jharkhand.gov.in", f"Industry partner '{partner['name']}' pledged {support_type} for Issue #{issue_id}.", "offer", offer["id"])
             self.send_json({"message": "Support offer submitted.", "offer": offer}, status=201)
             return
+        if path.startswith("/api/notifications/") and path.endswith("/read"):
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            try:
+                notification_id = int(path.split("/")[3])
+            except (IndexError, ValueError):
+                self.send_json({"message": "Invalid notification ID."}, status=400)
+                return
+            if mark_notification_read(notification_id, user):
+                self.send_json({"message": "Notification marked as read."})
+            else:
+                self.send_json({"message": "Notification not found."}, status=404)
+            return
+
+        if path == "/api/notifications/read-all":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            mark_all_notifications_read(user)
+            self.send_json({"message": "All notifications marked as read."})
+            return
+
         if path == "/api/messages":
             user = self.session_user()
             if user is None:
@@ -1563,7 +2584,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_error(403)
                 return
             parts = path.strip("/").split("/")
-            if len(parts) != 6 or parts[3] not in {"university", "industry"} or parts[5] != "approval":
+            if len(parts) != 6 or parts[3] not in {"university", "industry", "contractor"} or parts[5] != "approval":
                 self.send_json({"message": "Invalid institution approval path."}, status=400)
                 return
             try:
@@ -1652,6 +2673,34 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.send_json({"message": "Project team created.", "team": team}, status=201)
             return
+        if path.startswith("/api/admin/contractors/") and path.endswith("/status"):
+            user = self.session_user()
+            if user is None or not is_admin(user):
+                self.send_json({"message": "Admin authorization required."}, status=403)
+                return
+            parts = path.strip("/").split("/")
+            try:
+                contractor_id = int(parts[3])
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                status = str(data.get("status", "")).strip()
+                reason = str(data.get("reason", "")).strip()[:2000]
+            except (IndexError, TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid contractor status data."}, status=400)
+                return
+            if status not in {"Active", "Blocked", "Pending"}:
+                self.send_json({"message": "Invalid contractor status."}, status=400)
+                return
+            try:
+                updated = update_contractor_status(contractor_id, status, reason)
+            except Exception:
+                self.send_json({"message": "Could not update contractor status. Check the database schema and try again."}, status=500)
+                return
+            if not updated:
+                self.send_json({"message": "Contractor not found."}, status=404)
+                return
+            self.send_json({"message": "Contractor status updated."})
+            return
         if path == "/api/issues" or path == "/api/issues/" or (path.startswith("/api/issues/") and path.endswith("/upvote")):
             if self.session_user() is None:
                 self.send_error(401)
@@ -1669,6 +2718,10 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"supporters": supporters})
                 return
             length = int(self.headers.get("Content-Length","0"))
+            proof_bytes = b""
+            video_bytes = b""
+            proof_id = ""
+            video_id = ""
             try:
                 issue = json.loads(self.rfile.read(length).decode("utf-8"))
                 issue["lat"] = float(issue["lat"])
@@ -1678,12 +2731,19 @@ class MapHandler(BaseHTTPRequestHandler):
                 issue["reporter"] = self.session_user() or ""
                 encoded_proof = issue.pop("proof_image","")
                 proof_type = issue.pop("proof_type","image/jpeg")
+                encoded_video = issue.pop("proof_video","")
+                video_type = issue.pop("proof_video_type","video/mp4")
                 allowed_proof_types = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+                allowed_video_types = {"video/mp4", "video/webm"}
                 if proof_type not in allowed_proof_types:
                     self.send_error(415,"Unsupported proof file type")
                     return
+                if encoded_video and video_type not in allowed_video_types:
+                    self.send_error(415,"Unsupported video file type")
+                    return
                 proof_bytes = base64.b64decode(encoded_proof,validate=True) if encoded_proof else b""
-                if len(proof_bytes) > 25 * 1024 * 1024:
+                video_bytes = base64.b64decode(encoded_video,validate=True) if encoded_video else b""
+                if len(proof_bytes) > 25 * 1024 * 1024 or len(video_bytes) > 25 * 1024 * 1024:
                     self.send_error(413,"Proof file is larger than 25 MB")
                     return
                 if proof_bytes:
@@ -1695,19 +2755,25 @@ class MapHandler(BaseHTTPRequestHandler):
                             return
                         issue.update({"proof_status":proof["status"],"proof_message":proof["message"]})
                     else:
-                        issue.update({"proof_status":"unverified","proof_message":"Supporting file uploaded; location verification is available for images."})
+                        issue.update({"proof_status":"unverified","proof_message":"Supporting file uploaded; location verification is available for geotagged photos."})
                     proof_id = secrets.token_urlsafe(12)
                     issue["proof_id"] = proof_id
                     issue["_proof_type"] = proof_type
                     issue["_proof_data"] = proof_bytes
-                else:
-                    proof_id = ""
+                if video_bytes:
+                    video_id = secrets.token_urlsafe(12)
+                    issue["video_id"] = video_id
+                    issue["_video_type"] = video_type
+                    issue["_video_data"] = video_bytes
                 created = add_issue(issue)
             except (ValueError,KeyError,json.JSONDecodeError):
                 self.send_error(400)
                 return
-            if proof_bytes and created.get("issue") and created["result"] != "possible_duplicate":
-                created["issue"]["proof_id"] = proof_id
+            if created.get("issue") and created["result"] != "possible_duplicate":
+                if proof_bytes:
+                    created["issue"]["proof_id"] = proof_id
+                if video_bytes:
+                    created["issue"]["video_id"] = video_id
             if created.get("result") == "new" and created.get("issue"):
                 assignment = auto_assign_issue_to_best_university(created["issue"])
                 if assignment:
@@ -1770,9 +2836,22 @@ class MapHandler(BaseHTTPRequestHandler):
             if proposal is None:
                 self.send_json({"message":"Proposal not found."},status=404)
                 return
-            proposal["votes"] += 1
-            update_proposal(proposal)
-            self.send_json({"votes":proposal["votes"],"result":"voted"})
+            result, votes, previous_proposal_id = cast_proposal_vote(proposal_id, self.session_user() or "")
+            if result == "missing":
+                self.send_json({"message": "Proposal not found."}, status=404)
+                return
+            if result == "ineligible":
+                self.send_json({"message": "Support the related issue before voting."}, status=403)
+                return
+            if result == "already_voted":
+                self.send_json({"votes": votes, "result": result}, status=409)
+                return
+            proposal["votes"] = votes
+            if previous_proposal_id is not None:
+                previous = next((item for item in PROPOSALS if item["id"] == previous_proposal_id), None)
+                if previous is not None:
+                    previous["votes"] = max(0, previous["votes"] - 1)
+            self.send_json({"votes": votes, "result": result})
             return
         if path.startswith("/api/proposals/") and path.endswith("/review"):
             user = self.session_user()
@@ -1845,7 +2924,7 @@ class MapHandler(BaseHTTPRequestHandler):
         form = parse_qs(self.rfile.read(length).decode("utf-8"))
         email = form.get("email",[""])[0].strip().lower()
         password = form.get("password",[""])[0]
-        portal_role = form.get("portal_role", ["citizen"])[0]
+        portal_role = form.get("portal_role", ["citizen"])[0].strip().lower()
         if path == "/register":
             if password != form.get("confirm_password",[""])[0]:
                 self.send_html(load_register_page('<p class="error">Passwords do not match.</p>'),status=400)
@@ -1856,17 +2935,57 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.redirect("/login")
             return
-        if not authenticate(email,password):
-            self.send_html(load_login_page('<p class="error">Email or password is incorrect.</p>'),status=401)
+        allowed_roles = {"citizen", "government", "university", "industry", "contractor"}
+        if portal_role not in allowed_roles:
+            self.send_html(
+                load_login_page('<p class="error">Please select a valid portal.</p>', portal_role=portal_role),
+                status=400,
+            )
             return
+
+        if not authenticate(email,password):
+            self.send_html(
+                load_login_page(
+                    '<p class="error">Email or password is incorrect.</p>',
+                    portal_role=portal_role,
+                ),
+                status=401,
+            )
+            return
+
+        actual_role = portal_role_for_user(email)
+        if portal_role != actual_role:
+            role_names = {
+                "citizen": "Citizen",
+                "government": "Government",
+                "university": "University",
+                "industry": "Industry",
+                "contractor": "Contractor",
+            }
+            actual_role_name = role_names.get(actual_role, actual_role.title())
+            selected_role_name = role_names.get(portal_role, portal_role.title())
+            error = (
+                '<p class="error">'
+                f'Wrong portal selected. You selected <strong>{html.escape(selected_role_name)}</strong>, '
+                f'but this account belongs to the <strong>{html.escape(actual_role_name)}</strong> portal. '
+                f'Please select {html.escape(actual_role_name)} and try again.'
+                '</p>'
+            )
+            self.send_html(
+                load_login_page(error, portal_role=portal_role),
+                status=403,
+            )
+            return
+
         session_id = secrets.token_urlsafe(32)
         SESSIONS[session_id] = email
         destination = {
-                    "citizen": "/citizen-dashboard",
-          "government": "/government-dashboard",
-          "university": "/university-dashboard",
-          "industry": "/industry-dashboard",
-                }.get(portal_role, "/citizen-dashboard")
+            "citizen": "/citizen-dashboard",
+            "government": "/government-dashboard",
+            "university": "/university-dashboard",
+            "industry": "/industry-dashboard",
+            "contractor": "/contractor-dashboard",
+        }[portal_role]
         self.redirect(destination,f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax")
     def send_html(self,page,status=200):
         self.send_payload(page.encode("utf-8"),status)
@@ -1875,6 +2994,10 @@ class MapHandler(BaseHTTPRequestHandler):
     def send_payload(self,payload,status=200,content_type="text/html; charset=utf-8"):
         self.send_response(status)
         self.send_header("Content-Type",content_type)
+        if self.path.split("?", 1)[0] == "/api/notifications":
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
         self.send_header("Content-Length",str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)

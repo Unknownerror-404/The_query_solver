@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Industry Administration · Civic Map</title>
+
+<style>
+:root{
+  --admin-bg:#f3efe6;
+  --admin-card:#fffdf8;
+  --admin-card-2:#ffffff;
+  --admin-line:#ddd9ce;
+  --admin-line-soft:#e9e5db;
+  --admin-muted:#687773;
+  --admin-text:#173b3b;
+  --admin-text-2:#294d49;
+  --admin-accent:#e46038;
+  --admin-accent-dark:#c94a2a;
+  --admin-accent-soft:#fff0e9;
+  --admin-blue:#317c91;
+  --admin-blue-soft:#eaf5f7;
+  --admin-green:#173b36;
+  --admin-green-2:#24534b;
+  --admin-green-soft:#e9f4ef;
+  --admin-gold:#c48622;
+  --admin-gold-soft:#fff5df;
+  --admin-red:#b8443c;
+  --admin-red-soft:#fdeceb;
+  --admin-shadow:0 18px 42px -24px rgba(23,59,59,.28);
+  --admin-shadow-soft:0 8px 24px -16px rgba(23,59,59,.22);
+  --admin-radius:16px;
+  --admin-radius-sm:10px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html{
+  min-height:100%;
+  background:var(--admin-bg);
+}
+
+body{
+  min-height:100vh;
+  margin:0;
+  background:
+    radial-gradient(900px 500px at 100% -10%,rgba(49,124,145,.07),transparent 62%),
+    radial-gradient(800px 480px at -10% 100%,rgba(228,96,56,.055),transparent 60%),
+    var(--admin-bg);
+  color:var(--admin-text);
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+header{
+  position:sticky;
+  top:0;
+  z-index:1000;
+  min-height:68px;
+  padding:10px 28px;
+  display:grid;
+  grid-template-columns:auto auto 1fr;
+  align-items:center;
+  gap:20px;
+  background:rgba(255,253,248,.94);
+  border-bottom:1px solid rgba(221,217,206,.9);
+  box-shadow:0 8px 28px -24px rgba(23,59,59,.55);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:max-content;
+}
+
+.brand-mark{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:11px;
+  background:linear-gradient(145deg,var(--admin-green),var(--admin-green-2));
+  color:#fff;
+  font:800 15px Inter,"Segoe UI",Arial,sans-serif;
+  box-shadow:
+    0 9px 20px -12px rgba(23,59,54,.65),
+    inset 0 1px 0 rgba(255,255,255,.13);
+}
+
+.brand-name{
+  color:var(--admin-text);
+  font:800 13px/1 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:-.15px;
+}
+
+.brand-sub{
+  margin-top:4px;
+  color:var(--admin-accent);
+  font:800 7px/1 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:1.45px;
+  text-transform:uppercase;
+}
+
+.tagline{
+  color:var(--admin-muted);
+  font:500 10px/1.4 Inter,"Segoe UI",Arial,sans-serif;
+  white-space:nowrap;
+}
+
+.tagline a{
+  display:inline-flex;
+  align-items:center;
+  margin-left:7px;
+  padding:5px 9px;
+  border:1px solid #e6d5cf;
+  border-radius:7px;
+  background:var(--admin-accent-soft);
+  color:var(--admin-accent-dark)!important;
+  text-decoration:none;
+  font:800 9px Inter,"Segoe UI",Arial,sans-serif;
+  transition:all .18s var(--ease);
+}
+
+.tagline a:hover{
+  background:#ffe3d8;
+  border-color:#edbcae;
+  transform:translateY(-1px);
+}
+
+nav.nav{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+
+.nav-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:34px;
+  padding:8px 12px;
+  border:1px solid #d7d3c8;
+  border-radius:9px;
+  background:#f8f5ed;
+  color:#3e5551;
+  text-decoration:none;
+  font:750 9px Inter,"Segoe UI",Arial,sans-serif;
+  white-space:nowrap;
+  transition:
+    transform .18s var(--ease),
+    background .18s var(--ease),
+    border-color .18s var(--ease),
+    color .18s var(--ease),
+    box-shadow .18s var(--ease);
+}
+
+.nav-button:hover{
+  transform:translateY(-1px);
+  background:#fff;
+  border-color:#bfc8c2;
+  color:var(--admin-text);
+  box-shadow:var(--admin-shadow-soft);
+}
+
+.nav-button.active{
+  background:linear-gradient(135deg,var(--admin-green),var(--admin-green-2));
+  border-color:var(--admin-green);
+  color:#fff;
+  box-shadow:0 10px 22px -14px rgba(23,59,54,.7);
+}
+
+/* =========================
+   MAIN
+========================= */
+
+main{
+  width:min(1180px,calc(100% - 48px));
+  margin:0 auto;
+  padding:32px 0 60px;
+}
+
+.industry-admin-shell{
+  display:grid;
+  gap:20px;
+}
+
+/* =========================
+   INTRO / HERO
+========================= */
+
+.admin-intro{
+  position:relative;
+  overflow:hidden;
+  padding:32px 34px;
+  border:1px solid rgba(36,83,75,.8);
+  border-radius:20px;
+  background:
+    radial-gradient(500px 180px at 100% 0%,rgba(255,255,255,.1),transparent 65%),
+    linear-gradient(135deg,#173b36 0%,#214f47 62%,#285b51 100%);
+  color:#fff;
+  box-shadow:
+    0 24px 55px -30px rgba(23,59,54,.48),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.admin-intro:after{
+  content:"";
+  position:absolute;
+  right:-60px;
+  bottom:-90px;
+  width:260px;
+  height:260px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:50%;
+  box-shadow:
+    0 0 0 35px rgba(255,255,255,.025),
+    0 0 0 70px rgba(255,255,255,.018);
+  pointer-events:none;
+}
+
+.admin-intro .eyebrow{
+  color:#f4a083;
+}
+
+.admin-intro h1{
+  position:relative;
+  z-index:1;
+  margin:6px 0 10px;
+  font:500 clamp(30px,4vw,44px)/1.08 Georgia,"Times New Roman",serif;
+  letter-spacing:-.7px;
+}
+
+.admin-intro>p:last-child{
+  position:relative;
+  z-index:1;
+  max-width:780px;
+  margin:0;
+  color:#cfdfdb;
+  font:13px/1.65 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+/* =========================
+   EYEBROWS
+========================= */
+
+.eyebrow{
+  margin:0 0 7px;
+  color:var(--admin-accent);
+  font:800 8px/1.2 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:1.7px;
+  text-transform:uppercase;
+}
+
+/* =========================
+   STATS
+========================= */
+
+.admin-stats{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+}
+
+.admin-stats>div{
+  position:relative;
+  overflow:hidden;
+  min-height:94px;
+  padding:18px 20px;
+  border:1px solid var(--admin-line);
+  border-radius:14px;
+  background:rgba(255,253,248,.92);
+  box-shadow:var(--admin-shadow-soft);
+  transition:
+    transform .2s var(--ease),
+    border-color .2s var(--ease),
+    box-shadow .2s var(--ease);
+}
+
+.admin-stats>div:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:3px;
+  background:linear-gradient(180deg,var(--admin-blue),var(--admin-accent));
+}
+
+.admin-stats>div:hover{
+  transform:translateY(-3px);
+  border-color:#c8d0ca;
+  box-shadow:var(--admin-shadow);
+}
+
+.admin-stats strong{
+  display:block;
+  color:var(--admin-text);
+  font:800 28px/1 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:-.7px;
+  font-variant-numeric:tabular-nums;
+}
+
+.admin-stats span{
+  display:block;
+  margin-top:7px;
+  color:var(--admin-muted);
+  font:600 10px/1.35 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+/* =========================
+   SECTION CARDS
+========================= */
+
+.admin-section{
+  position:relative;
+  overflow:hidden;
+  padding:24px;
+  border:1px solid var(--admin-line);
+  border-radius:16px;
+  background:rgba(255,253,248,.95);
+  box-shadow:var(--admin-shadow-soft);
+}
+
+.admin-section:before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:3px;
+  background:linear-gradient(
+    90deg,
+    var(--admin-blue),
+    var(--admin-gold),
+    var(--admin-accent)
+  );
+}
+
+.section-heading{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:19px;
+}
+
+.admin-section h2{
+  margin:0;
+  color:var(--admin-text);
+  font:600 25px/1.2 Georgia,"Times New Roman",serif;
+  letter-spacing:-.3px;
+}
+
+.queue-label{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 9px;
+  border:1px solid #cde3da;
+  border-radius:999px;
+  background:var(--admin-green-soft);
+  color:#237461;
+  font:800 8px Inter,"Segoe UI",Arial,sans-serif;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+}
+
+.queue-label:before{
+  content:"";
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#3c9b7d;
+  box-shadow:0 0 0 4px rgba(60,155,125,.1);
+}
+
+/* =========================
+   PARTNER GRID
+========================= */
+
+.partner-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+.partner-card,
+.commitment-card{
+  position:relative;
+  padding:19px;
+  border:1px solid var(--admin-line-soft);
+  border-radius:13px;
+  background:var(--admin-card-2);
+  box-shadow:0 5px 16px -12px rgba(23,43,40,.3);
+  transition:
+    transform .2s var(--ease),
+    border-color .2s var(--ease),
+    box-shadow .2s var(--ease);
+}
+
+.partner-card:before,
+.commitment-card:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:15px;
+  bottom:15px;
+  width:2px;
+  border-radius:0 3px 3px 0;
+  background:#d9e5e0;
+  transition:background .2s var(--ease);
+}
+
+.partner-card:hover,
+.commitment-card:hover{
+  transform:translateY(-2px);
+  border-color:#c6d0ca;
+  box-shadow:0 15px 30px -20px rgba(23,59,59,.35);
+}
+
+.partner-card:hover:before,
+.commitment-card:hover:before{
+  background:var(--admin-accent);
+}
+
+.partner-heading{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+
+.partner-card h3{
+  margin:0 0 6px;
+  color:var(--admin-text);
+  font:750 17px/1.25 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:-.2px;
+}
+
+.partner-card p{
+  margin:5px 0;
+  color:var(--admin-muted);
+  font:11px/1.55 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+/* =========================
+   STATUS BADGES
+========================= */
+
+.approval-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:24px;
+  padding:5px 8px;
+  border-radius:7px;
+  font:800 7px Inter,"Segoe UI",Arial,sans-serif;
+  white-space:nowrap;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+
+.approval-active{
+  background:var(--admin-green-soft);
+  color:#23755f;
+  border:1px solid #cce3d9;
+}
+
+.approval-pending{
+  background:var(--admin-gold-soft);
+  color:#a66d15;
+  border:1px solid #f0dfb7;
+}
+
+.approval-rejected{
+  background:var(--admin-red-soft);
+  color:#b43d35;
+  border:1px solid #f0c8c4;
+}
+
+/* =========================
+   PARTNER META
+========================= */
+
+.partner-meta{
+  margin:16px 0!important;
+  padding-top:14px;
+  border-top:1px solid var(--admin-line-soft);
+}
+
+/* =========================
+   FORMS
+========================= */
+
+.approval{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.approval label{
+  flex:1;
+  min-width:180px;
+  margin:0;
+  color:var(--admin-text);
+  font:800 8px/1.3 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+select,
+input{
+  width:100%;
+  min-height:39px;
+  padding:9px 11px;
+  border:1px solid #ccd6d1;
+  border-radius:9px;
+  outline:none;
+  background:#fff;
+  color:var(--admin-text);
+  font:12px Inter,"Segoe UI",Arial,sans-serif;
+  box-shadow:inset 0 1px 2px rgba(23,59,59,.025);
+  transition:
+    border-color .18s var(--ease),
+    box-shadow .18s var(--ease),
+    transform .18s var(--ease),
+    background .18s var(--ease);
+}
+
+select:hover,
+input:hover{
+  border-color:#aebdb6;
+}
+
+select:focus,
+input:focus{
+  border-color:var(--admin-blue);
+  background:#fff;
+  box-shadow:0 0 0 3px rgba(49,124,145,.12);
+  transform:translateY(-1px);
+}
+
+select{
+  cursor:pointer;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+button{
+  min-height:39px;
+  padding:9px 14px;
+  border:1px solid var(--admin-green);
+  border-radius:9px;
+  background:linear-gradient(135deg,var(--admin-green),var(--admin-green-2));
+  color:#fff;
+  cursor:pointer;
+  font:800 9px Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:.1px;
+  box-shadow:0 8px 17px -13px rgba(23,59,54,.7);
+  transition:
+    transform .18s var(--ease),
+    box-shadow .18s var(--ease),
+    filter .18s var(--ease);
+}
+
+button:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.05);
+  box-shadow:0 13px 22px -13px rgba(23,59,54,.65);
+}
+
+button:active{
+  transform:translateY(0);
+}
+
+button:focus-visible{
+  outline:none;
+  box-shadow:
+    0 0 0 3px rgba(49,124,145,.16),
+    0 8px 17px -13px rgba(23,59,54,.7);
+}
+
+/* =========================
+   COMMITMENTS
+========================= */
+
+.commitment-list{
+  display:grid;
+  gap:11px;
+}
+
+.commitment-card{
+  padding:17px 19px;
+}
+
+.commitment-card form{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+}
+
+.commitment-card select{
+  width:170px;
+}
+
+.commitment-card input{
+  flex:1;
+  min-width:150px;
+}
+
+/* =========================
+   CREATE FORM
+========================= */
+
+.admin-form{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.admin-form input,
+.admin-form select{
+  min-width:0;
+}
+
+.admin-form button{
+  grid-column:1/-1;
+  justify-self:start;
+  min-width:170px;
+}
+
+/* =========================
+   EMPTY STATES
+========================= */
+
+.empty-state{
+  position:relative;
+  padding:20px 18px 20px 44px;
+  border:1px dashed #c8d4cf;
+  border-radius:11px;
+  background:#f8faf8;
+  color:var(--admin-muted);
+  font:11px/1.55 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.empty-state:before{
+  content:"";
+  position:absolute;
+  left:17px;
+  top:20px;
+  width:16px;
+  height:16px;
+  border:1px solid #b9cec5;
+  border-radius:50%;
+  background:#eaf4ef;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width:1050px){
+  header{
+    grid-template-columns:auto 1fr;
+    gap:12px;
+  }
+
+  nav.nav{
+    grid-column:1/-1;
+    justify-content:flex-start;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    padding-bottom:2px;
+  }
+
+  .nav-button{
+    flex:0 0 auto;
+  }
+
+  main{
+    width:min(100% - 32px,1180px);
+    padding-top:24px;
+  }
+}
+
+@media(max-width:800px){
+  header{
+    position:relative;
+    padding:10px 16px;
+  }
+
+  .tagline{
+    justify-self:end;
+  }
+
+  .admin-stats,
+  .partner-grid{
+    grid-template-columns:1fr;
+  }
+
+  .admin-section{
+    padding:20px;
+  }
+
+  .admin-intro{
+    padding:27px 24px;
+  }
+
+  .section-heading{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .commitment-card form{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .commitment-card select{
+    width:100%;
+  }
+
+  .admin-form{
+    grid-template-columns:1fr;
+  }
+
+  .admin-form button{
+    grid-column:auto;
+    width:100%;
+  }
+}
+
+@media(max-width:560px){
+  header{
+    grid-template-columns:1fr auto;
+  }
+
+  .brand-mark{
+    width:34px;
+    height:34px;
+  }
+
+  .brand-name{
+    font-size:12px;
+  }
+
+  .tagline{
+    font-size:0;
+  }
+
+  .tagline a{
+    margin:0;
+    font-size:8px;
+  }
+
+  nav.nav{
+    gap:5px;
+  }
+
+  .nav-button{
+    min-height:32px;
+    padding:7px 9px;
+    font-size:8px;
+  }
+
+  main{
+    width:calc(100% - 20px);
+    padding:15px 0 35px;
+  }
+
+  .admin-intro{
+    padding:23px 19px;
+    border-radius:15px;
+  }
+
+  .admin-intro h1{
+    font-size:30px;
+  }
+
+  .admin-intro>p:last-child{
+    font-size:11px;
+  }
+
+  .admin-section{
+    padding:17px 14px;
+    border-radius:13px;
+  }
+
+  .admin-section h2{
+    font-size:22px;
+  }
+
+  .partner-heading{
+    flex-direction:column;
+  }
+
+  .approval{
+    align-items:stretch;
+  }
+
+  .approval label{
+    min-width:100%;
+  }
+
+  .approval button{
+    width:100%;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,
+  *:before,
+  *:after{
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
+
+.loading-state{
+  min-height:110px;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  border:1px dashed #c8d4cf;
+  border-radius:11px;
+  background:#fafbf8;
+  color:var(--admin-muted);
+  font:600 11px/1.5 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.partner-card .partner-domain{
+  display:inline-flex;
+  align-items:center;
+  margin-top:8px;
+  padding:5px 8px;
+  border:1px solid #d9e6e1;
+  border-radius:999px;
+  background:#f4f8f5;
+  color:#467068;
+  font:750 8px Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.partner-card .partner-actions{
+  margin-top:15px;
+  padding-top:14px;
+  border-top:1px solid var(--admin-line-soft);
+}
+
+.partner-card .partner-actions form{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.partner-card .partner-actions label{
+  flex:1;
+  min-width:180px;
+  color:var(--admin-text);
+  font:800 8px/1.3 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+.partner-card .partner-actions select{
+  flex:1;
+  min-width:150px;
+}
+
+.partner-card .partner-actions button{
+  flex:0 0 auto;
+}
+
+.commitment-card .commitment-title{
+  color:var(--admin-text);
+  font:750 15px/1.3 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.commitment-card .commitment-meta{
+  margin-top:7px;
+  color:var(--admin-muted);
+  font:11px/1.55 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.approval-list{
+  display:grid;
+  gap:11px;
+}
+
+.approval-card{
+  padding:17px 19px;
+  border:1px solid var(--admin-line-soft);
+  border-radius:13px;
+  background:#fff;
+}
+
+.approval-card strong{
+  display:block;
+  color:var(--admin-text);
+  font:750 14px/1.35 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.approval-card p{
+  margin:6px 0 13px;
+  color:var(--admin-muted);
+  font:11px/1.5 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+.error-state{
+  padding:18px;
+  border:1px solid #f0c8c4;
+  border-radius:11px;
+  background:var(--admin-red-soft);
+  color:#a53b35;
+  font:600 11px/1.5 Inter,"Segoe UI",Arial,sans-serif;
+}
+
+@media(max-width:560px){
+  .partner-card .partner-actions form{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .partner-card .partner-actions label,
+  .partner-card .partner-actions select{
+    min-width:100%;
+  }
+
+  .partner-card .partner-actions button{
+    width:100%;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<header>
+<div class="brand">
+  <div class="brand-mark">G</div>
+  <div>
+    <div class="brand-name">Civic Map</div>
+    <div class="brand-sub">Industry Administration</div>
+  </div>
+</div>
+
+<div class="tagline">
+  Admin workspace · <a href="/logout" style="color:var(--muted)">Log out</a>
+</div>
+
+<nav class="nav">
+  <a class="nav-button" href="/admin">Moderation</a>
+  <a class="nav-button active" href="/industry-admin">Industry</a>
+  <a class="nav-button" href="/universities">Universities</a>
+  <a class="nav-button" href="/government-dashboard">Analytics</a>
+</nav>
+</header>
+
+<main>
+  <section class="admin-intro">
+    <div class="eyebrow">Civic operations · industry network</div>
+    <h1>Industry Administration</h1>
+    <p>Review industry partners, manage civic commitments, and keep institutional approvals moving from one focused workspace.</p>
+  </section>
+
+  <section class="admin-stats" aria-label="Industry administration summary">
+    <div>
+      <strong id="partnerCount">—</strong>
+      <span>Industry partners</span>
+    </div>
+    <div>
+      <strong id="commitmentCount">—</strong>
+      <span>Offer commitments</span>
+    </div>
+    <div>
+      <strong id="pendingCount">—</strong>
+      <span>Pending approvals</span>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Partner registry</div>
+        <h2>Industry partners</h2>
+      </div>
+      <span class="queue-label" id="partnerStatus">Loading</span>
+    </div>
+    <div id="partnerGrid" class="partner-grid">
+      <div class="loading-state">Loading industry partners…</div>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Commitment queue</div>
+        <h2>Offer commitments</h2>
+      </div>
+      <span class="queue-label" id="commitmentStatus">Loading</span>
+    </div>
+    <div id="commitmentList" class="commitment-list">
+      <div class="loading-state">Loading commitments…</div>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Partner onboarding</div>
+        <h2>Add an industry partner</h2>
+      </div>
+    </div>
+
+    <form class="admin-form industry-create">
+      <input name="name" type="text" placeholder="Company / organisation name" required>
+      <input name="email" type="email" placeholder="Contact email" required>
+      <input name="domain" type="text" placeholder="Industry / domain">
+      <input name="location" type="text" placeholder="Location">
+      <input name="website" type="url" placeholder="Website">
+      <input name="contact" type="text" placeholder="Contact person">
+      <button type="submit">Register partner</button>
+    </form>
+  </section>
+
+  <section class="admin-section">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Institution approvals</div>
+        <h2>Approval controls</h2>
+      </div>
+    </div>
+    <div id="approvalList" class="approval-list">
+      <div class="empty-state">Approval records will appear here when supplied by the administration API.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const partnerGrid=document.getElementById('partnerGrid');
+const commitmentList=document.getElementById('commitmentList');
+const approvalList=document.getElementById('approvalList');
+const partnerCount=document.getElementById('partnerCount');
+const commitmentCount=document.getElementById('commitmentCount');
+const pendingCount=document.getElementById('pendingCount');
+const partnerStatus=document.getElementById('partnerStatus');
+const commitmentStatus=document.getElementById('commitmentStatus');
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[char]));
+}
+
+function first(obj,...keys){
+  for(const key of keys){
+    if(obj && obj[key]!==undefined && obj[key]!==null && obj[key]!=='') return obj[key];
+  }
+  return '';
+}
+
+function normaliseList(payload){
+  if(Array.isArray(payload)) return payload;
+  if(!payload || typeof payload!=='object') return [];
+  for(const key of ['partners','offers','commitments','items','data','results']){
+    if(Array.isArray(payload[key])) return payload[key];
+  }
+  return [];
+}
+
+async function getJson(url){
+  const response=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!response.ok) throw new Error('Request failed: '+response.status);
+  return response.json();
+}
+
+function renderPartnerCard(partner){
+  const id=first(partner,'id','partner_id','partnerId');
+  const name=first(partner,'name','company','company_name','organisation','organization')||'Unnamed partner';
+  const email=first(partner,'email','contact_email');
+  const domain=first(partner,'domain','industry','sector');
+  const location=first(partner,'location','city');
+  const website=first(partner,'website','url');
+  const contact=first(partner,'contact','contact_person','contact_name');
+  const status=String(first(partner,'approval_status','status','approval')||'pending').toLowerCase();
+
+  const statusClass=status.includes('reject')?'approval-rejected':
+    status.includes('active')||status.includes('approv')?'approval-active':'approval-pending';
+
+  return `
+    <article class="partner-card">
+      <div class="partner-heading">
+        <div>
+          <h3>${escapeHtml(name)}</h3>
+          ${email?`<p>${escapeHtml(email)}</p>`:''}
+        </div>
+        <span class="approval-badge ${statusClass}">${escapeHtml(status)}</span>
+      </div>
+
+      ${domain?`<span class="partner-domain">${escapeHtml(domain)}</span>`:''}
+
+      <p class="partner-meta">
+        ${location?`Location · ${escapeHtml(location)}<br>`:''}
+        ${contact?`Contact · ${escapeHtml(contact)}<br>`:''}
+        ${website?`Website · ${escapeHtml(website)}`:''}
+      </p>
+
+      ${id?`
+      <div class="partner-actions">
+        <form class="approval" data-kind="industry" data-id="${escapeHtml(id)}">
+          <label>
+            Approval status
+            <select name="status">
+              <option value="pending" ${status==='pending'?'selected':''}>Pending</option>
+              <option value="approved" ${status==='approved'||status==='active'?'selected':''}>Approved</option>
+              <option value="rejected" ${status==='rejected'?'selected':''}>Rejected</option>
+            </select>
+          </label>
+          <button type="submit">Update</button>
+        </form>
+      </div>`:''}
+    </article>`;
+}
+
+function renderCommitmentCard(item){
+  const id=first(item,'id','offer_id','commitment_id');
+  const title=first(item,'title','name','offer','commitment')||'Industry commitment';
+  const partner=first(item,'partner_name','company','company_name','partner');
+  const details=first(item,'description','details','message','notes');
+  const status=String(first(item,'status','approval_status')||'pending').toLowerCase();
+
+  return `
+    <article class="commitment-card">
+      <div class="partner-heading">
+        <div>
+          <div class="commitment-title">${escapeHtml(title)}</div>
+          <div class="commitment-meta">
+            ${partner?`Partner · ${escapeHtml(partner)}<br>`:''}
+            ${details?escapeHtml(details):''}
+          </div>
+        </div>
+        <span class="approval-badge ${status==='approved'||status==='active'?'approval-active':status==='rejected'?'approval-rejected':'approval-pending'}">${escapeHtml(status)}</span>
+      </div>
+      ${id?`
+      <form class="offer-update" data-id="${escapeHtml(id)}">
+        <select name="status" aria-label="Commitment status">
+          <option value="pending" ${status==='pending'?'selected':''}>Pending</option>
+          <option value="approved" ${status==='approved'||status==='active'?'selected':''}>Approved</option>
+          <option value="rejected" ${status==='rejected'?'selected':''}>Rejected</option>
+        </select>
+        <input name="notes" type="text" placeholder="Admin note">
+        <button type="submit">Update</button>
+      </form>`:''}
+    </article>`;
+}
+
+async function loadIndustryData(){
+  /*
+   * These GET routes are intentionally consumed here rather than rendering
+   * HTML through map.py. The template remains responsible for presentation.
+   *
+   * Supported response shapes:
+   *   {partners:[...], offers:[...]}
+   *   {items:[...]}
+   *   [...]
+   */
+  const endpoints=[
+    '/api/admin/industry-partners',
+    '/api/admin/offer-commitments'
+  ];
+
+  try{
+    const [partnersPayload,offersPayload]=await Promise.all(
+      endpoints.map(getJson)
+    );
+
+    const partners=normaliseList(partnersPayload);
+    const offers=normaliseList(offersPayload);
+
+    partnerCount.textContent=partners.length;
+    commitmentCount.textContent=offers.length;
+
+    const pendingPartners=partners.filter(item=>{
+      const status=String(first(item,'approval_status','status','approval')||'pending').toLowerCase();
+      return status==='pending';
+    }).length;
+
+    const pendingOffers=offers.filter(item=>{
+      const status=String(first(item,'status','approval_status')||'pending').toLowerCase();
+      return status==='pending';
+    }).length;
+
+    pendingCount.textContent=pendingPartners+pendingOffers;
+
+    partnerStatus.textContent=partners.length?`${partners.length} registered`:'No partners';
+    commitmentStatus.textContent=offers.length?`${offers.length} recorded`:'No commitments';
+
+    partnerGrid.innerHTML=partners.length
+      ?partners.map(renderPartnerCard).join('')
+      :'<div class="empty-state">No industry partners are currently registered.</div>';
+
+    commitmentList.innerHTML=offers.length
+      ?offers.map(renderCommitmentCard).join('')
+      :'<div class="empty-state">No offer commitments are currently recorded.</div>';
+
+    bindForms();
+  }catch(error){
+    console.error(error);
+    partnerCount.textContent='—';
+    commitmentCount.textContent='—';
+    pendingCount.textContent='—';
+    partnerStatus.textContent='Unavailable';
+    commitmentStatus.textContent='Unavailable';
+
+    partnerGrid.innerHTML='<div class="error-state">Industry partner data could not be loaded. The administration API may not expose a GET endpoint yet.</div>';
+    commitmentList.innerHTML='<div class="error-state">Commitment data could not be loaded. The administration API may not expose a GET endpoint yet.</div>';
+  }
+}
+
+function bindForms(){
+  document.querySelectorAll('.industry-create').forEach(form=>{
+    form.onsubmit=async event=>{
+      event.preventDefault();
+      const response=await fetch('/api/admin/industry-partners',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(Object.fromEntries(new FormData(form)))
+      });
+      if(response.ok){
+        location.reload();
+      }else{
+        let message='Registration failed';
+        try{message=(await response.json()).message||message}catch(_){}
+        alert(message);
+      }
+    };
+  });
+
+  document.querySelectorAll('.offer-update').forEach(form=>{
+    form.onsubmit=async event=>{
+      event.preventDefault();
+      const data=Object.fromEntries(new FormData(form));
+      const id=form.dataset.id;
+      if(id && data.id===undefined)data.id=id;
+
+      const response=await fetch('/api/admin/offer-commitments',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(data)
+      });
+
+      if(response.ok){
+        location.reload();
+      }else{
+        let message='Commitment update failed';
+        try{message=(await response.json()).message||message}catch(_){}
+        alert(message);
+      }
+    };
+  });
+
+  document.querySelectorAll('.approval').forEach(form=>{
+    form.onsubmit=async event=>{
+      event.preventDefault();
+
+      const response=await fetch(
+        '/api/admin/institutions/'+encodeURIComponent(form.dataset.kind)+'/'+
+        encodeURIComponent(form.dataset.id)+'/approval',
+        {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(Object.fromEntries(new FormData(form)))
+        }
+      );
+
+      if(response.ok){
+        location.reload();
+      }else{
+        let message='Approval update failed';
+        try{message=(await response.json()).message||message}catch(_){}
+        alert(message);
+      }
+    };
+  });
+}
+
+loadIndustryData();
+</script>
+
+</body>
+</html>

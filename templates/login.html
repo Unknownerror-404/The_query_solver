@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign in · Civic Map</title>
+<title>Sign in ┬╖ Civic Map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}
@@ -111,9 +111,9 @@ body{overflow:auto}
 <p class="eyebrow">Community platform</p>
 <h1>See it.<br>Pin it.<br><span>Improve it.</span></h1>
 <p class="hero-text">Report local issues, discover community challenges, and help turn problems into action together.</p>
-<a class="explore" href="/">Explore Civic Map <span>→</span></a>
+<a class="explore" href="/">Explore Civic Map <span>ΓåÆ</span></a>
 </div>
-<div class="issue-pin road">
+<!-- <div class="issue-pin road">
 <div class="issue-marker"><span>R</span></div>
 <div class="issue-label">Road issue</div>
 </div>
@@ -128,8 +128,8 @@ body{overflow:auto}
 <div class="issue-pin light">
 <div class="issue-marker"><span>L</span></div>
 <div class="issue-label">Streetlight outage</div>
-</div>
-<div class="map-caption"><span></span>Live civic map · Community issues</div>
+</div> -->
+<div class="map-caption"><span></span>Live civic map ┬╖ Community issues</div>
 </section>
 <section class="login-side">
 <div id="login-panel-map"></div>
@@ -143,32 +143,71 @@ body{overflow:auto}
 <p class="intro">Sign in to report local issues, discover community challenges, and help turn problems into action.</p>
 __ERROR__
 <form method="post" action="/login">
-<label>Portal access<select id="portal-role" name="portal_role">
-<option value="citizen" selected>Citizen</option>
-<option value="government">Government</option>
-<option value="university">University</option>
-<option value="industry">Industry</option>
-</select></label>
+<input type="hidden" name="next" value="__NEXT__">
+<input type="hidden" id="selected-portal-role" value="__PORTAL_ROLE__">
+<label>Portal access
+  <select id="portal-role" name="portal_role">
+    <option value="citizen" selected>Citizen</option>
+    <option value="government">Government</option>
+    <option value="university">University</option>
+    <option value="industry">Industry</option>
+    <option value="contractor">Contractor</option>
+  </select>
+</label>
 <label>Email<input id="login-email" name="email" type="email" autocomplete="username" placeholder="you@example.com" required></label>
 <label>Password<input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
 <button type="submit">Sign in to Civic Map</button>
 </form>
-<div class="create">New here? <a href="/register">Create an account →</a></div>
-<div class="create" style="margin-top: 12px;">Are you a University or Institution? <a href="/university/login" style="color:var(--blue);font-weight:bold;">University Portal Login →</a></div>
-<div class="create" style="margin-top: 12px;">Are you an Industry or CSR Partner? <a href="/industry/login" style="color:var(--accent);font-weight:bold;">Industry Portal Login →</a></div>
+<div class="create">New here? <a id="register-link" href="/register">Create an account →</a></div>
 <div class="safe">
-<div class="safe-icon">✓</div>
+<div class="safe-icon">Γ£ô</div>
 <div>
 <strong>Your data is safe with us</strong>
 <span>We're committed to transparency and protecting your privacy.</span>
 </div>
 </div>
-<div class="footer">Community issues · Local voices · Collective action</div>
+<div class="footer">Community issues ┬╖ Local voices ┬╖ Collective action</div>
 </main>
 </section>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+const portalRoleSelect = document.getElementById('portal-role');
+const registerLink = document.getElementById('register-link');
+const selectedPortalRole = document.getElementById('selected-portal-role');
+
+const registrationPaths = {
+  citizen: '/register',
+  government: null,
+  university: '/university/register',
+  industry: '/industry/register',
+  contractor: '/contractor/register'
+};
+
+function updateRegistrationLink() {
+  const role = portalRoleSelect.value;
+  const path = registrationPaths[role];
+
+  if (path) {
+    registerLink.href = path;
+    registerLink.textContent = 'Create an account →';
+    registerLink.style.pointerEvents = '';
+    registerLink.style.opacity = '';
+  } else {
+    registerLink.href = '#';
+    registerLink.textContent = 'Create an account →';
+    registerLink.style.pointerEvents = 'auto';
+    registerLink.style.opacity = '';
+  }
+}
+
+portalRoleSelect.addEventListener('change', updateRegistrationLink);
+
+if (selectedPortalRole && selectedPortalRole.value) {
+  portalRoleSelect.value = selectedPortalRole.value;
+}
+updateRegistrationLink();
+
 const mapOptions={zoomControl:false,attributionControl:true,dragging:true,scrollWheelZoom:true,doubleClickZoom:true,boxZoom:false,keyboard:true,touchZoom:true};
 const loginMap=L.map('login-map',mapOptions).setView([23.3441,85.3096],12);
 const panelMap=L.map('login-panel-map',{...mapOptions,attributionControl:false}).setView([23.3441,85.3096],12);

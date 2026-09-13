@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>University Administration · Civic Map</title>
+<link rel="stylesheet" href="/templates/shared.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ua-ink-rgb: 22, 51, 47;
+  --ua-ink: #112925;
+  --ua-ink-2: #1e423b;
+  --ua-muted: #5e706c;
+  --ua-paper: #f4f1e9;
+  --ua-card: #ffffff;
+  --ua-card-inner: #f8faf8;
+  --ua-line: #dee5e1;
+  --ua-line-strong: #c4d1cb;
+  
+  --ua-orange: #e5663d;
+  --ua-orange-dark: #c94f2b;
+  --ua-orange-soft: rgba(229, 102, 61, 0.12);
+  --ua-blue: #2a788a;
+  --ua-green: #217862;
+  --ua-gold: #c88a27;
+  --ua-red: #b64c45;
+  
+  --ua-shadow: 0 20px 48px -12px rgba(22, 51, 47, 0.12);
+  --ua-shadow-sm: 0 6px 20px -4px rgba(22, 51, 47, 0.06);
+  --ua-shadow-hover: 0 16px 36px -8px rgba(22, 51, 47, 0.14);
+  
+  --ua-r-sm: 8px;
+  --ua-r-md: 14px;
+  --ua-r-lg: 20px;
+  
+  --ua-s1: 8px;
+  --ua-s2: 16px;
+  --ua-s3: 24px;
+  --ua-s4: 32px;
+  --ua-s5: 40px;
+
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-fast: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: 
+    radial-gradient(circle at 90% 0%, rgba(42, 120, 138, 0.08), transparent 30rem),
+    radial-gradient(circle at 0% 50%, rgba(229, 102, 61, 0.06), transparent 28rem),
+    var(--ua-paper);
+  color: var(--ua-ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Header & Top Navigation */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 36px;
+  min-height: 76px;
+  background: rgba(244, 241, 233, 0.88);
+  border-bottom: 1px solid var(--ua-line-strong);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 240px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--ua-ink), var(--ua-ink-2));
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 8px 20px rgba(22, 51, 47, 0.2);
+  transition: transform var(--ease-smooth);
+}
+
+.brand:hover .brand-mark {
+  transform: scale(1.05) rotate(-3deg);
+}
+
+.brand-name {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.3px;
+  color: var(--ua-ink);
+}
+
+.brand-sub {
+  margin-top: 2px;
+  color: var(--ua-orange);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+
+.tagline {
+  margin-left: auto;
+  color: var(--ua-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tagline a {
+  color: var(--ua-orange);
+  font-weight: 700;
+  text-decoration: none;
+  transition: color var(--ease-fast);
+}
+
+.tagline a:hover {
+  color: var(--ua-orange-dark);
+  text-decoration: underline;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--ua-line-strong);
+  border-radius: var(--ua-r-sm);
+  background: var(--ua-card);
+  color: var(--ua-ink);
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(22, 51, 47, 0.04);
+  transition: all var(--ease-smooth);
+}
+
+.nav-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--ua-blue);
+  color: var(--ua-blue);
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(42, 120, 138, 0.15);
+}
+
+.nav-button.active {
+  color: #ffffff;
+  background: var(--ua-ink);
+  border-color: var(--ua-ink);
+  box-shadow: 0 8px 18px rgba(22, 51, 47, 0.2);
+}
+
+/* Main Container & Intro Banner */
+main {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: var(--ua-s5) var(--ua-s3) 72px;
+}
+
+.admin-intro {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: var(--ua-s4);
+  padding: 40px 48px;
+  border: 1px solid var(--ua-line);
+  border-radius: var(--ua-r-lg);
+  background: linear-gradient(135deg, #ffffff 0%, #f7faf8 55%, #edf5f2 100%);
+  box-shadow: var(--ua-shadow);
+}
+
+.admin-intro::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--ua-orange), var(--ua-gold), var(--ua-blue));
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--ua-orange);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.admin-intro h1 {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 12px;
+  max-width: 850px;
+  color: var(--ua-ink);
+  font-family: var(--font-heading);
+  font-size: clamp(34px, 4.5vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.admin-intro > p:last-child {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0;
+  color: var(--ua-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Dynamic Admin Content Sections */
+.admin-content {
+  display: grid;
+  gap: 24px;
+}
+
+.admin-content > h2 {
+  margin: 12px 0 -4px;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  color: var(--ua-ink);
+}
+
+.admin-content > p:not(.eyebrow) {
+  color: var(--ua-muted);
+  font-size: 14px;
+}
+
+.admin-content article,
+.admin-content .university-profile,
+.admin-content .university-create,
+.admin-content .approval {
+  position: relative;
+  border: 1px solid var(--ua-line);
+  border-radius: var(--ua-r-md);
+  background: var(--ua-card);
+  box-shadow: var(--ua-shadow-sm);
+  transition: transform var(--ease-smooth), box-shadow var(--ease-smooth), border-color var(--ease-smooth);
+}
+
+.admin-content article:hover,
+.admin-content .university-profile:hover,
+.admin-content .university-create:hover {
+  transform: translateY(-2px);
+  border-color: var(--ua-line-strong);
+  box-shadow: var(--ua-shadow-hover);
+}
+
+.admin-content article::before,
+.admin-content .university-profile::before,
+.admin-content .university-create::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  border-radius: var(--ua-r-md) var(--ua-r-md) 0 0;
+  background: linear-gradient(90deg, var(--ua-blue), var(--ua-gold), var(--ua-orange));
+}
+
+.admin-content article {
+  padding: 30px;
+}
+
+.admin-content h2 {
+  margin: 0 0 12px;
+  color: var(--ua-ink);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+
+.admin-content h3 {
+  margin: 0 0 8px;
+  color: var(--ua-ink);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.admin-content h4 {
+  margin: 0 0 12px;
+  color: var(--ua-ink-2);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.admin-content p {
+  color: var(--ua-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-content strong {
+  color: var(--ua-ink);
+  font-weight: 700;
+}
+
+/* Form Controls & Inputs */
+input, select, textarea {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 11px 16px;
+  border: 1px solid var(--ua-line-strong);
+  border-radius: var(--ua-r-sm);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ua-ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: all var(--ease-fast);
+}
+
+input:hover, select:hover, textarea:hover {
+  border-color: var(--ua-ink-2);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--ua-orange);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px var(--ua-orange-soft);
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: var(--ua-r-sm);
+  background: var(--ua-ink);
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(22, 51, 47, 0.12);
+  transition: all var(--ease-smooth);
+}
+
+button:hover {
+  transform: translateY(-2px);
+  background: var(--ua-ink-2);
+  box-shadow: 0 8px 20px rgba(22, 51, 47, 0.2);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+  transform: none;
+}
+
+.admin-content form {
+  display: grid;
+  gap: 14px;
+}
+
+.university-create,
+.university-profile {
+  padding: 28px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.university-create button,
+.university-profile button {
+  width: max-content;
+}
+
+.university-profile input[type=hidden] {
+  display: none;
+}
+
+/* Approval Bar Element */
+.approval {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--ua-card);
+}
+
+.approval span {
+  margin-right: auto;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ua-ink);
+}
+
+.approval select {
+  width: 190px;
+}
+
+.approval button {
+  min-width: 140px;
+  background: var(--ua-orange);
+}
+
+.approval button:hover {
+  background: var(--ua-orange-dark);
+  box-shadow: 0 8px 20px rgba(229, 102, 61, 0.25);
+}
+
+.approval button.saved {
+  background: var(--ua-green);
+}
+
+/* Embedded Inner Workspaces */
+.assignment, .team, .response, .report-form {
+  padding: 24px !important;
+  border: 1px solid var(--ua-line) !important;
+  border-radius: var(--ua-r-md) !important;
+  background: var(--ua-card-inner) !important;
+  box-shadow: none !important;
+}
+
+.assignment::before, .team::before, .response::before, .report-form::before {
+  display: none !important;
+}
+
+.assignment, .team, .response {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.assignment select, .response select {
+  min-width: 240px;
+}
+
+.assignment button, .team button, .response button, .report-form button {
+  width: max-content;
+}
+
+.team {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.team input[name=members] {
+  grid-column: 1 / -1;
+}
+
+.report-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-form input[name=title],
+.report-form textarea[name=summary],
+.report-form textarea[name=deliverables],
+.report-form button {
+  grid-column: 1 / -1;
+}
+
+.report-form textarea {
+  min-height: 100px;
+}
+
+.admin-content article > h3:first-child,
+.admin-content article > h2:first-child {
+  margin-top: 0;
+}
+
+.admin-content .muted,
+.admin-content .empty-state {
+  color: var(--ua-muted);
+}
+
+/* Responsive Overrides */
+@media (max-width: 980px) {
+  header { padding: 14px 24px; }
+  .brand { min-width: 210px; }
+  .tagline { order: 3; width: 100%; margin-left: 0; }
+  .nav { margin-left: auto; }
+  .university-create, .university-profile {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 20px;
+  }
+  .brand { min-width: 0; }
+  .tagline { order: initial; }
+  .nav {
+    width: 100%;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .nav-button { width: 100%; }
+  main { padding: 24px 16px 56px; }
+  .admin-intro { padding: 28px 20px; border-radius: 16px; }
+  .admin-intro h1 { font-size: 32px; letter-spacing: -0.5px; }
+  .admin-content article { padding: 20px; }
+  .university-create, .university-profile, .team, .report-form {
+    grid-template-columns: 1fr;
+  }
+
+/* Decorative detail retained from Backup_V3 */
+.admin-intro::after {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  right: -120px;
+  top: -190px;
+  border-radius: 50%;
+  border: 1px solid rgba(49, 127, 147, 0.14);
+}
+  .team input[name=members],
+  .report-form input[name=title],
+  .report-form textarea[name=summary],
+  .report-form textarea[name=deliverables],
+  .report-form button {
+    grid-column: auto;
+  }
+  .assignment, .response { grid-template-columns: 1fr; }
+  .assignment select, .response select { min-width: 0; }
+  .assignment button, .team button, .response button, .report-form button, .university-create button, .university-profile button {
+    width: 100%;
+  }
+  .approval {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .approval span { width: 100%; margin: 0; }
+  .approval select, .approval button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header>
+<div class="brand">
+  <div class="brand-mark">G</div>
+  <div>
+    <div class="brand-name">Civic Map</div>
+    <div class="brand-sub">University Administration</div>
+  </div>
+</div>
+<div class="tagline">Admin workspace · <a href="/logout">Log out</a></div>
+<nav class="nav">
+  <a class="nav-button active" href="/universities">Universities</a>
+  <a class="nav-button" href="/industry-admin">Industry</a>
+  <a class="nav-button" href="/government-dashboard">Analytics</a>
+</nav>
+</header>
+<main>
+<div class="admin-intro">
+  <p class="eyebrow">Institution verification</p>
+  <h1>University collaboration administration.</h1>
+  <p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p>
+</div>
+<div class="admin-content">__ISSUES__</div>
+</main>
+<script>
+document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{
+  event.preventDefault();
+  const data=Object.fromEntries(new FormData(form));
+  if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);
+  let endpoint=form.dataset.endpoint||'/api/admin/universities';
+  if(form.className==='assignment')endpoint='/api/admin/assignments';
+  if(form.className==='team')endpoint='/api/admin/teams';
+  if(form.className==='response')endpoint='/api/admin/assignment-response';
+  if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';
+  const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  if(response.ok)location.reload();
+  else alert((await response.json()).message||'University operation failed')
+});
+document.querySelectorAll('.response').forEach(form=>form.onsubmit=async event=>{
+  event.preventDefault();
+  const response=await fetch('/api/admin/assignment-response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});
+  if(response.ok)location.reload();
+  else alert((await response.json()).message||'Response failed')
+});
+document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{
+  event.preventDefault();
+  const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});
+  if(response.ok)location.reload();
+  else alert((await response.json()).message||'Approval update failed')
+});
+document.querySelectorAll('.university-profile').forEach(form=>form.onsubmit=async event=>{
+  event.preventDefault();
+  const response=await fetch('/api/admin/universities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});
+  if(response.ok)location.reload();
+  else alert((await response.json()).message||'Profile update failed')
+});
+document.querySelector('.university-create').onsubmit=async event=>{
+  event.preventDefault();
+  const response=await fetch('/api/admin/universities/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))});
+  if(response.ok)location.reload();
+  else alert((await response.json()).message||'Registration failed')
+};
+</script>
+<script>
+document.querySelectorAll('.approval').forEach(form=>form.onsubmit=async event=>{
+  event.preventDefault();
+  const button=form.querySelector('button');
+  button.disabled=true;
+  button.textContent='Saving...';
+  const response=await fetch('/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});
+  if(response.ok){
+    button.textContent='Saved';
+    button.classList.add('saved');
+    setTimeout(()=>location.reload(),500)
+  }else{
+    button.disabled=false;
+    button.textContent='Save approval';
+    alert((await response.json()).message||'Approval update failed')
+  }
+});
+</script>
+</body>
+</html>
