@@ -107,6 +107,27 @@ button:hover { background: var(--ink-soft); transform: translateY(-1px); }
 .approval button:hover { background: var(--accent-dark); }
 .approval button.saved { background: var(--success); cursor: default; }
 .approval button:focus-visible { outline: 3px solid rgba(49, 124, 145, .28); outline-offset: 2px; }
+.university-create, .university-profile { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-items: center; }
+.university-create .save-button, .university-profile .save-button { width: max-content; min-height: 38px; padding: 10px 16px; background: var(--accent); color: white; font-weight: 700; box-shadow: 0 5px 12px rgba(230, 95, 56, .16); }
+.university-create .save-button:hover, .university-profile .save-button:hover { background: var(--accent-dark); }
+.approval .save-button { min-width: 125px; }
+.save-button:focus-visible { outline: 3px solid rgba(49, 124, 145, .28); outline-offset: 2px; }
+.admin-collapsible { margin: 0 0 22px; border: 1px solid #dce6e3; border-radius: 14px; background: #fff; box-shadow: 0 7px 20px rgba(23, 59, 59, .06); overflow: hidden; }
+.admin-collapsible summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; cursor: pointer; list-style: none; color: #173b3b; background: #f8fbfa; border-bottom: 1px solid transparent; }
+.admin-collapsible summary::-webkit-details-marker { display: none; }
+.admin-collapsible[open] summary { border-bottom-color: #dce6e3; }
+.admin-collapsible summary span { display: grid; gap: 3px; }
+.admin-collapsible summary b { font: 700 20px 'Outfit', sans-serif; }
+.admin-collapsible summary small { color: #6f807d; font: 12px 'Inter', sans-serif; }
+.admin-collapsible summary i { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #c8d8d4; border-radius: 50%; color: #1d6a7f; font: 700 18px Arial, sans-serif; transition: transform .2s, background .2s; }
+.admin-collapsible summary:hover i { background: #e6f3f7; }
+.admin-collapsible[open] summary i { transform: rotate(180deg); background: #e6f3f7; }
+.admin-collapsible > form { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.admin-collapsible > .university-profile + .approval { border-top: 1px solid #e3ece9; }
+.admin-collapsible .approval { padding: 14px 22px 18px; background: #fbfdfc; }
+.admin-collapsible .approval span { color: #5b716d; font: 700 12px 'Inter', sans-serif; }
+.admin-collapsible > .admin-empty { margin: 0; padding: 22px; color: #6f807d; font: 13px 'Inter', sans-serif; }
+.admin-collapsible > article { margin: 18px 22px; box-shadow: none; }
 .approval-button:focus-visible, .approval select:focus-visible {
   outline: 3px solid rgba(49, 124, 145, .28);
   outline-offset: 2px;
