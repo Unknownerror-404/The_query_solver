@@ -425,520 +425,375 @@ button:active, .btn:active { transform: translateY(0); }
 <link rel="stylesheet" href="/templates/shared.css">
 
 <style>
-:root{
-  --ink:#17332f;
-  --ink-2:#274741;
-  --muted:#6a7b77;
-  --paper:#f4f2ec;
-  --card:#fffefa;
-  --card-soft:#f8faf8;
-  --accent:#e5663d;
-  --accent-dark:#c84f2b;
-  --line:#dfe5e1;
-  --line-strong:#c9d3cf;
-  --blue:#317f93;
-  --blue-soft:#eaf4f6;
-  --gold:#c88a27;
-  --gold-soft:#fbf3e4;
-  --green:#23866f;
-  --green-soft:#eaf6f1;
-  --danger:#c94c4c;
-  --shadow-sm:0 4px 14px rgba(23,51,47,.055);
-  --shadow:0 12px 32px rgba(23,51,47,.075);
-  --radius-sm:8px;
-  --radius-md:16px;
-  --radius-lg:24px;
-  --space-1:8px;
-  --space-2:16px;
-  --space-3:24px;
-  --space-4:32px;
-  --space-5:40px;
-  --space-6:48px;
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-html,body{
-  margin:0;
-  min-height:100%;
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
-  background:var(--paper);
-  color:var(--ink);
-}
-body{overflow-x:hidden}
-a{color:inherit}
-header{
-  min-height:72px;
-  padding:16px 28px;
-  border-bottom:1px solid rgba(201,211,207,.8);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:24px;
-  flex-wrap:wrap;
-  background:rgba(244,242,236,.94);
-  position:sticky;
-  top:0;
-  z-index:50;
-  backdrop-filter:blur(14px);
-}
-.brand{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  min-width:220px;
-}
-.brand-mark{
-  width:42px;
-  height:42px;
-  display:grid;
-  place-items:center;
-  border-radius:var(--radius-sm);
-  background:var(--ink);
-  color:#fff;
-  font:800 16px/1 Inter,Arial,sans-serif;
-  box-shadow:0 7px 18px rgba(23,51,47,.16);
-}
-.brand-name{
-  font:750 15px/1.2 Inter,Arial,sans-serif;
-  letter-spacing:.2px;
-}
-.brand-sub{
-  margin-top:4px;
-  color:var(--accent);
-  font:750 8px/1 Inter,Arial,sans-serif;
-  letter-spacing:1.4px;
-  text-transform:uppercase;
-}
-.eyebrow{
-  margin:0 0 8px;
-  color:var(--accent);
-  font:750 11px/1.3 Inter,Arial,sans-serif;
-  letter-spacing:1.7px;
-  text-transform:uppercase;
-}
-.tagline{
-  color:var(--muted);
-  font:500 13px/1.4 Inter,Arial,sans-serif;
-  white-space:nowrap;
-}
-.tagline a{
-  color:var(--muted);
-  font-weight:650;
-  text-decoration:underline;
-  text-underline-offset:3px;
-}
-.nav{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-.nav-button{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:40px;
-  padding:8px 14px;
-  border:1px solid var(--line-strong);
-  border-radius:10px;
-  background:rgba(255,254,250,.92);
-  color:var(--ink);
-  text-decoration:none;
-  font:700 12px/1 Inter,Arial,sans-serif;
-  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease,border-color .18s ease;
-}
-.nav-button:hover{
-  background:#fff;
-  color:var(--blue);
-  border-color:var(--blue);
-  transform:translateY(-2px);
-  box-shadow:0 8px 18px rgba(49,127,147,.13);
-}
-.nav-button.active{
-  background:var(--ink);
-  border-color:var(--ink);
-  color:#fff;
-  box-shadow:0 8px 18px rgba(23,51,47,.17);
-}
-main{
-  width:min(1180px,100%);
-  margin:0 auto;
-  padding:var(--space-5) var(--space-3) var(--space-6);
-}
-.banner{
-  position:relative;
-  padding:var(--space-5);
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow);
-  overflow:hidden;
-  margin-bottom:var(--space-4);
-}
-.banner:before{
-  content:"";
-  position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  height:5px;
-  background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue));
-}
-.banner:after{
-  content:"";
-  position:absolute;
-  width:220px;
-  height:220px;
-  right:-90px;
-  bottom:-130px;
-  border-radius:50%;
-  background:rgba(49,127,147,.06);
-  pointer-events:none;
-}
-.banner h1{
-  margin:8px 0;
-  max-width:820px;
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:clamp(32px,4vw,46px);
-  line-height:1.08;
-  font-weight:500;
-  letter-spacing:-1.7px;
-}
-.banner p:last-child{
-  color:var(--muted);
-  font:14px/1.7 Inter,Arial,sans-serif;
-  max-width:760px;
-  margin:0;
-}
-.section-card,
-section{
-  position:relative;
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:var(--radius-md);
-  padding:var(--space-4);
-  margin-bottom:var(--space-3);
-  box-shadow:var(--shadow-sm);
-  overflow:hidden;
-  transition:box-shadow .2s ease,transform .2s ease,border-color .2s ease;
-}
-.section-card:hover,
-section:hover{
-  border-color:var(--line-strong);
-  box-shadow:var(--shadow);
-}
-.section-card:before,
-section:before{
-  content:"";
-  position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  height:4px;
-  background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue));
-}
-.section-card h2,
-section h2{
-  margin:0 0 var(--space-3);
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:24px;
-  line-height:1.25;
-  font-weight:500;
-  letter-spacing:-.5px;
-}
-article{
-  position:relative;
-  border-top:1px solid var(--line);
-  padding:var(--space-3) 0;
-}
-article:first-of-type{
-  border-top:0;
-  padding-top:0;
-}
-article h3,
-article h2{
-  margin:4px 0 8px;
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:19px;
-  line-height:1.3;
-  font-weight:500;
-}
-article p{
-  color:var(--muted);
-  font:14px/1.6 Inter,Arial,sans-serif;
-  margin:8px 0;
-}
-label{
-  display:block;
-  margin-top:var(--space-2);
-  color:var(--ink);
-  font:750 11px/1.3 Inter,Arial,sans-serif;
-  letter-spacing:.6px;
-  text-transform:uppercase;
-}
-input,
-select,
-textarea{
-  display:block;
-  width:100%;
-  font:14px/1.4 Inter,Arial,sans-serif;
-  padding:12px 14px;
-  margin-top:8px;
-  border-radius:var(--radius-sm);
-  border:1px solid var(--line-strong);
-  background:#fff;
-  color:var(--ink);
-  outline:none;
-  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
-}
-input:hover,
-select:hover,
-textarea:hover{
-  border-color:#aebdb8;
-}
-input:focus,
-select:focus,
-textarea:focus{
-  border-color:var(--accent);
-  background:#fff;
-  box-shadow:0 0 0 4px rgba(229,102,61,.11);
-}
-textarea{
-  min-height:104px;
-  resize:vertical;
-}
-button{
-  appearance:none;
-  background:var(--ink);
-  color:#fff;
-  border:1px solid var(--ink);
-  border-radius:var(--radius-sm);
-  min-height:42px;
-  padding:10px 18px;
-  font:750 12px/1 Inter,Arial,sans-serif;
-  letter-spacing:.1px;
-  cursor:pointer;
-  transition:transform .16s ease,background .18s ease,box-shadow .18s ease,border-color .18s ease;
-}
-button:hover{
-  background:var(--ink-2);
-  transform:translateY(-2px);
-  box-shadow:0 8px 18px rgba(23,51,47,.15);
-}
-button:active{
-  transform:translateY(0);
-  box-shadow:none;
-}
-button:focus-visible,
-.nav-button:focus-visible,
-.tagline a:focus-visible{
-  outline:3px solid rgba(49,127,147,.25);
-  outline-offset:3px;
-}
-button.approve-btn{
-  background:var(--green);
-  border-color:var(--green);
-}
-button.approve-btn:hover{
-  background:#196d5a;
-}
-button.reject-btn{
-  background:var(--danger);
-  border-color:var(--danger);
-}
-button.reject-btn:hover{
-  background:#a83c3c;
-}
-ul{
-  list-style:none;
-  padding:0;
-  margin:0;
-}
-li{
-  padding:12px 14px;
-  border-bottom:1px solid var(--line);
-  font:14px/1.5 Inter,Arial,sans-serif;
-  color:var(--ink);
-  transition:background .16s ease,padding-left .16s ease;
-}
-li:hover{
-  background:var(--card-soft);
-  padding-left:18px;
-}
-li:last-child{border-bottom:none}
-
-.section-card form,
-section form{
-  max-width:820px;
-}
-form button{
-  margin-top:var(--space-2);
-}
-form{
-  display:block;
-}
-form input[type="submit"],
-form button[type="submit"]{
-  min-width:132px;
-}
-
-section table,
-.section-card table{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  overflow:hidden;
-  border:1px solid var(--line);
-  border-radius:12px;
-  font-family:Inter,Arial,sans-serif;
-}
-section th,
-.section-card th{
-  padding:12px 14px;
-  background:#f2f6f4;
-  color:var(--ink-2);
-  font:750 11px/1.3 Inter,Arial,sans-serif;
-  text-transform:uppercase;
-  letter-spacing:.5px;
-  text-align:left;
-}
-section td,
-.section-card td{
-  padding:13px 14px;
-  border-top:1px solid var(--line);
-  font:13px/1.5 Inter,Arial,sans-serif;
-}
-section tr:hover td,
-.section-card tr:hover td{
-  background:#fafcfb;
-}
-
-section > p,
-.section-card > p{
-  color:var(--muted);
-  font:14px/1.6 Inter,Arial,sans-serif;
-}
-section strong,
-.section-card strong{
-  color:var(--ink);
-}
-
-section a:not(.nav-button),
-.section-card a:not(.nav-button){
-  color:var(--blue);
-  text-underline-offset:3px;
-  transition:color .16s ease;
-}
-section a:not(.nav-button):hover,
-.section-card a:not(.nav-button):hover{
-  color:var(--accent-dark);
-}
-
-@media(max-width:1050px){
-  header{
-    padding:16px 20px;
-  }
-  .tagline{
-    margin-left:auto;
-  }
-  .nav{
-    width:100%;
-    justify-content:flex-end;
-  }
-}
-@media(max-width:760px){
-  header{
-    align-items:flex-start;
-    flex-direction:column;
-    gap:12px;
-  }
-  .brand{
-    min-width:0;
-  }
-  .tagline{
-    margin:0;
-    white-space:normal;
-  }
-  .nav{
-    justify-content:flex-start;
-    gap:8px;
-  }
-  .nav-button{
-    min-height:42px;
-    padding:10px 13px;
-  }
-  main{
-    padding:var(--space-4) var(--space-2) var(--space-5);
-  }
-  .banner{
-    padding:var(--space-4) var(--space-3);
-    border-radius:var(--radius-md);
-  }
-  .section-card,
-  section{
-    padding:var(--space-3);
-  }
-}
-@media(max-width:520px){
-  .nav{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    width:100%;
-  }
-  .nav-button{
-    width:100%;
-  }
-  .banner h1{
-    font-size:32px;
-  }
-  .section-card h2,
-  section h2{
-    font-size:21px;
-  }
-  input,
-  select,
-  textarea{
-    font-size:16px;
-  }
-}
-@media(prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  *,
-  *::before,
-  *::after{
-    transition:none!important;
-    animation:none!important;
-  }
-}
-
-.account-menu{position:relative;display:flex;align-items:center;margin-left:auto}
-.account-trigger{display:flex;align-items:center;gap:10px;min-height:48px;margin:0;padding:7px 12px 7px 8px;border:1px solid var(--line-strong,#c7d3ce);border-radius:10px;background:rgba(255,255,255,.95);color:var(--ink);cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .15s ease}
-.account-trigger:hover{background:#fff;border-color:var(--ink);box-shadow:0 6px 18px rgba(22,51,47,.1)}
-.account-trigger:active{transform:translateY(1px)}
-.account-avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:8px;background:var(--ink);color:#fff;font:800 13px/1 Inter,Arial,sans-serif}
-.account-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.15}
-.account-info strong{font:800 11px/1.2 Inter,Arial,sans-serif;color:var(--ink)}
-.account-info small{display:block;max-width:190px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:600 10px/1.2 Inter,Arial,sans-serif}
-.account-chevron{font:800 16px/1 Inter,Arial,sans-serif;color:var(--muted);margin-left:2px;transition:transform .18s ease}
-.account-menu.open .account-chevron{transform:rotate(180deg)}
-.account-dropdown{position:absolute;top:calc(100% + 10px);right:0;width:250px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 18px 40px rgba(22,51,47,.14);opacity:0;visibility:hidden;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease,visibility .18s ease;z-index:200}
-.account-menu.open .account-dropdown{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
-.account-dropdown-user{display:flex;align-items:center;gap:10px;padding:6px}
-.account-dropdown-user>div{min-width:0}
-.account-dropdown-user strong{display:block;color:var(--ink);font:800 12px/1.2 Inter,Arial,sans-serif}
-.account-dropdown-user small{display:block;max-width:185px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:600 10px/1.2 Inter,Arial,sans-serif}
-.account-divider{height:1px;margin:10px 4px;background:var(--line)}
-.logout-action{display:flex!important;align-items:center;gap:9px;width:100%;padding:10px 8px;border-radius:8px;color:var(--ink)!important;text-decoration:none!important;font:800 12px/1 Inter,Arial,sans-serif;transition:background .18s ease,color .18s ease}
-.logout-action:hover{background:#f4f8f6;color:var(--accent)!important}
-.logout-icon{font-size:16px;line-height:1}
-@media(max-width:1050px){.account-menu{margin-left:0}}
-@media(max-width:760px){.account-menu{width:100%;margin:0}.account-trigger{width:auto}.account-dropdown{left:0;right:auto}.account-info small{max-width:160px}}
-@media(max-width:560px){.account-info{display:none}.account-chevron{display:none}.account-trigger{padding-right:8px}}
-
 /* Industry dashboard content styles */
 .industry-dashboard{--id-ink:#132d29;--id-ink-2:#21463f;--id-muted:#6b7b77;--id-paper:#f5f2ea;--id-card:#fffdf8;--id-line:#e4e0d5;--id-blue:#317c91;--id-teal:#278477;--id-orange:#e65f38;--id-gold:#c48622;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--id-ink)}
     .industry-dashboard *{box-sizing:border-box}.industry-dashboard .section-card{background:var(--id-card);border:1px solid var(--id-line);border-radius:20px;padding:28px;box-shadow:0 8px 30px rgba(19,45,41,.055);margin:0 0 24px}.industry-dashboard .eyebrow{margin:0 0 8px;color:var(--id-orange);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.industry-dashboard h1,.industry-dashboard h2,.industry-dashboard h3,.industry-dashboard h4{color:var(--id-ink);letter-spacing:-.025em}.industry-dashboard h2{font-size:24px;margin:0 0 8px}.industry-dashboard h3{font-size:18px}.industry-dashboard p{line-height:1.6}.industry-dashboard label{display:block;color:var(--id-ink);font-size:12px;font-weight:750;margin-bottom:6px}.industry-dashboard input,.industry-dashboard select,.industry-dashboard textarea{width:100%;border:1px solid var(--id-line);border-radius:10px;background:#fff;padding:11px 13px;color:var(--id-ink);font:inherit;font-size:13px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s}.industry-dashboard input:focus,.industry-dashboard select:focus,.industry-dashboard textarea:focus{border-color:var(--id-blue);box-shadow:0 0 0 3px rgba(49,124,145,.12);background:#fff}.industry-dashboard textarea{resize:vertical}.industry-dashboard button{border:0;border-radius:10px;background:var(--id-ink);color:#fff;padding:11px 16px;font:700 13px inherit;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}.industry-dashboard button:hover{background:var(--id-orange);transform:translateY(-1px);box-shadow:0 8px 18px rgba(230,95,56,.18)}.industry-dashboard details{transition:background .18s}.industry-dashboard summary{cursor:pointer}.industry-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#132d29 0%,#21463f 68%,#2b5a50 100%);color:#fff;border-radius:24px;padding:32px;margin-bottom:24px;box-shadow:0 14px 36px rgba(19,45,41,.14)}.industry-hero:after{content:"";position:absolute;width:240px;height:240px;border:1px solid rgba(255,255,255,.1);border-radius:50%;right:-80px;top:-110px}.industry-hero .eyebrow{color:#ff9e80}.industry-hero h1{position:relative;margin:0 0 8px;color:#fff;font-size:clamp(30px,4vw,44px);font-weight:750;line-height:1.05}.industry-hero p{position:relative;color:#c4d7d2;margin:0;max-width:760px;font-size:14px}.industry-profile-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end}.industry-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.industry-chip{padding:7px 11px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;color:#d8e6e2}.industry-chip strong{color:#fff}.industry-stats{display:grid;grid-template-columns:repeat(3,132px);gap:10px}.industry-stat{padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(255,255,255,.075);backdrop-filter:blur(8px)}.industry-stat strong{display:block;color:#fff;font-size:25px;line-height:1.1}.industry-stat span{display:block;color:#a9c4bd;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.08em;margin-top:6px}.industry-overview{display:grid;grid-template-columns:1.4fr .6fr;gap:18px;margin-bottom:24px}.industry-section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px}.industry-section-head h2{margin:0}.industry-section-head p{margin:3px 0 0;color:var(--id-muted);font-size:13px}.industry-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.industry-mini{padding:18px;border-radius:14px;background:#f7f8f4;border:1px solid var(--id-line)}.industry-mini strong{display:block;font-size:22px}.industry-mini span{color:var(--id-muted);font-size:11px}.industry-feed{display:grid;gap:14px}.industry-offer{padding:20px;border:1px solid var(--id-line);border-radius:16px;background:#fff;transition:transform .18s,box-shadow .18s,border-color .18s}.industry-offer:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(19,45,41,.07);border-color:#cbd7d2}.industry-offer-top,.industry-challenge-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.industry-offer h3,.industry-challenge h3{margin:0 0 5px}.industry-sub{margin:0;color:var(--id-muted);font-size:12px}.industry-status{display:inline-flex;align-items:center;white-space:nowrap;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}.industry-details{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#f8f7f1;color:#455650;font-size:13px}.industry-facts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.industry-fact{padding:7px 9px;border-radius:8px;background:#f2f6f4;color:#536560;font-size:11px}.industry-team{margin-top:14px;padding:14px;border-radius:12px;background:#eef6f8;border-left:3px solid var(--id-blue)}.industry-team p{margin:0;font-size:12px}.industry-team details{margin-top:9px}.industry-team summary{font-size:11px;color:var(--id-blue);font-weight:750}.industry-team ul{color:var(--id-muted);padding-left:18px}.industry-challenge{padding:22px;border:1px solid var(--id-line);border-radius:18px;background:#fff;margin-bottom:14px;transition:transform .18s,box-shadow .18s}.industry-challenge:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(19,45,41,.07)}.industry-category{display:inline-flex;padding:5px 9px;border-radius:7px;background:#fff0eb;color:#c74e2f;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.07em}.industry-supporters{color:var(--id-orange);font-weight:800}.industry-match{display:flex;align-items:center;gap:10px;margin:14px 0;padding:12px 14px;border:1px solid #cfe4e0;border-radius:12px;background:#edf7f6}.industry-match-score{font-size:20px;font-weight:850;color:var(--id-teal);white-space:nowrap}.industry-match-text{font-size:11px;color:#526660}.industry-academic{margin:12px 0;padding:13px 14px;border-radius:12px;background:#f2f7f8;font-size:12px;color:#405550}.industry-academic strong{color:var(--id-ink)}.industry-report{margin:10px 0;padding:12px;border-radius:10px;background:#faf9f5;font-size:12px}.industry-pledge{margin-top:16px;border:1px solid var(--id-line);border-radius:14px;background:#fafbf8;padding:16px}.industry-pledge summary{font-size:13px;font-weight:800;color:var(--id-ink)}.industry-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.industry-form-full{grid-column:1/-1}.industry-empty{padding:24px;border:1px dashed #cfd8d3;border-radius:14px;background:#fafbf8;color:var(--id-muted);font-size:13px}.industry-messages article{padding:16px;border:1px solid var(--id-line);border-radius:12px;background:#fff;margin-bottom:10px}.industry-messages h1{font-size:18px}.industry-messages form{display:grid;gap:10px;margin-top:14px}.industry-footer-note{font-size:11px;color:var(--id-muted);margin-top:12px}@media(max-width:850px){.industry-profile-grid,.industry-overview{grid-template-columns:1fr}.industry-stats{grid-template-columns:repeat(3,1fr)}.industry-form-grid{grid-template-columns:1fr}.industry-form-full{grid-column:auto}}@media(max-width:560px){.industry-hero{padding:24px}.industry-stats{grid-template-columns:1fr}.industry-stat{display:flex;justify-content:space-between;align-items:center}.industry-stat span{margin:0}.industry-section-head,.industry-offer-top,.industry-challenge-top{flex-direction:column;align-items:flex-start}.industry-dashboard .section-card{padding:20px;border-radius:16px}}
+
 </style>
+<style>
+
+/* Account menu — frontend-owned */
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.account-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  z-index: 10020;
+}
+
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  max-width: 290px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  background: #173b35;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 5px 16px rgba(20, 48, 43, .10);
+}
+
+.account-trigger:hover,
+.account-menu.open .account-trigger {
+  background: #12332e;
+}
+
+.account-avatar {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.account-info strong {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.account-info small {
+  max-width: 175px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+}
+
+.account-chevron {
+  margin-left: 2px;
+  color: rgba(255,255,255,.72);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform .18s ease;
+}
+
+.account-menu.open .account-chevron {
+  transform: rotate(180deg);
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  width: 245px;
+  display: none;
+  padding: 9px;
+  background: #fff;
+  color: #173b35;
+  border: 1px solid #dfe6e2;
+  border-radius: 13px;
+  box-shadow: 0 16px 36px rgba(16, 40, 35, .18);
+}
+
+.account-menu.open .account-dropdown {
+  display: block;
+}
+
+.account-dropdown-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+}
+
+.account-dropdown-user .account-avatar {
+  background: #173b35;
+}
+
+.account-dropdown-user strong {
+  display: block;
+  font-size: 13px;
+}
+
+.account-dropdown-user small {
+  display: block;
+  margin-top: 3px;
+  max-width: 185px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #71817c;
+  font-size: 11px;
+}
+
+.account-divider {
+  height: 1px;
+  margin: 4px 3px 7px;
+  background: #e9eeeb;
+}
+
+.logout-action {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 9px;
+  border-radius: 9px;
+  color: #c4513e;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.logout-action:hover {
+  background: #fff3ef;
+  color: #a63d2d;
+}
+
+.logout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  font-size: 16px;
+}
+
+/* Keep the injected notification/nav beside the account menu. */
+.header-right .nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 850px) {
+  .header-right {
+    gap: 8px;
+  }
+
+  .account-info small {
+    max-width: 120px;
+  }
+
+  .account-dropdown {
+    right: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .account-trigger {
+    max-width: 230px;
+  }
+
+  .account-dropdown {
+    width: min(245px, calc(100vw - 30px));
+  }
+}
+
+</style>
+
+<style id="university-color-scheme">
+/* Match the University Dashboard colour system */
+:root {
+  --primary: #1d6a7f;
+  --primary-dark: #134e5e;
+  --primary-light: #e6f3f7;
+  --ink: #0f1f1d;
+  --ink-secondary: #4a5c59;
+  --muted: #6f807d;
+  --surface: #ffffff;
+  --paper: #f5f2ea;
+  --line: #dedad0;
+  --line-light: #eae6dd;
+  --gold: #c48622;
+  --accent: #e65f38;
+}
+
+/* Industry hero — use the same light university treatment */
+.industry-hero {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.industry-hero::before {
+  background: linear-gradient(90deg, var(--accent), var(--gold), var(--primary)) !important;
+}
+.industry-hero h1,
+.industry-hero h2,
+.industry-hero h3 {
+  color: var(--ink) !important;
+}
+.industry-hero p,
+.industry-hero .industry-sub {
+  color: var(--ink-secondary) !important;
+}
+
+/* High Contrast Chips & Tags */
+.industry-chip {
+  background: #eef5f4 !important;
+  border: 1px solid #c0d5d0 !important;
+  color: #1a423b !important;
+  font-weight: 600 !important;
+}
+.industry-chip strong {
+  color: #112925 !important;
+  font-weight: 800 !important;
+}
+
+.industry-stat {
+  background: var(--primary-light) !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+.industry-stat strong {
+  color: var(--ink) !important;
+}
+.industry-stat span {
+  color: var(--muted) !important;
+}
+
+.tabs-bar {
+  background: transparent !important;
+  border-bottom-color: var(--line) !important;
+}
+.tab-btn {
+  background: var(--surface) !important;
+  color: var(--ink-secondary) !important;
+  border-color: var(--line) !important;
+}
+.tab-btn:hover {
+  background: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+}
+.tab-btn.active {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+}
+
+.section-card,
+.industry-offer,
+.industry-challenge,
+.independent-card {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+.section-card::before,
+.industry-offer::before,
+.industry-challenge::before {
+  background: linear-gradient(90deg, var(--accent), var(--gold), var(--primary)) !important;
+}
+
+.industry-details,
+.industry-fact,
+.industry-academic,
+.industry-report,
+.industry-pledge {
+  border-color: var(--line) !important;
+  background: var(--paper) !important;
+  color: var(--ink-secondary) !important;
+}
+
+.industry-match {
+  background: var(--primary-light) !important;
+  border-color: var(--line) !important;
+}
+.industry-match-score {
+  color: var(--primary-dark) !important;
+}
+
+.industry-form-grid input,
+.industry-form-grid select,
+.industry-form-grid textarea {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+.industry-form-grid input:focus,
+.industry-form-grid select:focus,
+.industry-form-grid textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(27,102,112,.12) !important;
+}
+.industry-form-grid button {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+.industry-form-grid button:hover {
+  background: var(--primary-dark) !important;
+}
+
+.industry-empty {
+  background: var(--paper) !important;
+  border-color: var(--line) !important;
+  color: var(--muted) !important;
+}
+
+.status-pill.accepted {
+  background: #e7f5ed !important;
+  color: #23734b !important;
+  border-color: #bfe1ce !important;
+}
+.status-pill.pending {
+  background: #fbf3dd !important;
+  color: #8a6818 !important;
+  border-color: #e8d59c !important;
+}
+.status-pill.rejected {
+  background: #fbe9e5 !important;
+  color: #a64635 !important;
+  border-color: #efc4ba !important;
+}
+</style>
+
 </head>
 <body>
 <header>
@@ -979,125 +834,366 @@ section a:not(.nav-button):hover,
     __NAV__
 </nav>
 </header>
-<main>
-  __INDUSTRY_HERO__
 
-  __METRICS_BAR__
+<main class="industry-dashboard">
+  <section class="industry-hero" id="industry-hero">
+    <div class="industry-profile-grid">
+      <div>
+        <p class="eyebrow">Industry & CSR partner</p>
+        <h1 id="partner-name">Loading partner workspace…</h1>
+        <p>Turn corporate expertise, funding and infrastructure into measurable civic impact across approved community challenges.</p>
+        <div class="industry-meta" id="partner-meta"></div>
+      </div>
+      <div class="industry-stats" id="industry-stats">
+        <div class="industry-stat"><strong id="metric-offers">—</strong><span>Support offers</span></div>
+        <div class="industry-stat"><strong id="metric-funding">—</strong><span>Funding pledged</span></div>
+        <div class="industry-stat"><strong id="metric-active">—</strong><span>Active pledges</span></div>
+      </div>
+    </div>
+  </section>
 
-  <div class="tabs-bar">
-    <button class="tab-btn active" onclick="showTab('challenges')">Explore Challenges</button>
-    <button class="tab-btn" onclick="showTab('commitments')">My Active Commitments</button>
-    <button class="tab-btn" onclick="showTab('new-offer')">+ Submit Support Offer</button>
-    <button class="tab-btn" onclick="showTab('pipeline')">University Innovations & Prototypes</button>
-    <button class="tab-btn" onclick="showTab('messages')">Project Messaging</button>
-    <button class="tab-btn" onclick="showTab('profile')">Partner Profile</button>
+  <div class="tabs-bar" role="tablist" aria-label="Industry dashboard sections">
+    <button class="tab-btn active" type="button" data-tab="overview">Overview</button>
+    <button class="tab-btn" type="button" data-tab="challenges">Explore Challenges</button>
+    <button class="tab-btn" type="button" data-tab="new-offer">+ Submit Support Offer</button>
+    <button class="tab-btn" type="button" data-tab="pipeline">University Innovations & Prototypes</button>
+    <button class="tab-btn" type="button" data-tab="messages">Project Messaging</button>
+    <button class="tab-btn" type="button" data-tab="profile">Partner Profile</button>
   </div>
-  __CONTENT__
+
+  <section class="tab-pane active" id="tab-overview">
+    <div class="section-card">
+      <div class="industry-section-head">
+        <div><h2>Active Support Pledges</h2><p>Track your contributions, commitments, and university project progress.</p></div>
+      </div>
+      <div id="offers-feed" class="industry-feed"><div class="industry-empty">Loading support activity…</div></div>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="tab-challenges">
+    <div class="section-card">
+      <div class="industry-section-head">
+        <div><h2>Explore Civic Challenges</h2><p>Government-validated challenges matched against your industry capabilities.</p></div>
+      </div>
+      <div id="challenges-feed" class="industry-feed"><div class="industry-empty">Loading approved challenges…</div></div>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="tab-new-offer">
+    <div class="section-card">
+      <div class="industry-section-head">
+        <div><h2>Submit a Support Offer</h2><p>Pledge mentorship, funding, prototyping, testing, deployment, or co-development support.</p></div>
+      </div>
+      <form id="support-offer-form" class="industry-form-grid">
+        <div><label for="offer-issue">Challenge</label><select id="offer-issue" name="issue_id" required><option value="">Loading approved challenges…</option></select></div>
+        <div><label for="offer-type">Support Category</label><select id="offer-type" name="support_type" required>
+          <option>Mentorship</option><option>Funding</option><option>Prototyping</option><option>Testing</option><option>Deployment</option><option>Co-development</option><option>Technology Transfer</option><option>Pilot Implementation</option>
+        </select></div>
+        <div><label for="funding-amount">CSR / Seed Funding (₹ optional)</label><input id="funding-amount" name="funding_amount" type="number" min="0" placeholder="e.g. 150000"></div>
+        <div><label for="resources">Committed Resources / Equipment</label><input id="resources" name="resources" placeholder="e.g. maker lab access, hardware"></div>
+        <div><label for="timeline">Target Timeline</label><input id="timeline" name="timeline" placeholder="e.g. 3-month prototype"></div>
+        <div class="industry-form-full"><label for="offer-details">Support & Implementation Scope</label><textarea id="offer-details" name="details" required placeholder="Describe how your organization will support the student/faculty team…"></textarea></div>
+        <div class="industry-form-full"><button type="submit">Submit Support Pledge</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="tab-pipeline">
+    <div class="section-card">
+      <div class="industry-section-head">
+        <div><h2>University Innovations & Prototypes</h2><p>See the academic institution, mentor, team stage, and pilot reports behind each challenge.</p></div>
+      </div>
+      <div id="pipeline-feed" class="industry-feed"><div class="industry-empty">Loading university pipeline…</div></div>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="tab-messages">
+    <div class="section-card">
+      <div class="industry-section-head">
+        <div><h2>Institutional Communications</h2><p>Communicate with university faculty mentors and government nodal officers.</p></div>
+      </div>
+      <div id="messages-feed" class="industry-messages"><div class="industry-empty">Loading messages…</div></div>
+      <form id="message-form" class="industry-form-grid">
+        <div><label for="message-recipient">Recipient email</label><input id="message-recipient" name="recipient" required placeholder="Recipient email"></div>
+        <div><label for="message-related">Issue / Project ID (optional)</label><input id="message-related" name="related_id" type="number" placeholder="e.g. 12"></div>
+        <div class="industry-form-full"><label for="message-body">Message</label><textarea id="message-body" name="message" required placeholder="Write your project message…"></textarea></div>
+        <div class="industry-form-full"><button type="submit">Send Message</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="tab-profile">
+    <div class="section-card">
+      <div class="industry-section-head">
+        <div><h2>Partner Profile</h2><p>Industry identity and collaboration capabilities currently registered with Civic Map.</p></div>
+      </div>
+      <div id="profile-feed"><div class="industry-empty">Loading partner profile…</div></div>
+    </div>
+  </section>
 </main>
 <div id="toast"></div>
-<script>
-document.addEventListener('DOMContentLoaded',()=>{
-  const user=document.querySelector('.account-info small')?.textContent.trim()||'';
-  document.querySelectorAll('.account-avatar').forEach(avatar=>{avatar.textContent=user.charAt(0).toUpperCase()||'U'});
-  document.querySelectorAll('.account-menu').forEach(menu=>{
-    const trigger=menu.querySelector('.account-trigger');
-    if(!trigger)return;
-    trigger.addEventListener('click',event=>{
-      event.stopPropagation();
-      const open=menu.classList.toggle('open');
-      trigger.setAttribute('aria-expanded',open?'true':'false');
-    });
-  });
-  document.addEventListener('click',event=>{
-    document.querySelectorAll('.account-menu.open').forEach(menu=>{
-      if(!menu.contains(event.target)){
-        menu.classList.remove('open');
-        menu.querySelector('.account-trigger')?.setAttribute('aria-expanded','false');
-      }
-    });
-  });
-});
-</script>
-<script>
-function showTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-  
-  const selectedBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(name));
-  if (selectedBtn) selectedBtn.classList.add('active');
-  
-  const pane = document.getElementById('tab-' + name);
-  if (pane) pane.classList.add('active');
-}
 
-function selectChallengeForOffer(issueId) {
-  showTab('new-offer');
-  const select = document.querySelector('#tab-new-offer select[name="issue_id"]');
-  if (select) {
-    select.value = issueId;
-    select.focus();
+<script>
+(() => {
+  "use strict";
+
+  const state = { data: null, activeTab: "overview" };
+  const $ = (s) => document.querySelector(s);
+
+  const esc = (v) => String(v ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+
+  const money = (v) => "₹ " + Number(v || 0).toLocaleString("en-IN");
+
+  function toast(message, ok = true) {
+    const el = $("#toast");
+    el.textContent = message;
+    el.style.display = "block";
+    el.style.background = ok ? "var(--ink)" : "#a83c3c";
+    clearTimeout(window.__industryToastTimer);
+    window.__industryToastTimer = setTimeout(() => el.style.display = "none", 3200);
   }
-}
 
-function filterChallenges() {
-  const district = document.getElementById('filter-district')?.value.toLowerCase() || '';
-  const domain = document.getElementById('filter-domain')?.value.toLowerCase() || '';
-  const search = document.getElementById('filter-search')?.value.toLowerCase() || '';
-  
-  document.querySelectorAll('.challenge-item-card').forEach(card => {
-    const cardDistrict = (card.dataset.district || '').toLowerCase();
-    const cardDomain = (card.dataset.domain || '').toLowerCase();
-    const cardText = card.textContent.toLowerCase();
-    
-    const matchDistrict = !district || cardDistrict.includes(district);
-    const matchDomain = !domain || cardDomain.includes(domain);
-    const matchSearch = !search || cardText.includes(search);
-    
-    card.style.display = (matchDistrict && matchDomain && matchSearch) ? 'flex' : 'none';
-  });
-}
+  function showTab(name) {
+    state.activeTab = name;
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
+  }
+  window.showTab = showTab;
 
-function showToast(msg, isError = false) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.style.background = isError ? '#e65f38' : '#111a19';
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, 3500);
-}
+  function renderHero(data) {
+    const p = data.partner;
+    $("#partner-name").textContent = p.name || "Industry Partner";
+    $("#partner-meta").innerHTML = [
+      `<span class="industry-chip"><strong>${esc(p.partner_type)}</strong></span>`,
+      `<span class="industry-chip">District · <strong>${esc(p.district)}</strong></span>`,
+      `<span class="industry-chip">Domains · <strong>${esc(p.domains)}</strong></span>`,
+      `<span class="industry-chip">Contact · <strong>${esc(p.contact_email)}</strong></span>`
+    ].join("");
+    $("#metric-offers").textContent = data.metrics.total_offers;
+    $("#metric-funding").textContent = money(data.metrics.total_funding);
+    $("#metric-active").textContent = data.metrics.accepted_offers;
+  }
 
-// AJAX forms handler
-document.querySelectorAll('form').forEach(form => {
-  form.onsubmit = async event => {
+  function renderOffers(data) {
+    const root = $("#offers-feed");
+    if (!data.offers.length) {
+      root.innerHTML = `<div class="industry-empty">No support offers submitted yet. Explore approved challenges to make your first pledge.</div>`;
+      return;
+    }
+
+    root.innerHTML = data.offers.map(offer => {
+      const team = data.teams.find(t => Number(t.issue_id) === Number(offer.issue_id));
+      const milestones = team?.milestones || [];
+      return `
+        <article class="industry-offer">
+          <div class="industry-offer-top">
+            <div><h3>${esc(offer.title)}</h3><p class="industry-sub">${esc(offer.district || "")} · ${esc(offer.category || "Civic")}</p></div>
+            <span class="industry-status status-pill">${esc(offer.status)}</span>
+          </div>
+          <div class="industry-facts">
+            <span class="industry-fact">${esc(offer.support_type)}</span>
+            ${offer.funding_amount ? `<span class="industry-fact">${money(offer.funding_amount)}</span>` : ""}
+            ${offer.timeline ? `<span class="industry-fact">${esc(offer.timeline)}</span>` : ""}
+          </div>
+          <div class="industry-details"><strong>Details:</strong> ${esc(offer.details)}</div>
+          ${offer.resources ? `<p class="industry-sub"><strong>Committed resources:</strong> ${esc(offer.resources)}</p>` : ""}
+          ${offer.commitment_note ? `<p class="industry-sub"><strong>Nodal / University response:</strong> ${esc(offer.commitment_note)}</p>` : ""}
+          ${team ? `<div class="industry-team">
+            <p><strong>University team:</strong> ${esc(team.name)} · Mentor: <strong>${esc(team.faculty_mentor)}</strong> · Stage: <strong>${esc(team.status)}</strong></p>
+            ${milestones.length ? `<details><summary>View milestones (${milestones.length})</summary><ul>${milestones.map(m => `<li><strong>${esc(m.title)}</strong> · ${esc(m.status)} · ${esc(m.due_date || "No deadline")}</li>`).join("")}</ul></details>` : ""}
+          </div>` : ""}
+        </article>`;
+    }).join("");
+  }
+
+  function challengeCard(issue, data) {
+    const assignment = data.assignments[String(issue.id)] || data.assignments[issue.id];
+    const team = data.teams.find(t => Number(t.issue_id) === Number(issue.id));
+    const reports = data.reports.filter(r => Number(r.issue_id) === Number(issue.id));
+    const uni = assignment ? data.universities.find(u => Number(u.id) === Number(assignment.university_id)) : null;
+    const match = issue.match || {};
+    const expertise = match.expertise_matches?.length ? match.expertise_matches.join(", ") : "No direct domain keyword overlap";
+
+    return `
+      <article class="industry-challenge">
+        <div class="industry-challenge-top"><div>
+          <span class="industry-category">${esc(issue.category || "Civic Issue")}</span>
+          <h3>${esc(issue.title)}</h3>
+          <p class="industry-sub">Location: <strong>${esc(issue.district || "Jharkhand")}</strong> · ${esc(issue.block || "")} · <span class="industry-supporters">${Number(issue.supporters || 0)} citizen supporters</span></p>
+        </div></div>
+        <p>${esc(issue.description || "")}</p>
+        <div class="industry-match">
+          <strong class="industry-match-score">${Number(match.score || 0)}</strong>
+          <span class="industry-match-text"><strong>AI-assisted partner match</strong><br>Expertise: ${esc(expertise)} · Location: ${esc(match.location_text || "nearest available location")}</span>
+        </div>
+        ${assignment ? `<div class="industry-academic">
+          <strong>Assigned Institution:</strong> ${esc(uni?.name || "Assigned University")} · Status: <strong>${esc(assignment.status || "")}</strong>
+          ${team ? `<br><strong>Faculty Mentor / Team:</strong> ${esc(team.faculty_mentor)} · Stage: <strong>${esc(team.status)}</strong>` : "<br><em>Team forming in progress</em>"}
+        </div>` : ""}
+        ${reports.length ? `<details class="industry-report"><summary>View Academic Pilot Reports (${reports.length})</summary>
+          ${reports.map(r => `<div><strong>${esc(r.title)}</strong>: ${esc(String(r.summary || "").slice(0,180))}${String(r.summary || "").length > 180 ? "…" : ""}</div>`).join("")}
+        </details>` : ""}
+        <details class="industry-pledge"><summary>+ Submit Support Offer for this Challenge</summary>
+          <form class="inline-offer-form industry-form-grid" data-issue-id="${Number(issue.id)}">
+            <div><label>Support Category</label><select name="support_type" required>
+              <option>Mentorship</option><option>Funding</option><option>Prototyping</option><option>Testing</option><option>Deployment</option><option>Co-development</option><option>Technology Transfer</option><option>Pilot Implementation</option>
+            </select></div>
+            <div><label>CSR / Seed Funding (₹ optional)</label><input type="number" name="funding_amount" min="0" placeholder="e.g. 150000"></div>
+            <div><label>Committed Resources</label><input name="resources" placeholder="Equipment, lab access, expertise…"></div>
+            <div><label>Target Timeline</label><input name="timeline" placeholder="e.g. 3-month prototype"></div>
+            <div class="industry-form-full"><label>Support & Implementation Scope</label><textarea name="details" required placeholder="Describe your support…"></textarea></div>
+            <div class="industry-form-full"><button type="submit">Submit Support Pledge</button></div>
+          </form>
+        </details>
+      </article>`;
+  }
+
+  function renderChallenges(data) {
+    const root = $("#challenges-feed");
+    if (!data.issues.length) {
+      root.innerHTML = `<div class="industry-empty">No approved challenges are currently awaiting industry partnership.</div>`;
+      return;
+    }
+    root.innerHTML = data.issues.map(i => challengeCard(i, data)).join("");
+    root.querySelectorAll(".inline-offer-form").forEach(f => f.addEventListener("submit", submitOffer));
+  }
+
+  function renderPipeline(data) {
+    const root = $("#pipeline-feed");
+    if (!data.teams.length) {
+      root.innerHTML = `<div class="industry-empty">No university project teams are currently available.</div>`;
+      return;
+    }
+    root.innerHTML = data.teams.map(team => {
+      const issue = data.issues.find(i => Number(i.id) === Number(team.issue_id));
+      return `<article class="industry-offer">
+        <div class="industry-offer-top"><div><h3>${esc(team.name)}</h3><p class="industry-sub">${esc(issue?.title || "Project")} · Mentor: ${esc(team.faculty_mentor || "Not listed")}</p></div>
+        <span class="industry-status status-pill">${esc(team.status || "Team Formed")}</span></div>
+        <div class="industry-details"><strong>Members:</strong> ${esc((team.members || []).join(", "))}</div>
+        ${team.milestones?.length ? `<details class="industry-report"><summary>Milestones (${team.milestones.length})</summary><ul>${team.milestones.map(m => `<li><strong>${esc(m.title)}</strong> · ${esc(m.status)} · ${esc(m.due_date || "No deadline")}</li>`).join("")}</ul></details>` : ""}
+      </article>`;
+    }).join("");
+  }
+
+  function renderMessages(data) {
+    const root = $("#messages-feed");
+    root.innerHTML = data.messages.length
+      ? data.messages.map(m => `<article><p><strong>${esc(m.sender)}</strong> → <strong>${esc(m.recipient)}</strong></p><p>${esc(m.message)}</p><small>${esc(m.created_at || "")}</small></article>`).join("")
+      : `<div class="industry-empty">No project messages yet.</div>`;
+  }
+
+  function renderProfile(data) {
+    const p = data.partner;
+    $("#profile-feed").innerHTML = `
+      <div class="industry-mini-grid">
+        <div class="industry-mini"><strong>${esc(p.name)}</strong><span>Registered partner</span></div>
+        <div class="industry-mini"><strong>${esc(p.partner_type)}</strong><span>Partner type</span></div>
+        <div class="industry-mini"><strong>${esc(p.district)}</strong><span>District</span></div>
+      </div>
+      <div class="industry-details" style="margin-top:16px"><strong>Domains:</strong> ${esc(p.domains)}<br><strong>Contact:</strong> ${esc(p.contact_email)}</div>`;
+  }
+
+  function populateOfferOptions(data) {
+    const select = $("#offer-issue");
+    select.innerHTML = data.issues.length
+      ? `<option value="">Choose a challenge…</option>` + data.issues.map(i => `<option value="${Number(i.id)}">${esc(i.title)} · ${esc(i.district || "")}</option>`).join("")
+      : `<option value="">No approved challenges available</option>`;
+  }
+
+  async function postJson(endpoint, payload) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    let result = {};
+    try { result = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(result.message || "Request failed.");
+    return result;
+  }
+
+  async function submitOffer(event) {
     event.preventDefault();
-    const endpoint = form.dataset.endpoint || form.action;
-    if (!endpoint) return;
-    
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData);
-    
-    if (event.submitter && event.submitter.name) {
-      data[event.submitter.name] = event.submitter.value;
-    }
-    
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    data.issue_id = form.dataset.issueId || data.issue_id;
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      
-      const result = await response.json();
-      if (response.ok) {
-        showToast(result.message || 'Action completed successfully!');
-        setTimeout(() => location.reload(), 800);
-      } else {
-        showToast(result.message || 'Submission failed. Please check inputs.', true);
+      const result = await postJson("/api/industry/offers", data);
+      toast(result.message || "Support offer submitted.");
+      await loadDashboard();
+    } catch (e) { toast(e.message, false); }
+  }
+
+  async function submitMessage(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    if (!data.related_id) delete data.related_id;
+    try {
+      const result = await postJson("/api/messages", data);
+      toast(result.message || "Message sent.");
+      form.reset();
+      await loadDashboard();
+      showTab("messages");
+    } catch (e) { toast(e.message, false); }
+  }
+
+  async function loadDashboard() {
+    try {
+      const response = await fetch("/api/industry/dashboard", {headers: {"Accept": "application/json"}});
+      if (response.status === 401 || response.status === 403) {
+        window.location.href = "/login";
+        return;
       }
-    } catch(err) {
-      showToast('Network error while processing request.', true);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Dashboard data could not be loaded.");
+      state.data = data;
+      renderHero(data);
+      renderOffers(data);
+      renderChallenges(data);
+      renderPipeline(data);
+      renderMessages(data);
+      renderProfile(data);
+      populateOfferOptions(data);
+    } catch (e) {
+      console.error(e);
+      $("#partner-name").textContent = "Industry dashboard unavailable";
+      $("#offers-feed").innerHTML = `<div class="industry-empty">${esc(e.message)}</div>`;
     }
-  };
-});
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
+
+    const user = document.querySelector(".account-info small")?.textContent.trim() || "";
+    document.querySelectorAll(".account-avatar").forEach(a => a.textContent = user.charAt(0).toUpperCase() || "U");
+
+    document.querySelectorAll(".account-menu").forEach(menu => {
+      const trigger = menu.querySelector(".account-trigger");
+      if (!trigger) return;
+      trigger.addEventListener("click", e => {
+        e.stopPropagation();
+        const open = menu.classList.toggle("open");
+        trigger.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    });
+
+    document.addEventListener("click", e => {
+      document.querySelectorAll(".account-menu.open").forEach(menu => {
+        if (!menu.contains(e.target)) {
+          menu.classList.remove("open");
+          menu.querySelector(".account-trigger")?.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+
+    $("#support-offer-form")?.addEventListener("submit", submitOffer);
+    $("#message-form")?.addEventListener("submit", submitMessage);
+    loadDashboard();
+  });
+})();
 </script>
 </body>
 </html>

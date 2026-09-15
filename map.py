@@ -1800,7 +1800,10 @@ class MapHandler(BaseHTTPRequestHandler):
             if not user_can_access_portal(user, "university"):
                 self.send_error(403)
                 return
-            self.send_html(render_university_dashboard(user).replace("__NAV__", render_role_nav(user, "university")))
+            template = UNIVERSITY_DASHBOARD_FILE.read_text(encoding="utf-8")
+            template = template.replace("__USER__", html.escape(user))
+            template = template.replace("__NAV__", render_role_nav(user, "university"))
+            self.send_html(template)
             return
         if path == "/industry-dashboard":
             user = self.session_user()
@@ -1810,7 +1813,10 @@ class MapHandler(BaseHTTPRequestHandler):
             if not user_can_access_portal(user, "industry"):
                 self.send_error(403)
                 return
-            self.send_html(render_industry_dashboard(user).replace("__NAV__", render_role_nav(user, "industry")))
+            template = INDUSTRY_DASHBOARD_FILE.read_text(encoding="utf-8")
+            template = template.replace("__USER__", html.escape(user))
+            template = template.replace("__NAV__", render_role_nav(user, "industry"))
+            self.send_html(template)
             return
         if path == "/contractor-dashboard":
             user = self.session_user()
@@ -1851,6 +1857,293 @@ class MapHandler(BaseHTTPRequestHandler):
                 .replace("__NAV__", render_role_nav(user, "government"))
             )
             return
+        if path == "/api/industry/dashboard":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            partner = industry_for_user(user)
+            if partner is None:
+                self.send_json({"message": "Industry account required."}, status=403)
+                return
+
+            offers = load_partner_offers(user)
+            assignments = load_assignments()
+            universities = load_universities()
+            teams = load_teams()
+            reports = load_university_reports()
+
+            approved_issues = sorted(
+                (issue for issue in ISSUES if issue.get("moderation_status", "Pending") == "Approved"),
+                key=lambda issue: industry_match_score(partner, issue)[0],
+                reverse=True,
+            )
+
+            def safe_issue(issue):
+                score, expertise_matches, location_match = industry_match_score(partner, issue)
+                return {
+                    "id": issue.get("id"),
+                    "title": issue.get("title", ""),
+                    "description": issue.get("description", ""),
+                    "district": issue.get("district", ""),
+                    "block": issue.get("block", ""),
+                    "category": issue.get("category", ""),
+                    "supporters": issue.get("supporters", 0),
+                    "match": {
+                        "score": score,
+                        "expertise_matches": sorted(expertise_matches),
+                        "location_text": "same district" if location_match else "nearest available location",
+                    },
+                }
+
+            safe_teams = []
+            for team in teams:
+                item = {
+                    "id": team.get("id"),
+                    "issue_id": team.get("issue_id"),
+                    "university_id": team.get("university_id"),
+                    "name": team.get("name", ""),
+                    "faculty_mentor": team.get("faculty_mentor", ""),
+                    "members": team.get("members", []),
+                    "status": team.get("status", ""),
+                    "milestones": [],
+                }
+                for milestone in load_milestones(team["id"]):
+                    item["milestones"].append({
+                        "id": milestone.get("id"),
+                        "title": milestone.get("title", ""),
+                        "status": milestone.get("status", ""),
+                        "due_date": str(milestone.get("due_date") or ""),
+                        "testing_result": milestone.get("testing_result", ""),
+                    })
+                safe_teams.append(item)
+
+            safe_assignments = {}
+            for issue_id, assignment in assignments.items():
+                safe_assignments[str(issue_id)] = {
+                    "issue_id": assignment.get("issue_id", issue_id),
+                    "university_id": assignment.get("university_id"),
+                    "status": assignment.get("status", ""),
+                    "response_reason": assignment.get("response_reason", ""),
+                }
+
+            safe_reports = [{
+                "id": report.get("id"),
+                "issue_id": report.get("issue_id"),
+                "title": report.get("title", ""),
+                "summary": report.get("summary", ""),
+            } for report in reports]
+
+            safe_messages = [{
+                "id": message.get("id"),
+                "sender": message.get("sender", ""),
+                "recipient": message.get("recipient", ""),
+                "message": message.get("message", ""),
+                "related_id": message.get("related_id"),
+                "created_at": str(message.get("created_at") or ""),
+            } for message in load_messages(user)]
+
+            safe_offers = [{
+                "id": offer.get("id"),
+                "issue_id": offer.get("issue_id"),
+                "title": offer.get("title", ""),
+                "district": offer.get("district", ""),
+                "category": offer.get("category", ""),
+                "support_type": offer.get("support_type", ""),
+                "details": offer.get("details", ""),
+                "status": offer.get("status", ""),
+                "funding_amount": offer.get("funding_amount", 0),
+                "resources": offer.get("resources", ""),
+                "timeline": offer.get("timeline", ""),
+                "commitment_note": offer.get("commitment_note", ""),
+            } for offer in offers]
+
+            safe_universities = [{
+                "id": university.get("id"),
+                "name": university.get("name", ""),
+                "contact_email": university.get("contact_email", ""),
+                "district": university.get("district", ""),
+                "domains": university.get("domains", ""),
+            } for university in universities]
+
+            self.send_json({
+                "user": user,
+                "partner": {
+                    "id": partner.get("id"),
+                    "name": partner.get("name", ""),
+                    "partner_type": partner.get("partner_type", ""),
+                    "district": partner.get("district", ""),
+                    "domains": partner.get("domains", ""),
+                    "contact_email": partner.get("contact_email", ""),
+                },
+                "metrics": {
+                    "total_offers": len(offers),
+                    "total_funding": sum(int(offer.get("funding_amount") or 0) for offer in offers),
+                    "accepted_offers": sum(1 for offer in offers if offer.get("status") in {"Accepted", "Delivered"}),
+                },
+                "offers": safe_offers,
+                "issues": [safe_issue(issue) for issue in approved_issues],
+                "assignments": safe_assignments,
+                "universities": safe_universities,
+                "teams": safe_teams,
+                "reports": safe_reports,
+                "messages": safe_messages,
+            })
+            return
+
+        if path == "/api/university/dashboard":
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+
+            university = university_for_user(user)
+            if university is None:
+                self.send_json({"message": "University account required."}, status=403)
+                return
+
+            assignments = load_university_assignments(user)
+            university_teams = [
+                team for team in load_teams()
+                if team.get("university_id") == university["id"]
+            ]
+            reports = [
+                report for report in load_university_reports()
+                if report.get("university_id") == university["id"]
+            ]
+            assignment_ids = {assignment["issue_id"] for assignment in assignments}
+            university_milestones = [
+                milestone
+                for team in university_teams
+                for milestone in load_milestones(team["id"])
+            ]
+            university_offers = [
+                offer
+                for offer in load_all_partner_offers()
+                if offer.get("issue_id") in assignment_ids
+            ]
+            messages_for_user = load_messages(user)
+
+            safe_assignments = [{
+                "issue_id": assignment.get("issue_id"),
+                "university_id": assignment.get("university_id"),
+                "title": assignment.get("title", ""),
+                "description": assignment.get("description", ""),
+                "district": assignment.get("district", ""),
+                "block": assignment.get("block", ""),
+                "category": assignment.get("category", ""),
+                "status": assignment.get("status", ""),
+                "response_reason": assignment.get("response_reason", ""),
+            } for assignment in assignments]
+
+            safe_teams = []
+            for team in university_teams:
+                safe_teams.append({
+                    "id": team.get("id"),
+                    "issue_id": team.get("issue_id"),
+                    "university_id": team.get("university_id"),
+                    "name": team.get("name", ""),
+                    "faculty_mentor": team.get("faculty_mentor", ""),
+                    "members": team.get("members", []),
+                    "status": team.get("status", "Team Formed"),
+                    "ip_outcome": team.get("ip_outcome", ""),
+                    "startup_outcome": team.get("startup_outcome", ""),
+                    "impact_summary": team.get("impact_summary", ""),
+                })
+
+            safe_milestones = [{
+                "id": milestone.get("id"),
+                "team_id": milestone.get("team_id"),
+                "title": milestone.get("title", ""),
+                "status": milestone.get("status", "Pending"),
+                "due_date": str(milestone.get("due_date") or ""),
+                "deliverable": milestone.get("deliverable", ""),
+                "testing_result": milestone.get("testing_result", ""),
+            } for milestone in university_milestones]
+
+            safe_reports = [{
+                "id": report.get("id"),
+                "issue_id": report.get("issue_id"),
+                "university_id": report.get("university_id"),
+                "title": report.get("title", ""),
+                "summary": report.get("summary", ""),
+                "deliverables": report.get("deliverables", ""),
+                "submitted_by": report.get("submitted_by", ""),
+                "created_at": str(report.get("created_at") or ""),
+            } for report in reports]
+
+            safe_offers = [{
+                "id": offer.get("id"),
+                "issue_id": offer.get("issue_id"),
+                "partner_name": offer.get("partner_name", "Industry partner"),
+                "title": offer.get("title", "Assigned challenge"),
+                "support_type": offer.get("support_type", ""),
+                "details": offer.get("details", ""),
+                "status": offer.get("status", "Offered"),
+                "commitment_note": offer.get("commitment_note", ""),
+            } for offer in university_offers]
+
+            safe_messages = [{
+                "id": message.get("id"),
+                "sender": message.get("sender", ""),
+                "recipient": message.get("recipient", ""),
+                "message": message.get("message", ""),
+                "related_id": message.get("related_id"),
+                "created_at": str(message.get("created_at") or ""),
+            } for message in messages_for_user[:50]]
+
+            # Proposals are returned for display, while submission continues
+            # through the existing /api/proposals endpoint.
+            assignment_id_set = {assignment["issue_id"] for assignment in assignments}
+            safe_proposals = [{
+                "id": proposal.get("id"),
+                "issue_id": proposal.get("issue_id"),
+                "title": proposal.get("title", ""),
+                "description": proposal.get("description", ""),
+                "submitted_by": proposal.get("submitted_by", ""),
+                "status": proposal.get("status", ""),
+            } for proposal in PROPOSALS
+            if proposal.get("issue_id") in assignment_id_set]
+
+            safe_history = []
+            for team in university_teams:
+                for history in load_status_history(team["id"]):
+                    safe_history.append({
+                        "team_id": team.get("id"),
+                        "status": history.get("status", ""),
+                        "changed_by": history.get("changed_by", ""),
+                        "changed_at": str(history.get("changed_at") or ""),
+                    })
+
+            self.send_json({
+                "user": user,
+                "university": {
+                    "id": university.get("id"),
+                    "name": university.get("name", ""),
+                    "contact_email": university.get("contact_email", ""),
+                    "district": university.get("district", ""),
+                    "approval_status": university.get("approval_status", "Active"),
+                },
+                "metrics": {
+                    "assigned_challenges": len(assignments),
+                    "active_teams": len(university_teams),
+                    "completed_milestones": sum(
+                        1 for milestone in university_milestones
+                        if milestone.get("status") == "Completed"
+                    ),
+                    "industry_offers": len(university_offers),
+                },
+                "assignments": safe_assignments,
+                "teams": safe_teams,
+                "milestones": safe_milestones,
+                "reports": safe_reports,
+                "offers": safe_offers,
+                "messages": safe_messages,
+                "proposals": safe_proposals,
+                "status_history": safe_history,
+            })
+            return
+
         if path not in ("/","/index.html"):
             self.send_error(404)
             return

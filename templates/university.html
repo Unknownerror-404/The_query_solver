@@ -36,7 +36,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { min-height: 100%; font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.5; }
 
-/* Top Header */
+/* Sticky Header */
 header {
   position: sticky;
   top: 0;
@@ -125,7 +125,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; height: 6px;
-  background: linear-gradient(90deg, var(--primary), var(--gold), var(--accent));
+  background: linear-gradient(90deg, var(--accent), var(--gold), var(--primary));
 }
 .hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
 .hero-eyebrow {
@@ -134,7 +134,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
   gap: 6px;
   padding: 4px 10px;
   background: var(--primary-light);
-  color: var(--primary);
+  color: var(--primary-dark);
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
@@ -142,7 +142,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
   letter-spacing: 1px;
   margin-bottom: 12px;
 }
-.hero-title { font-family: 'Outfit', sans-serif; font-size: clamp(26px, 3.5vw, 36px); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 10px; }
+.hero-title { font-family: 'Outfit', sans-serif; font-size: clamp(26px, 3.5vw, 36px); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 10px; color: var(--ink); }
 .hero-desc { color: var(--ink-secondary); font-size: 14px; line-height: 1.6; max-width: 780px; }
 
 .inst-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
@@ -150,13 +150,13 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-secondary);
+  padding: 7px 12px;
+  background: #eef5f4;
+  border: 1px solid #c0d5d0;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #112925;
 }
 
 /* Metrics Grid */
@@ -205,22 +205,24 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
 }
 .tab-btn {
   padding: 10px 18px;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--line);
+  background: var(--surface);
   font-family: 'Outfit', sans-serif;
   font-size: 15px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--ink-secondary);
   cursor: pointer;
   border-bottom: 3px solid transparent;
   margin-bottom: -2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   transition: all .2s;
   white-space: nowrap;
 }
-.tab-btn:hover { color: var(--primary); }
+.tab-btn:hover { background: var(--primary-light); color: var(--primary-dark); }
 .tab-btn.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
 }
 
 .tab-pane { display: none; }
@@ -228,16 +230,26 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Cards & Articles */
-.challenge-card {
+article, .challenge-card, .independent-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 28px;
   margin-bottom: 24px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow .2s;
+  transition: box-shadow .2s, transform .2s;
+  overflow: hidden;
 }
-.challenge-card:hover { box-shadow: var(--shadow-md); }
+article:hover, .challenge-card:hover, .independent-card:hover {
+  box-shadow: var(--shadow-md);
+}
+article::before, .challenge-card::before, .independent-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--accent), var(--gold), var(--primary));
+}
 
 .card-header-row {
   display: flex;
@@ -247,27 +259,29 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
-.challenge-title { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 600; color: var(--ink); }
+.challenge-title, article h2 { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+
 .status-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.status-pill.accepted { background: var(--green-light); color: var(--green); border: 1px solid rgba(27,128,78,0.2); }
-.status-pill.pending { background: var(--gold-light); color: var(--gold); border: 1px solid rgba(196,134,34,0.2); }
-.status-pill.assigned { background: var(--primary-light); color: var(--primary); border: 1px solid rgba(29,106,127,0.2); }
-.status-pill.rejected { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(230,95,56,0.2); }
+.status-pill.accepted { background: #e7f5ed; color: #23734b; border: 1px solid #bfe1ce; }
+.status-pill.pending { background: #fbf3dd; color: #8a6818; border: 1px solid #e8d59c; }
+.status-pill.assigned { background: var(--primary-light); color: var(--primary-dark); border: 1px solid rgba(29,106,127,0.25); }
+.status-pill.rejected { background: #fbe9e5; color: #a64635; border: 1px solid #efc4ba; }
 .status-pill.clarification { background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
 
-.meta-row { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 13px; margin-bottom: 16px; }
-.meta-item { display: inline-flex; align-items: center; gap: 6px; }
-.meta-item strong { color: var(--ink-secondary); }
+.meta-row, .info-strip {
+  display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 13px; margin-bottom: 16px;
+}
+.meta-item strong, .info-strip strong { color: var(--ink-secondary); }
 
 .challenge-desc { color: var(--ink-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
 
@@ -290,58 +304,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
   gap: 8px;
 }
 
-/* Lifecycle Stepper */
-.stage-stepper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 16px 0 20px;
-  position: relative;
-  overflow-x: auto;
-  padding-bottom: 8px;
-}
-.stage-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  text-align: center;
-  min-width: 90px;
-  position: relative;
-}
-.step-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--line);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--muted);
-  transition: all .2s;
-}
-.stage-step.active .step-circle {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-  box-shadow: 0 0 0 4px var(--primary-light);
-}
-.stage-step.completed .step-circle {
-  background: var(--green);
-  border-color: var(--green);
-  color: white;
-}
-.stage-step.active span { color: var(--primary); font-weight: 700; }
-.stage-step.completed span { color: var(--green); }
-
 /* Form Controls */
-label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink); margin-bottom: 6px; }
+label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink); margin-bottom: 6px; }
 input, select, textarea {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
@@ -359,23 +323,23 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(29,106,127,0.15);
 }
-textarea { min-height: 80px; resize: vertical; }
+textarea { min-height: 90px; resize: vertical; }
 
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.form-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.form-full { grid-column: 1 / -1; }
 
 button, .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--ink);
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 10px 18px;
+  padding: 11px 18px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all .2s;
   text-decoration: none;
@@ -389,50 +353,23 @@ button:active, .btn:active { transform: translateY(0); }
 .btn-accent:hover { background: #d44d27; }
 .btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .btn-outline:hover { background: var(--surface); border-color: var(--primary); color: var(--primary); }
-.btn-sm { padding: 6px 12px; font-size: 12px; }
 
-/* Milestones and Outcomes list */
-.milestone-item {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
-  margin-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.milestone-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--ink); }
-.milestone-sub { font-size: 12px; color: var(--muted); }
-
-/* Offers Grid */
-.offers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 14px; }
-.offer-box {
-  background: var(--surface);
+/* Offers and Reports Box */
+.offer-box, .report-box, .result-box {
+  background: var(--paper);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 16px;
-  box-shadow: var(--shadow-sm);
-}
-.offer-type-tag {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  background: var(--gold-light);
-  color: var(--gold);
-  margin-bottom: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  color: var(--ink-secondary);
 }
 
 /* Empty State */
 .empty-state {
   text-align: center;
   padding: 48px 24px;
-  background: var(--surface);
+  background: var(--paper);
   border: 1px dashed var(--line);
   border-radius: var(--radius-md);
   color: var(--muted);
@@ -462,97 +399,7 @@ button:active, .btn:active { transform: translateY(0); }
   header { padding: 16px 20px; }
   main { padding: 20px 16px 60px; }
   .hero-card { padding: 24px 20px; }
-}
-
-/* Dashboard polish for server-rendered challenge content. */
-article {
-  padding: 30px;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-}
-article::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
-  background: linear-gradient(90deg, var(--primary), var(--gold), var(--accent));
-}
-article > h2 {
-  margin-bottom: 10px;
-  font-size: clamp(22px, 3vw, 30px);
-}
-article > p {
-  color: var(--ink-secondary);
-  font-size: 14px;
-  line-height: 1.65;
-  margin-bottom: 10px;
-}
-article > p:nth-of-type(2) {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin: 8px 0 18px;
-  padding: 10px 14px;
-  border: 1px solid var(--line-light);
-  border-radius: var(--radius-sm);
-  background: var(--paper);
-  color: var(--muted);
-  font-size: 12px;
-}
-article > p:nth-of-type(2) strong { color: var(--ink-secondary); }
-article > h3 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 26px 0 12px;
-  color: var(--ink);
-  font: 600 17px 'Outfit', sans-serif;
-}
-article > h3::before {
-  content: "";
-  width: 7px;
-  height: 22px;
-  flex: 0 0 7px;
-  border-radius: 99px;
-  background: var(--accent);
-}
-article > form,
-article form.team,
-article form.report-form {
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: rgba(245, 242, 234, .58) !important;
-}
-article form + h3 { margin-top: 30px; }
-article form input,
-article form select,
-article form textarea { background: var(--surface); }
-article form button { margin-top: 4px; }
-article form p { color: var(--ink-secondary); font-size: 13px; }
-article form h4 {
-  margin-bottom: 12px;
-  color: var(--ink);
-  font: 600 15px 'Outfit', sans-serif;
-}
-article > div[style*="background:#eef6f8"] {
-  border: 1px solid #c9e0e4;
-  background: var(--primary-light) !important;
-}
-article > div[style*="background:#eef6f8"] strong { color: var(--primary-dark); }
-article .muted { color: var(--muted); }
-.status-pill { vertical-align: middle; }
-
-@media (max-width: 760px) {
-  article { padding: 22px 18px; }
-  article > p:nth-of-type(2) { display: flex; }
-  article > form,
-  article form.team,
-  article form.report-form { padding: 15px; }
-  article form input[style*="width:60%"],
-  article form input[style*="width:98%"] { width: 100% !important; }
+  .form-row { grid-template-columns: 1fr; }
 }
 </style>
 <link rel="stylesheet" href="/templates/shared.css">
@@ -574,119 +421,530 @@ article .muted { color: var(--muted); }
       <span>__USER__</span>
       <a class="logout-link" href="/logout">Log out</a>
     </div>
-  <nav class="nav">
-    __NAV__
-</nav>
+    <nav class="nav">
+      __NAV__
+    </nav>
   </div>
 </header>
 
 <main>
-  __UNIVERSITY_HERO__
+  <section class="hero-card" id="university-hero">
+    <div class="hero-top">
+      <div>
+        <span class="hero-eyebrow">University project workspace</span>
+        <h1 class="hero-title" id="university-name">Loading university workspace…</h1>
+        <p class="hero-desc">Coordinate assigned civic challenges, student teams, milestones, reports, and industry collaboration from one workspace.</p>
+        <div class="inst-badges" id="university-badges"></div>
+      </div>
+    </div>
+  </section>
 
-  __METRICS_BAR__
-
-  <div class="tabs-bar">
-    <button class="tab-btn active" onclick="showTab('challenges')">Assigned Challenges</button>
-    <button class="tab-btn" onclick="showTab('teams')">Student Project Teams</button>
-    <button class="tab-btn" onclick="showTab('milestones')">Milestones & Testing</button>
-    <button class="tab-btn" onclick="showTab('offers')">Industry Support Offers</button>
-    <button class="tab-btn" onclick="showTab('messages')">Project Messaging</button>
-    <button class="tab-btn" onclick="showTab('profile')">Institutional Profile</button>
+  <div class="metrics-grid" id="metrics-grid">
+    <div class="metric-card"><div class="metric-icon blue">◎</div><div class="metric-info"><h4>Assigned challenges</h4><div class="val" id="metric-assignments">—</div></div></div>
+    <div class="metric-card"><div class="metric-icon gold">◈</div><div class="metric-info"><h4>Active teams</h4><div class="val" id="metric-teams">—</div></div></div>
+    <div class="metric-card"><div class="metric-icon green">✓</div><div class="metric-info"><h4>Completed milestones</h4><div class="val" id="metric-milestones">—</div></div></div>
+    <div class="metric-card"><div class="metric-icon coral">✦</div><div class="metric-info"><h4>Industry offers</h4><div class="val" id="metric-offers">—</div></div></div>
   </div>
 
-  <!-- Tab 1: Assigned Challenges -->
+  <div class="tabs-bar" role="tablist" aria-label="University dashboard sections">
+    <button class="tab-btn active" type="button" data-tab="challenges">Assigned Challenges</button>
+    <button class="tab-btn" type="button" data-tab="teams">Student Project Teams</button>
+    <button class="tab-btn" type="button" data-tab="milestones">Milestones & Testing</button>
+    <button class="tab-btn" type="button" data-tab="offers">Industry Support Offers</button>
+    <button class="tab-btn" type="button" data-tab="messages">Project Messaging</button>
+    <button class="tab-btn" type="button" data-tab="profile">Institutional Profile</button>
+  </div>
+
   <div id="tab-challenges" class="tab-pane active">
-    __CHALLENGES_CONTENT__
+    <div id="challenges-content"><div class="empty-state">Loading assigned challenges…</div></div>
   </div>
 
-  <!-- Tab 2: Teams & Lifecycle -->
   <div id="tab-teams" class="tab-pane">
-    __TEAMS_CONTENT__
+    <div id="teams-content"><div class="empty-state">Loading project teams…</div></div>
   </div>
 
-  <!-- Tab 3: Milestones & Testing -->
   <div id="tab-milestones" class="tab-pane">
-    __MILESTONES_CONTENT__
+    <div id="milestones-content"><div class="empty-state">Loading milestones…</div></div>
   </div>
 
-  <!-- Tab 4: Industry Support Offers -->
   <div id="tab-offers" class="tab-pane">
-    __OFFERS_CONTENT__
+    <div id="offers-content"><div class="empty-state">Loading industry offers…</div></div>
   </div>
 
-  <!-- Tab 5: Messages -->
   <div id="tab-messages" class="tab-pane">
-    __MESSAGES_CONTENT__
+    <div id="messages-content"><div class="empty-state">Loading project communications…</div></div>
   </div>
 
-  <!-- Tab 6: Profile -->
   <div id="tab-profile" class="tab-pane">
-    __PROFILE_CONTENT__
+    <div id="profile-content"><div class="empty-state">Loading institutional profile…</div></div>
   </div>
 </main>
 
 <div id="toast"></div>
 
 <script>
-function showTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-  
-  const selectedBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(name));
-  if (selectedBtn) selectedBtn.classList.add('active');
-  
-  const pane = document.getElementById('tab-' + name);
-  if (pane) pane.classList.add('active');
-}
+(() => {
+  "use strict";
 
-function showToast(msg, isError = false) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.style.background = isError ? '#e65f38' : '#0f1f1d';
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, 3500);
-}
+  const state = { data: null, activeTab: "challenges" };
+  const $ = (selector) => document.querySelector(selector);
 
-// Handle all AJAX forms
-document.querySelectorAll('form').forEach(form => {
-  form.onsubmit = async event => {
+  const esc = (value) => String(value ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+  function showToast(message, isError = false) {
+    const toast = $("#toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.style.background = isError ? "var(--accent)" : "var(--ink)";
+    toast.style.display = "block";
+    clearTimeout(window.__universityToastTimer);
+    window.__universityToastTimer = setTimeout(() => toast.style.display = "none", 3500);
+  }
+
+  window.showTab = function(name) {
+    state.activeTab = name;
+    document.querySelectorAll(".tab-btn").forEach(btn =>
+      btn.classList.toggle("active", btn.dataset.tab === name)
+    );
+    document.querySelectorAll(".tab-pane").forEach(pane =>
+      pane.classList.toggle("active", pane.id === "tab-" + name)
+    );
+  };
+
+  async function postJson(endpoint, data) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(data)
+    });
+    let result = {};
+    try { result = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(result.message || "Operation failed.");
+    return result;
+  }
+
+  async function handleForm(event) {
     event.preventDefault();
+    const form = event.currentTarget;
     const endpoint = form.dataset.endpoint || form.action;
     if (!endpoint) return;
-    
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData);
-    
-    // Parse submitter value if clicked button had name & value
-    if (event.submitter && event.submitter.name) {
-      data[event.submitter.name] = event.submitter.value;
+
+    const data = Object.fromEntries(new FormData(form));
+    if (form.classList.contains("team") && typeof data.members === "string") {
+      data.members = data.members.split(",").map(v => v.trim()).filter(Boolean);
     }
-    
-    if (form.classList.contains('team') || form.dataset.type === 'team') {
-      if (typeof data.members === 'string') {
-        data.members = data.members.split(',').map(m => m.trim()).filter(Boolean);
-      }
-    }
-    
+
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      
-      const result = await response.json();
-      if (response.ok) {
-        showToast(result.message || 'Action saved successfully!');
-        setTimeout(() => location.reload(), 800);
-      } else {
-        showToast(result.message || 'Operation failed. Please try again.', true);
-      }
-    } catch(err) {
-      showToast('Network error while processing request.', true);
+      const result = await postJson(endpoint, data);
+      showToast(result.message || "Action saved successfully.");
+      await loadDashboard();
+    } catch (error) {
+      showToast(error.message || "Operation failed.", true);
     }
-  };
-});
+  }
+
+  function bindForms(root = document) {
+    root.querySelectorAll("form[data-endpoint]").forEach(form => {
+      form.removeEventListener("submit", handleForm);
+      form.addEventListener("submit", handleForm);
+    });
+  }
+
+  function statusClass(status) {
+    const value = String(status || "").toLowerCase();
+    if (value.includes("accept") || value.includes("complete") || value.includes("deliver")) return "accepted";
+    if (value.includes("reject")) return "rejected";
+    if (value.includes("clar")) return "clarification";
+    if (value.includes("assign") || value.includes("progress") || value.includes("pilot") || value.includes("prototype")) return "assigned";
+    return "pending";
+  }
+
+  function statusPill(status) {
+    return `<span class="status-pill ${statusClass(status)}">${esc(status || "Pending")}</span>`;
+  }
+
+  function renderHero(data) {
+    const u = data.university;
+    $("#university-name").textContent = u.name || "University";
+    $("#university-badges").innerHTML = [
+      `<span class="inst-tag">Contact: ${esc(u.contact_email || data.user)}</span>`,
+      `<span class="inst-tag">District: ${esc(u.district || "Not specified")}</span>`,
+      `<span class="inst-tag">Status: ${esc(u.approval_status || "Active")}</span>`
+    ].join("");
+
+    $("#metric-assignments").textContent = data.metrics.assigned_challenges;
+    $("#metric-teams").textContent = data.metrics.active_teams;
+    $("#metric-milestones").textContent = data.metrics.completed_milestones;
+    $("#metric-offers").textContent = data.metrics.industry_offers;
+  }
+
+  function renderChallenges(data) {
+    const root = $("#challenges-content");
+    if (!data.assignments.length) {
+      root.innerHTML = `<div class="empty-state"><h3>No assigned challenges yet</h3><p>No issues have been assigned to this university yet.</p></div>`;
+      return;
+    }
+
+    root.innerHTML = data.assignments.map(assignment => {
+      const teams = data.teams.filter(t => Number(t.issue_id) === Number(assignment.issue_id));
+      const reports = data.reports.filter(r => Number(r.issue_id) === Number(assignment.issue_id));
+      const proposals = data.proposals.filter(p => Number(p.issue_id) === Number(assignment.issue_id));
+
+      return `
+        <article class="challenge-card">
+          <div class="card-header-row">
+            <div>
+              <h2 class="challenge-title">${esc(assignment.title)}</h2>
+              <div class="meta-row">
+                <span class="meta-item">District: <strong>${esc(assignment.district)}</strong></span>
+                <span class="meta-item">Block: <strong>${esc(assignment.block)}</strong></span>
+                <span class="meta-item">Category: <strong>${esc(assignment.category)}</strong></span>
+              </div>
+            </div>
+            ${statusPill(assignment.status)}
+          </div>
+
+          <p class="challenge-desc">${esc(assignment.description)}</p>
+
+          <div class="info-strip">
+            <span>Request status: <strong>${esc(assignment.status)}</strong></span>
+            ${assignment.response_reason ? `<span>Decision note: <strong>${esc(assignment.response_reason)}</strong></span>` : ""}
+          </div>
+
+          <div class="card-subblock">
+            <h3>1. Accept or Reject Request</h3>
+            <form data-endpoint="/api/university/assignment-response" class="inline-form">
+              <input type="hidden" name="issue_id" value="${Number(assignment.issue_id)}">
+              <div class="form-row">
+                <div>
+                  <label>Decision</label>
+                  <select name="status">
+                    <option value="Accepted">Accept Request</option>
+                    <option value="Rejected">Reject Request</option>
+                    <option value="Needs clarification">Needs Clarification</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Reason for government record</label>
+                  <input name="reason" required placeholder="Explain your decision">
+                </div>
+              </div>
+              <button type="submit" class="btn-primary">Save & Transmit Decision to Government</button>
+            </form>
+          </div>
+
+          <div class="card-subblock">
+            <h3>2. Student Project Teams</h3>
+            <div class="item-list">
+              ${teams.length ? teams.map(renderTeamSummary).join("") : `<p class="muted">No faculty mentor or student team assigned yet.</p>`}
+            </div>
+
+            <form class="team inline-form" data-endpoint="/api/university/teams">
+              <h4>Assign Project Team</h4>
+              <input type="hidden" name="issue_id" value="${Number(assignment.issue_id)}">
+              <input type="hidden" name="university_id" value="${Number(assignment.university_id)}">
+              <div class="form-row">
+                <div class="form-full"><label>Project Team Name</label><input name="name" required placeholder="Smart Water Innovation Team"></div>
+                <div class="form-full"><label>Faculty Mentor Email</label><input name="faculty_mentor" required placeholder="prof.sharma@bitmesra.ac.in"></div>
+                <div class="form-full"><label>Assigned Student Emails</label><input name="members" required placeholder="student1@bitmesra.ac.in, student2@bitmesra.ac.in"></div>
+              </div>
+              <button type="submit">Assign Faculty & Students</button>
+            </form>
+          </div>
+
+          <div class="card-subblock">
+            <h3>3. Milestones & Testing</h3>
+            ${teams.length
+              ? `<p class="muted">Milestones are managed from the Student Project Teams and Milestones & Testing tabs.</p>`
+              : `<p class="muted">Create a project team first, then add project milestones.</p>`}
+          </div>
+
+          <div class="card-subblock">
+            <h3>4. Submit University Project Report</h3>
+            ${reports.length
+              ? reports.map(r => `<div class="report-box"><strong>${esc(r.title)}</strong><p>${esc(r.summary)}</p>${r.deliverables ? `<p><strong>Deliverables:</strong> ${esc(r.deliverables)}</p>` : ""}<small>Submitted by ${esc(r.submitted_by)} on ${esc(r.created_at)}</small></div>`).join("")
+              : `<p class="muted">No project reports submitted yet.</p>`}
+
+            <form class="report-form inline-form" data-endpoint="/api/university/reports">
+              <h4>Submit Public Project Report</h4>
+              <input type="hidden" name="issue_id" value="${Number(assignment.issue_id)}">
+              <label>Report Title</label>
+              <input name="title" required placeholder="Water Treatment Pilot Phase 1 Report">
+              <label>Executive Summary & Key Findings</label>
+              <textarea name="summary" required placeholder="Visible to the public record"></textarea>
+              <label>Project Deliverables, Prototypes & Outcomes</label>
+              <textarea name="deliverables" placeholder="Optional deliverables and outcomes"></textarea>
+              <button type="submit">Submit Report to Public Record</button>
+            </form>
+          </div>
+
+          <div class="card-subblock">
+            <h3>5. Solution Proposals</h3>
+            ${proposals.length ? proposals.map(p => `<div class="result-box"><strong>${esc(p.title)}</strong><p>${esc(p.description)}</p></div>`).join("") : `<p class="muted">No solution proposals submitted for this challenge yet.</p>`}
+            <form class="inline-form" data-endpoint="/api/proposals">
+              <input type="hidden" name="issue_id" value="${Number(assignment.issue_id)}">
+              <label>Solution Proposal Title</label>
+              <input name="title" required placeholder="Solution Proposal Title">
+              <label>Technical Solution</label>
+              <textarea name="description" required placeholder="Describe the technical solution proposal"></textarea>
+              <button type="submit">Submit Proposal</button>
+            </form>
+          </div>
+        </article>`;
+    }).join("");
+
+    bindForms(root);
+  }
+
+  function renderTeamSummary(team) {
+    const milestones = dataById(state.data.milestones, "team_id", team.id);
+    return `
+      <div class="independent-card">
+        <div class="card-header-row">
+          <div>
+            <h3>${esc(team.name)}</h3>
+            <p class="muted">Faculty mentor: ${esc(team.faculty_mentor)}</p>
+          </div>
+          ${statusPill(team.status)}
+        </div>
+        <p class="meta-row">
+          <span class="meta-item"><strong>${team.members.length}</strong> student members</span>
+          <span class="meta-item"><strong>${milestones.length}</strong> milestones</span>
+        </p>
+      </div>`;
+  }
+
+  function dataById(list, key, value) {
+    return list.filter(item => String(item[key]) === String(value));
+  }
+
+  function renderTeams(data) {
+    const root = $("#teams-content");
+    if (!data.teams.length) {
+      root.innerHTML = `<div class="empty-state"><h3>No student teams yet</h3><p>Open an assigned challenge to create the first project team.</p></div>`;
+      return;
+    }
+
+    root.innerHTML = data.teams.map(team => {
+      const milestones = data.milestones.filter(m => Number(m.team_id) === Number(team.id));
+      const history = data.status_history.filter(h => Number(h.team_id) === Number(team.id));
+
+      return `
+        <article class="independent-card">
+          <div class="card-header-row">
+            <div><h2>${esc(team.name)}</h2><p class="muted">Faculty mentor: ${esc(team.faculty_mentor)}</p></div>
+            ${statusPill(team.status)}
+          </div>
+          <div class="info-strip">
+            <span><strong>${team.members.length}</strong> student members</span>
+            <span><strong>${milestones.length}</strong> milestones</span>
+            <span>Challenge ID: <strong>${Number(team.issue_id)}</strong></span>
+          </div>
+          <p style="margin-bottom:12px;"><strong>Students:</strong> ${esc(team.members.join(", "))}</p>
+
+          <form class="approval inline-form" data-endpoint="/api/university/team-status">
+            <input type="hidden" name="team_id" value="${Number(team.id)}">
+            <label>Project stage</label>
+            <select name="status">
+              ${["Team Formed","Prototype","Pilot","Deployed","Impact Measured"].map(v => `<option ${v === team.status ? "selected" : ""}>${v}</option>`).join("")}
+            </select>
+            <label>Stage update note</label>
+            <input name="note" placeholder="Stage update note">
+            <button type="submit" class="btn-primary">Update Stage</button>
+          </form>
+
+          <form class="inline-form" data-endpoint="/api/university/milestones" style="margin-top:16px;">
+            <input type="hidden" name="team_id" value="${Number(team.id)}">
+            <h3>Add Milestone</h3>
+            <div class="form-row">
+              <div><label>Milestone title</label><input name="title" required placeholder="Prototype validation"></div>
+              <div><label>Due date</label><input name="due_date" type="date"></div>
+              <div><label>Deliverable</label><input name="deliverable" placeholder="Tested prototype"></div>
+            </div>
+            <button type="submit">Add Milestone</button>
+          </form>
+
+          <div class="item-list" style="margin-top:16px;">
+            ${milestones.length ? milestones.map(m => `
+              <div class="independent-card">
+                <div class="card-header-row">
+                  <div><h3>${esc(m.title)}</h3><p class="muted">Due: ${esc(m.due_date || "No due date")} · Deliverable: ${esc(m.deliverable || "Not specified")}</p></div>
+                  ${statusPill(m.status)}
+                </div>
+                <form class="approval inline-form" data-endpoint="/api/university/milestone-status">
+                  <input type="hidden" name="team_id" value="${Number(team.id)}">
+                  <input type="hidden" name="milestone_id" value="${Number(m.id)}">
+                  <label>Status</label>
+                  <select name="status">
+                    ${["Pending","In Progress","Completed"].map(v => `<option ${v === m.status ? "selected" : ""}>${v}</option>`).join("")}
+                  </select>
+                  <label>Testing result</label>
+                  <input name="testing_result" value="${esc(m.testing_result)}" placeholder="Testing result">
+                  <button type="submit" class="btn-primary">Save Milestone</button>
+                </form>
+              </div>`).join("") : `<div class="empty-state"><p>No milestones created for this team yet.</p></div>`}
+          </div>
+
+          <form class="inline-form" data-endpoint="/api/university/team-outcomes" style="margin-top:16px;">
+            <input type="hidden" name="team_id" value="${Number(team.id)}">
+            <h3>Project Outcomes</h3>
+            <div class="form-row">
+              <div><label>IP / Patent Outcome</label><input name="ip_outcome" value="${esc(team.ip_outcome)}" placeholder="Patent filed / IP outcome"></div>
+              <div><label>Startup Outcome</label><input name="startup_outcome" value="${esc(team.startup_outcome)}" placeholder="Startup / commercialization outcome"></div>
+              <div class="form-full"><label>Community Impact Summary</label><textarea name="impact_summary" placeholder="Describe measurable community impact">${esc(team.impact_summary)}</textarea></div>
+            </div>
+            <button type="submit">Save Outcomes</button>
+          </form>
+
+          <h3 style="margin-top:22px; margin-bottom:8px;">Status History</h3>
+          ${history.length
+            ? `<ul class="history-list" style="padding-left:20px;">${history.map(h => `<li><strong>${esc(h.status)}</strong> · ${esc(h.changed_by)} · ${esc(h.changed_at)}</li>`).join("")}</ul>`
+            : `<p class="muted">No status history yet.</p>`}
+        </article>`;
+    }).join("");
+
+    bindForms(root);
+  }
+
+  function renderMilestones(data) {
+    const root = $("#milestones-content");
+    if (!data.milestones.length) {
+      root.innerHTML = `<div class="empty-state"><h3>No milestones yet</h3><p>Create milestones from a project team inside an assigned challenge.</p></div>`;
+      return;
+    }
+
+    root.innerHTML = data.milestones.map(m => {
+      const team = data.teams.find(t => Number(t.id) === Number(m.team_id));
+      return `
+        <article class="independent-card">
+          <div class="card-header-row">
+            <div><h2>${esc(m.title)}</h2><p class="muted">${esc(team?.name || "Project team")}</p></div>
+            ${statusPill(m.status)}
+          </div>
+          <div class="info-strip">
+            <span>Due: <strong>${esc(m.due_date || "No due date")}</strong></span>
+            <span>Deliverable: <strong>${esc(m.deliverable || "Not specified")}</strong></span>
+          </div>
+          <form class="approval inline-form" data-endpoint="/api/university/milestone-status">
+            <input type="hidden" name="team_id" value="${Number(m.team_id)}">
+            <input type="hidden" name="milestone_id" value="${Number(m.id)}">
+            <label>Status</label>
+            <select name="status">${["Pending","In Progress","Completed"].map(v => `<option ${v === m.status ? "selected" : ""}>${v}</option>`).join("")}</select>
+            <label>Testing result</label>
+            <input name="testing_result" value="${esc(m.testing_result)}" placeholder="Testing result">
+            <button type="submit" class="btn-primary">Save Milestone</button>
+          </form>
+        </article>`;
+    }).join("");
+
+    bindForms(root);
+  }
+
+  function renderOffers(data) {
+    const root = $("#offers-content");
+    if (!data.offers.length) {
+      root.innerHTML = `<div class="empty-state"><h3>No industry offers yet</h3><p>Industry support linked to your assigned challenges will appear here.</p></div>`;
+      return;
+    }
+
+    root.innerHTML = data.offers.map(offer => `
+      <article class="independent-card offer-box">
+        <div class="card-header-row">
+          <div>
+            <h2>${esc(offer.support_type || "Industry support")}</h2>
+            <p class="muted">${esc(offer.partner_name || "Industry partner")} · ${esc(offer.title || "Assigned challenge")}</p>
+          </div>
+          ${statusPill(offer.status || "Offered")}
+        </div>
+        <p>${esc(offer.details || "")}</p>
+        <div class="info-strip" style="margin-top:10px;"><span>Commitment: <strong>${esc(offer.commitment_note || "Awaiting review")}</strong></span></div>
+      </article>`).join("");
+  }
+
+  function renderMessages(data) {
+    const root = $("#messages-content");
+    root.innerHTML = `
+      <article class="independent-card">
+        <h2>Send a Project Message</h2>
+        <p style="margin-bottom:16px;">Communicate with government administrators, mentors, and collaboration partners.</p>
+        <form class="inline-form" data-endpoint="/api/messages">
+          <label>Recipient</label>
+          <input name="recipient" type="email" value="admin@jharkhand.gov.in" required>
+          <label>Message</label>
+          <textarea name="message" required placeholder="Write an update or request"></textarea>
+          <button type="submit" class="btn-primary">Send Message</button>
+        </form>
+      </article>
+      ${data.messages.length
+        ? data.messages.map(item => `
+          <article class="independent-card message-box">
+            <div class="card-header-row">
+              <div><h3>${esc(item.recipient.toLowerCase() === data.user.toLowerCase() ? "Message from " + item.sender : "Message to " + item.recipient)}</h3><p class="muted">${esc(item.created_at)}</p></div>
+            </div>
+            <p>${esc(item.message)}</p>
+          </article>`).join("")
+        : `<div class="empty-state"><h3>No messages yet</h3><p>Your project communication will appear here.</p></div>`}
+    `;
+    bindForms(root);
+  }
+
+  function renderProfile(data) {
+    const u = data.university;
+    $("#profile-content").innerHTML = `
+      <article class="independent-card">
+        <p class="hero-eyebrow">Institutional profile</p>
+        <h2>${esc(u.name)}</h2>
+        <p style="margin-bottom:16px;">Your university workspace is connected to the civic innovation network.</p>
+        <div class="inst-badges">
+          <span class="inst-tag">Contact: ${esc(u.contact_email || data.user)}</span>
+          <span class="inst-tag">District: ${esc(u.district || "Not specified")}</span>
+          <span class="inst-tag">Status: ${esc(u.approval_status || "Active")}</span>
+        </div>
+      </article>`;
+  }
+
+  async function loadDashboard() {
+    try {
+      const response = await fetch("/api/university/dashboard", {headers: {"Accept":"application/json"}});
+      if (response.status === 401 || response.status === 403) {
+        window.location.href = "/login";
+        return;
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Dashboard data could not be loaded.");
+      state.data = data;
+      renderHero(data);
+      renderChallenges(data);
+      renderTeams(data);
+      renderMilestones(data);
+      renderOffers(data);
+      renderMessages(data);
+      renderProfile(data);
+    } catch (error) {
+      console.error(error);
+      $("#university-name").textContent = "University dashboard unavailable";
+      $("#challenges-content").innerHTML = `<div class="empty-state"><h3>Unable to load dashboard</h3><p>${esc(error.message)}</p></div>`;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".tab-btn").forEach(btn =>
+      btn.addEventListener("click", () => window.showTab(btn.dataset.tab))
+    );
+
+    document.querySelectorAll(".user-badge").forEach(badge => {
+      badge.setAttribute("title", "Signed in as " + (badge.textContent || "").trim());
+    });
+
+    loadDashboard();
+  });
+})();
 </script>
+
 </body>
 </html>
