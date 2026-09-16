@@ -193,7 +193,7 @@ def portal_role_for_user(user: str) -> str:
 def user_can_access_portal(user: str, portal: str) -> bool:
     """Allow each role into its own portal; admins use government/admin workspaces."""
     if is_admin(user):
-        return portal in {"citizen", "government"}
+        return portal == "government"
     return portal_role_for_user(user) == portal
 
 
@@ -218,7 +218,6 @@ def render_role_nav(user: str, active: str = "") -> str:
         # Government/Admin uses the government and admin workspaces.
         # Do not expose the institution-specific dashboards.
         links.extend([
-            ("/citizen-dashboard", "Citizen", "citizen"),
             ("/government-dashboard", "Government", "government"),
 
             # Government/Admin workspace pages.
@@ -2155,6 +2154,35 @@ class MapHandler(BaseHTTPRequestHandler):
         template = MAIN_MAP_PAGE_FILE.read_text(encoding="utf-8")
         district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
         domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
+        role = portal_role_for_user(user)
+
+        # The map is visible to every role, but only citizens may submit new issues.
+        # Inject role-specific UI restrictions into the shared map template.
+        role_css = ""
+        role_script = ""
+        if role != "citizen":
+            role_css = """
+            <style id="role-access-style">
+                #report,
+                #locate {
+                    display: none !important;
+                }
+            </style>
+            """
+            role_script = """
+            <script id="role-access-script">
+                document.addEventListener("DOMContentLoaded", function () {
+                    const report = document.getElementById("report");
+                    const locate = document.getElementById("locate");
+                    if (report) report.remove();
+                    if (locate) locate.remove();
+                });
+            </script>
+            """
+
+        template = template.replace("</head>", role_css + "</head>")
+        template = template.replace("</body>", role_script + "</body>")
+
         payload = (
             template
             .replace("__ISSUES__", issues_json)
@@ -2948,6 +2976,24 @@ class MapHandler(BaseHTTPRequestHandler):
                     return
                 self.send_json({"supporters": supporters})
                 return
+
+            # Only the Citizen role is allowed to create a new civic issue.
+            # Government, University, Industry, and Contractor can still view the
+            # shared map and existing issues, but cannot POST a new issue.
+            user = self.session_user()
+            if user is None:
+                self.send_error(401)
+                return
+            if portal_role_for_user(user) != "citizen":
+                self.send_json(
+                    {
+                        "message": "Only Citizen accounts can report a new issue.",
+                        "result": "forbidden",
+                    },
+                    status=403,
+                )
+                return
+
             length = int(self.headers.get("Content-Length","0"))
             proof_bytes = b""
             video_bytes = b""
