@@ -26,11 +26,11 @@ from community import ISSUES, add_issue, render_page, upvote_issue
 from storage import (
     assign_issue, check_rate_limit, create_contractor, create_industry_partner, create_message,
     create_milestone, create_notification, create_session_record,
-    create_support_offer, create_support_request, create_team, create_university, create_university_report, create_professional_profile, delete_session_record,
+    create_support_offer, create_support_request, create_team, create_university, create_university_report, create_professional_profile, create_contractor_complaint, delete_session_record,
     create_project_review, get_milestone_deliverable, get_proof, get_proposal_visual, get_session_user, insert_proposal, load_project_reviews,
-    load_industry_partners, load_milestones, load_project_reviews, load_support_requests, load_teams, load_university_assignments, load_universities,
-    moderate_issue, update_assignment, update_milestone, update_offer_commitment,
-    update_proposal, update_professional_approval, update_team_outcomes, update_team_status, update_university,
+    load_contractors, load_contractor_assignments, load_industry_partners, load_messages, load_milestones, load_notifications, load_project_reviews, load_support_requests, load_teams, load_university_assignments, load_universities,
+    moderate_issue, assign_issue_to_contractor, review_contractor_complaint, update_assignment, update_contractor_status, update_milestone, update_offer_commitment,
+    mark_all_notifications_read, mark_notification_read, update_proposal, update_professional_approval, update_team_outcomes, update_team_status, update_university,
     update_institution_approval,
 )
 from AI_model import inspect_image_proof, sanitize_and_reencode_image
@@ -43,9 +43,9 @@ from map import (
     render_admin_issues, render_industry_admin, render_university_issues, proposal_issue, known_recipients,
     render_university_dashboard, render_industry_dashboard, render_government_dashboard,
     render_contractor_dashboard, render_contractor_admin,
-    auto_assign_issue_to_best_university, auto_assign_tasks_to_university,
+    auto_assign_issue_to_best_university, auto_assign_tasks_to_university, invalidate_university_cache,
     notification_markup, render_messages, render_user_issues, MAP_PAGE, university_for_user, industry_for_user,
-    contractor_for_user,
+    contractor_for_user, portal_role_for_user,
     ADMIN_PAGE, UNIVERSITY_PAGE, CITIZEN_PAGE_FILE, UNIVERSITY_DASHBOARD_FILE,
     INDUSTRY_DASHBOARD_FILE, GOVERNMENT_DASHBOARD_FILE, CONTRACTOR_DASHBOARD_FILE, CONTRACTOR_ADMIN_FILE, PROPOSALS
 )
@@ -165,7 +165,7 @@ if FastAPI is not None:
             "government": "/government-dashboard",
             "university": "/university-dashboard",
             "industry": "/industry-dashboard",
-        }.get(portal_role, "/citizen-dashboard")
+        }.get(portal_role_for_user(email), "/citizen-dashboard")
         response = RedirectResponse(url=destination, status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
         return response
@@ -195,7 +195,7 @@ if FastAPI is not None:
             return HTMLResponse(content=load_industry_login_page('<p class="error">Email or password is incorrect.</p>'), status_code=401)
         partner = industry_for_user(email)
         if partner is None:
-            return HTMLResponse(content=load_industry_login_page('<p class="error">This account is not linked to an approved industry partner profile. Registration must be approved by an administrator.</p>'), status_code=403)
+            return HTMLResponse(content=load_industry_login_page('<p class="error">This account is not linked to an active industry partner profile.</p>'), status_code=403)
         session_id = create_session_record(email)
         response = RedirectResponse(url="/industry-dashboard", status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
@@ -219,10 +219,10 @@ if FastAPI is not None:
         if not created:
             return HTMLResponse(content=load_industry_register_page(f'<p class="error">{html.escape(message)}</p>'), status_code=400)
         try:
-            create_industry_partner(**values)
+            create_industry_partner(**values, approval_status="Active")
         except Exception:
             return HTMLResponse(content=load_industry_register_page('<p class="error">The organization profile could not be created.</p>'), status_code=400)
-        return HTMLResponse(content=load_industry_register_page('<p class="success">Registration submitted. An administrator must approve your organization before you can sign in.</p>'))
+        return HTMLResponse(content=load_industry_register_page('<p class="success">Registration complete. You can now sign in and use the industry workspace.</p>'))
 
     # -----------------------------------------------------------------------
     # Contractor registration & login
@@ -277,7 +277,7 @@ if FastAPI is not None:
         password = str(form.get("password", ""))
         if not authenticate(email, password):
             return HTMLResponse(content=load_contractor_login_page('<p class="message error">Email or password is incorrect.</p>'), status_code=401)
-        contractor = _contractor_for_user_storage(email)
+        contractor = contractor_for_user(email)
         if contractor is None:
             return HTMLResponse(content=load_contractor_login_page('<p class="message error">This account is not linked to a registered contractor profile.</p>'), status_code=403)
         if contractor.get("approval_status") == "Pending":
@@ -325,7 +325,7 @@ if FastAPI is not None:
             return HTMLResponse(content=load_university_login_page("This account is not linked to a registered university profile."), status_code=403)
         if university.get("approval_status", "Active") != "Active":
             status = university.get("approval_status", "Pending").lower()
-            return HTMLResponse(content=load_university_login_page(f"Your university registration is {status}. An administrator must approve it before dashboard access."), status_code=403)
+            return HTMLResponse(content=load_university_login_page(f"Your university registration is {status}. Contact an administrator for assistance."), status_code=403)
         session_id = create_session_record(email)
         response = RedirectResponse(url="/university-dashboard", status_code=303)
         response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
@@ -355,12 +355,12 @@ if FastAPI is not None:
         existing_university = next((item for item in load_universities() if str(item.get("contact_email", "")).casefold() == email.casefold()), None)
         if existing_university is not None:
             status = existing_university.get("approval_status", "Active").lower()
-            return HTMLResponse(content=load_university_register_page(f'<p class="success">A university registration already exists for this email. Current approval status: <strong>{html.escape(status.title())}</strong>. Please use the university login after administrator approval.</p>'))
+            return HTMLResponse(content=load_university_register_page(f'<p class="success">A university registration already exists for this email. Current account status: <strong>{html.escape(status.title())}</strong>. Use the university login or contact an administrator if access is restricted.</p>'))
         created, message = create_account(email, password)
         if not created:
             return HTMLResponse(content=load_university_register_page(f'<p class="error">{html.escape(message)}</p>'), status_code=400)
-        university = create_university(**values)
-        return HTMLResponse(content=load_university_register_page(f'<p class="success"><strong>Registration acknowledged.</strong> {html.escape(university["name"])} has been submitted for administrator approval. Reference email: <strong>{html.escape(email)}</strong>. You can sign in after the approval status becomes Active.</p>'))
+        university = create_university(**values, approval_status="Active")
+        return HTMLResponse(content=load_university_register_page(f'<p class="success"><strong>Registration complete.</strong> {html.escape(university["name"])} can now sign in. Administrators may review the profile and analytics from the admin dashboard.</p>'))
 
     @app.get("/logout")
     async def logout(request: Request):
@@ -495,10 +495,43 @@ if FastAPI is not None:
         user = require_user(current_user)
         return HTMLResponse(content=f"<!doctype html><html><body>{notification_markup(user)}</body></html>")
 
+    @app.get("/api/notifications")
+    async def list_notifications_api(current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        notifications = [
+            {
+                "id": item.get("id"),
+                "message": str(item.get("message", "")),
+                "related_type": item.get("related_type", ""),
+                "related_id": item.get("related_id"),
+                "is_read": bool(item.get("is_read", False)),
+                "created_at": str(item.get("created_at", "")),
+            }
+            for item in load_notifications(user)
+        ]
+        return JSONResponse(content={"notifications": notifications, "unread_count": sum(not item["is_read"] for item in notifications)})
+
+    @app.post("/api/notifications/{notification_id}/read")
+    async def mark_notification_read_api(notification_id: int, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        if not mark_notification_read(notification_id, user):
+            return JSONResponse(status_code=404, content={"message": "Notification not found."})
+        return JSONResponse(content={"message": "Notification marked as read."})
+
+    @app.post("/api/notifications/read-all")
+    async def mark_all_notifications_read_api(current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        mark_all_notifications_read(user)
+        return JSONResponse(content={"message": "All notifications marked as read."})
+
     @app.get("/messages", response_class=HTMLResponse)
     async def messages_page(current_user: Optional[str] = Depends(get_current_user)):
         user = require_user(current_user)
         return HTMLResponse(content=f"<!doctype html><html><body>{render_messages(user)}<script>document.querySelector('#message-form').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/messages',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Message failed')}};</script></body></html>")
+
+    @app.get("/api/messages")
+    async def list_messages_api(current_user: Optional[str] = Depends(get_current_user)):
+        return JSONResponse(content=load_messages(require_user(current_user)))
 
     @app.get("/proof/{proof_id}")
     async def get_proof_image(proof_id: str):
@@ -587,7 +620,7 @@ if FastAPI is not None:
             data["_video_type"] = video_type
             data["_video_data"] = video_bytes
         created = add_issue(data)
-        if created.get("result") == "new" and created.get("issue"):
+        if created["result"] == "new":
             assignment = auto_assign_issue_to_best_university(created["issue"])
             if assignment:
                 created["assignment"] = {
@@ -951,6 +984,7 @@ if FastAPI is not None:
             return JSONResponse(status_code=400, content={"message": "Name, district, and domains are required."})
         if not update_university(university_id, **values):
             return JSONResponse(status_code=404, content={"message": "University not found."})
+        invalidate_university_cache()
         return JSONResponse(content={"message": "University profile updated.", "university_id": university_id})
 
     @app.post("/api/admin/universities/create")
@@ -967,6 +1001,7 @@ if FastAPI is not None:
             university = create_university(**values, approval_status="Active")
         except Exception:
             return JSONResponse(status_code=400, content={"message": "A university with this contact email may already exist."})
+        invalidate_university_cache()
         auto_assign_tasks_to_university(university)
         return JSONResponse(status_code=201, content={"message": "University registered.", "university": university})
 
@@ -997,6 +1032,12 @@ if FastAPI is not None:
             return JSONResponse(status_code=400, content={"message": "Invalid approval status."})
         if not update_institution_approval(kind, institution_id, status):
             return JSONResponse(status_code=404, content={"message": "Institution not found."})
+        if kind == "university":
+            invalidate_university_cache()
+            if status == "Active":
+                university = next((item for item in load_universities() if item.get("id") == institution_id), None)
+                if university:
+                    auto_assign_tasks_to_university(university)
         return JSONResponse(content={"kind": kind, "institution_id": institution_id, "status": status})
 
     @app.post("/api/admin/offer-commitments")
@@ -1158,7 +1199,7 @@ if FastAPI is not None:
     @app.post("/api/contractor/assignment-status")
     async def api_update_contractor_assignment(request: Request, current_user: Optional[str] = Depends(get_current_user)):
         user = require_user(current_user)
-        contractor = _contractor_for_user_storage(user)
+        contractor = contractor_for_user(user)
         if not contractor:
             return JSONResponse(status_code=403, content={"message": "Contractor account required."})
         try:

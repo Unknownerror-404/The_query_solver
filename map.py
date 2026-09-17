@@ -40,14 +40,14 @@ CONTRACTOR_LOGIN_PAGE_FILE = BASE_DIR / "templates" / "contractor_login.html"
 CONTRACTOR_REGISTER_PAGE_FILE = BASE_DIR / "templates" / "contractor_register.html"
 CONTRACTOR_DASHBOARD_FILE = BASE_DIR / "templates" / "contractor_dashboard.html"
 CONTRACTOR_ADMIN_FILE = BASE_DIR / "templates" / "contractor_admin.html"
-try:
+if __package__:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
     from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
     from .AI_model import inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
     from .tagging import tag_issue
-except ImportError:
+else:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
     from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
@@ -61,6 +61,12 @@ PROPOSALS: list[dict] = load_proposals()
 NEXT_PROPOSAL_ID = max((proposal["id"] for proposal in PROPOSALS), default=0) + 1
 UNIVERSITY_CACHE = None
 CACHE_LOCK = threading.Lock()
+
+
+def invalidate_university_cache() -> None:
+    global UNIVERSITY_CACHE
+    with CACHE_LOCK:
+        UNIVERSITY_CACHE = None
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s', filename='app.log')
 UNIVERSITY_PAGE = """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>University Administration Â· Civic Map</title><link rel='stylesheet' href='/templates/shared.css'><style>body{font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}main{max-width:1150px}.admin-intro{margin-bottom:26px}.admin-intro h1{margin:8px 0 6px;font-size:clamp(32px,4vw,44px);font-weight:500}.admin-intro p{color:var(--muted);font:14px/1.6 Arial,sans-serif}.admin-content{display:grid;gap:18px}article,.university-profile,.university-create,.approval{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(23,43,40,.06)}article:before,.university-profile:before,.university-create:before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--accent))}h2{font-size:24px;font-weight:500}input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font:13px Arial,sans-serif}.approval{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.approval button{padding:10px 14px}.admin-content>h2{margin:12px 0 0}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.nav{width:100%}.nav-button{flex:1 1 auto;text-align:center}main{padding:24px 16px}.approval{align-items:stretch;flex-direction:column}}</style></head><body><header><div class='brand'><div class='brand-mark'>G</div><div><div class='brand-name'>Civic Map</div><div class='brand-sub'>University Administration</div></div></div><div class='tagline'>Admin workspace Â· <a href='/logout' style='color:var(--muted)'>Log out</a></div><nav class='nav'><a class='nav-button active' href='/universities'>Universities</a><a class='nav-button' href='/industry-admin'>Industry</a><a class='nav-button' href='/government-dashboard'>Analytics</a></nav></header><main><div class='admin-intro'><p class='eyebrow'>Institution verification</p><h1>University collaboration administration.</h1><p>Approve university registrations, maintain institutional profiles, and assign approved civic challenges to the right academic teams.</p></div><div class='admin-content'>__ISSUES__</div></main><script>document.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));if(form.className==='team')data.members=data.members.split(',').map(member=>member.trim()).filter(Boolean);let endpoint=form.dataset.endpoint||'/api/admin/universities';if(form.className==='assignment')endpoint='/api/admin/assignments';if(form.className==='team')endpoint='/api/admin/teams';if(form.className==='response')endpoint='/api/admin/assignment-response';if(form.className==='approval')endpoint='/api/admin/institutions/'+form.dataset.kind+'/'+form.dataset.id+'/approval';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok)location.reload();else alert((await response.json()).message||'University operation failed')})</script></body></html>"""
 def parse_multipart_form(headers, body: bytes) -> tuple[dict[str, str], tuple[str, str, bytes] | None]:
@@ -1299,7 +1305,7 @@ def render_government_dashboard():
     for resp in responses:
         status_color = "#2b7a4b" if resp["status"] == "Accepted" else "#b83226" if resp["status"] == "Rejected" else "#c48622"
         response_items.append(
-            f"<li style='margin-bottom:10px;padding:10px;border-bottom:1px solid #eee;'>"
+            f"<li class='university-response' data-status='{html.escape(resp['status'])}' style='margin-bottom:10px;padding:10px;border-bottom:1px solid #eee;'>"
             f"<strong>{html.escape(resp['university_name'])}</strong> "
             f"· Issue: <em>{html.escape(resp['issue_title'])}</em> ({html.escape(resp['issue_district'])})<br>"
             f"Request Status: <span style='color:{status_color};font-weight:bold;'>{html.escape(resp['status'])}</span> "
@@ -1310,7 +1316,8 @@ def render_government_dashboard():
     return (
         f"<h1>Government Dashboard</h1><p>Jharkhand societal innovation overview and institutional response tracking.</p>"
         f"<section><h2>Totals</h2><p>Issues: {metrics['total_issues']} · Proposals: {metrics['proposals']} · Assignments: {metrics['assignments']} · Universities: {metrics['universities']} · Industry partners: {metrics['industry_partners']} · Support offers: {metrics['support_offers']}</p></section>"
-        f"<section><h2>University Request Responses & Decisions (Accept/Reject Feed)</h2><ul>{responses_markup}</ul></section>"
+        f"<section><h2>University Request Responses & Decisions (Accept/Reject Feed)</h2><label for='university-response-filter'>Filter decisions <select id='university-response-filter'><option value='all'>All decisions</option><option value='Accepted'>Accepted</option><option value='Rejected'>Rejected</option><option value='Needs clarification'>Needs clarification</option></select></label><ul id='university-response-feed'>{responses_markup}</ul></section>"
+        f"<script>document.getElementById('university-response-filter').addEventListener('change', event => {{ const selected = event.target.value; document.querySelectorAll('.university-response').forEach(item => {{ item.hidden = selected !== 'all' && item.dataset.status !== selected; }}); }});</script>"
         f"<section><h2>Moderation</h2><ul>{moderation or '<li>No issue data</li>'}</ul></section>"
         f"<section><h2>District and domain distribution</h2><div>{distribution_chart or '<p>No issue data</p>'}</div><details><summary>View data list</summary><ul>{distribution or '<li>No issue data</li>'}</ul></details></section>"
         f"<section><h2>Project progress</h2><div>{stages_chart or '<p>No project teams</p>'}</div><details><summary>View data list</summary><ul>{stages or '<li>No project teams</li>'}</ul></details></section>"
@@ -1937,7 +1944,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             if university.get("approval_status", "Active") != "Active":
                 status = university.get("approval_status", "Pending").lower()
-                self.send_html(load_university_login_page(f"Your university registration is {status}. An administrator must approve it before dashboard access."), status=403)
+                self.send_html(load_university_login_page(f"Your university registration is {status}. Contact an administrator if access is restricted."), status=403)
                 return
             session_id = create_session_record(email)
             SESSIONS[session_id] = email
@@ -1952,7 +1959,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_html(load_industry_login_page('<p class="error">Email or password is incorrect.</p>'), status=401)
                 return
             if industry_for_user(email) is None:
-                self.send_html(load_industry_login_page('<p class="error">This account is not linked to an approved industry partner profile. Registration must be approved by an administrator.</p>'), status=403)
+                self.send_html(load_industry_login_page('<p class="error">This account is not linked to an active industry partner profile.</p>'), status=403)
                 return
             session_id = create_session_record(email)
             SESSIONS[session_id] = email
@@ -1979,11 +1986,11 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_html(load_industry_register_page(f'<p class="error">{html.escape(message)}</p>'), status=400)
                 return
             try:
-                create_industry_partner(**values, approval_status="Pending")
+                create_industry_partner(**values, approval_status="Active")
             except Exception:
                 self.send_html(load_industry_register_page('<p class="error">The organization profile could not be created.</p>'), status=400)
                 return
-            self.send_html(load_industry_register_page('<p class="success">Registration submitted. An administrator must approve your organization before you can sign in.</p>'))
+            self.send_html(load_industry_register_page('<p class="success">Registration complete. You can now sign in and use the industry workspace.</p>'))
             return
         if path == "/contractor/login" or path == "/contractor-login":
             length = int(self.headers.get("Content-Length", "0"))
@@ -2068,14 +2075,14 @@ class MapHandler(BaseHTTPRequestHandler):
             existing_university = next((item for item in load_universities() if str(item.get("contact_email", "")).casefold() == email.casefold()), None)
             if existing_university is not None:
                 status = existing_university.get("approval_status", "Active").lower()
-                self.send_html(load_university_register_page(f'<p class="success">A university registration already exists for this email. Current approval status: <strong>{html.escape(status.title())}</strong>. Please use the university login after administrator approval.</p>'))
+                self.send_html(load_university_register_page(f'<p class="success">A university registration already exists for this email. Current account status: <strong>{html.escape(status.title())}</strong>. Use the university login or contact an administrator if access is restricted.</p>'))
                 return
             created, message = create_account(email, password)
             if not created:
                 self.send_html(load_university_register_page(f'<p class="error">{html.escape(message)}</p>'), status=400)
                 return
-            university = create_university(**values)
-            self.send_html(load_university_register_page(f'<p class="success"><strong>Registration acknowledged.</strong> {html.escape(university["name"])} has been submitted for administrator approval. Reference email: <strong>{html.escape(email)}</strong>. You can sign in after the approval status becomes Active.</p>'))
+            university = create_university(**values, approval_status="Active")
+            self.send_html(load_university_register_page(f'<p class="success"><strong>Registration complete.</strong> {html.escape(university["name"])} can now sign in. Administrators may review the profile and analytics from the admin dashboard.</p>'))
             return
         if path == "/api/admin/contractor-assignments":
             user = self.session_user()

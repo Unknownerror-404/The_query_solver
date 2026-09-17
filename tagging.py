@@ -23,10 +23,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import json
 
-from sentence_transformers import SentenceTransformer
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 # ============================================================
 # CONFIGURATION
@@ -63,6 +64,8 @@ def get_model() -> SentenceTransformer:
     global _model
 
     if _model is None:
+        from sentence_transformers import SentenceTransformer
+
         _model = SentenceTransformer(MODEL_NAME)
 
     return _model

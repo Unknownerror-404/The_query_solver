@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+import json
 import secrets
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable
+
 
 import mysql.connector
 from dotenv import load_dotenv
@@ -16,12 +19,14 @@ from mysql.connector import Error, IntegrityError
 
 load_dotenv(Path(__file__).resolve().with_name(".env"))
 
+logger = logging.getLogger(__name__)
+
 
 MYSQL_CONFIG = {
     "host": os.getenv("CIVIC_MAP_DB_HOST", "127.0.0.1"),
     "port": int(os.getenv("CIVIC_MAP_DB_PORT", "3306")),
     "user": os.getenv("CIVIC_MAP_DB_USER", "root"),
-    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", ""),
+    "password": os.getenv("CIVIC_MAP_DB_PASSWORD", "Mi123456#"),
     "database": os.getenv("CIVIC_MAP_DB_NAME", "sih26"),
     "connection_timeout": int(os.getenv("CIVIC_MAP_DB_TIMEOUT", "2")),
 }
@@ -78,6 +83,156 @@ _MEM_PROFESSIONALS: list[dict[str, Any]] = [{"email": "engineer@example.gov", "n
 _MEM_SUPPORT_REQUESTS: list[dict[str, Any]] = []
 _MEM_PROPOSALS: list[dict[str, Any]] = []
 _MEM_RATE_LIMITS: dict[str, Any] = {}
+_MEM_CONTRACTORS: list[dict[str, Any]] = []
+_MEM_CONTRACTOR_ASSIGNMENTS: list[dict[str, Any]] = []
+_MEM_CONTRACTOR_COMPLAINTS: list[dict[str, Any]] = []
+_MEMORY_ISSUES_FILE = Path(__file__).with_name("memory_issues.json")
+
+
+def _load_memory_issues() -> None:
+    if not _MEMORY_ISSUES_FILE.exists():
+        return
+    try:
+        saved_issues = json.loads(_MEMORY_ISSUES_FILE.read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError):
+        return
+    if not isinstance(saved_issues, list):
+        return
+    known_ids = {item.get("id") for item in _MEM_ISSUES}
+    for saved_issue in saved_issues:
+        if not isinstance(saved_issue, dict) or saved_issue.get("id") in known_ids:
+            continue
+        _MEM_ISSUES.append(saved_issue)
+
+
+def _save_memory_issues() -> None:
+    try:
+        _MEMORY_ISSUES_FILE.write_text(json.dumps(_MEM_ISSUES, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _migrate_memory_records(cursor: Any) -> None:
+    for issue in _MEM_ISSUES:
+        cursor.execute(
+            """
+            INSERT IGNORE INTO issues
+            (id, title, category, description, area, district, block, latitude, longitude,
+             supporters, age, moderation_status, reporter)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                issue["id"], issue.get("title", "Untitled issue"), issue.get("category", "Other"),
+                issue.get("description", ""), issue.get("area", ""), issue.get("district", "Ranchi"),
+                issue.get("block", ""), issue.get("lat", 0), issue.get("lng", 0),
+                issue.get("supporters", 0), issue.get("age", "just now"),
+                issue.get("moderation_status", "Pending"), issue.get("reporter"),
+            ),
+        )
+
+    for university in _MEM_UNIVERSITIES:
+        cursor.execute(
+            """
+            INSERT INTO universities
+            (id, name, district, domains, expertise, departments, laboratories,
+             incubation_facilities, contact_email, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+            name = VALUES(name), district = VALUES(district), domains = VALUES(domains),
+            expertise = VALUES(expertise), departments = VALUES(departments),
+            laboratories = VALUES(laboratories), incubation_facilities = VALUES(incubation_facilities),
+            approval_status = VALUES(approval_status)
+            """,
+            (
+                university["id"], university["name"], university.get("district", "Ranchi"),
+                university.get("domains", ""), university.get("expertise", ""),
+                university.get("departments", ""), university.get("laboratories", ""),
+                university.get("incubation_facilities", ""), university.get("contact_email", ""),
+                university.get("approval_status", "Active"),
+            ),
+        )
+
+    for profile in _MEM_PROFESSIONALS:
+        cursor.execute(
+            """
+            INSERT INTO professional_profiles
+            (email, name, organization, affiliation, verification, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE name = VALUES(name), organization = VALUES(organization),
+            affiliation = VALUES(affiliation), verification = VALUES(verification),
+            approval_status = VALUES(approval_status)
+            """,
+            (
+                profile["email"], profile.get("name", ""), profile.get("organization", ""),
+                profile.get("affiliation", ""), profile.get("verification", ""),
+                profile.get("approval_status", "Active"),
+            ),
+        )
+
+    for assignment in _MEM_ASSIGNMENTS.values():
+        cursor.execute(
+            """
+            INSERT INTO issue_assignments
+            (issue_id, university_id, status, response_reason, assigned_by)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE university_id = VALUES(university_id),
+            status = VALUES(status), response_reason = VALUES(response_reason),
+            assigned_by = VALUES(assigned_by)
+            """,
+            (
+                assignment["issue_id"], assignment["university_id"], assignment.get("status", "Assigned"),
+                assignment.get("response_reason", ""), assignment.get("assigned_by", "system"),
+            ),
+        )
+
+    for team in _MEM_TEAMS:
+        cursor.execute(
+            """
+            INSERT IGNORE INTO project_teams
+            (id, issue_id, university_id, name, faculty_mentor, status, ip_outcome,
+             startup_outcome, impact_summary)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                team["id"], team["issue_id"], team["university_id"], team["name"],
+                team.get("faculty_mentor", ""), team.get("status", "Forming"),
+                team.get("ip_outcome"), team.get("startup_outcome"), team.get("impact_summary"),
+            ),
+        )
+        cursor.executemany(
+            "INSERT IGNORE INTO team_members (team_id, student_email, member_role) VALUES (%s, %s, %s)",
+            [(team["id"], member, "Student") for member in team.get("members", [])],
+        )
+
+    for milestone in _MEM_MILESTONES:
+        cursor.execute(
+            """
+            INSERT IGNORE INTO milestones
+            (id, team_id, title, due_date, status, deliverable, testing_result)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                milestone["id"], milestone["team_id"], milestone["title"], milestone.get("due_date"),
+                milestone.get("status", "Pending"), milestone.get("deliverable", ""),
+                milestone.get("testing_result", ""),
+            ),
+        )
+
+    for offer in _MEM_OFFERS:
+        cursor.execute(
+            """
+            INSERT IGNORE INTO support_offers
+            (id, issue_id, partner_id, support_type, details, status, commitment_note)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                offer["id"], offer["issue_id"], offer["partner_id"], offer["support_type"],
+                offer.get("details", ""), offer.get("status", "Offered"), offer.get("commitment_note", ""),
+            ),
+        )
+
+
+_load_memory_issues()
 
 
 def connect():
@@ -103,7 +258,8 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
     try:
         ensure_database()
         connection = connect()
-    except Exception:
+    except Exception as exc:
+        logger.error("MySQL initialisation failed; database fallback is active. Check CIVIC_MAP_DB_* values. Error: %s", exc)
         _DB_AVAILABLE = False
         return
     _DB_AVAILABLE = True
@@ -657,6 +813,7 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
             )
             """
         )
+        _migrate_memory_records(cursor)
         connection.commit()
     finally:
         cursor.close()
@@ -705,8 +862,11 @@ def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
     if not _DB_AVAILABLE:
         iid = max((i["id"] for i in _MEM_ISSUES), default=0) + 1
         saved = dict(issue)
+        for private_field in ("_proof_type", "_proof_data", "_video_type", "_video_data"):
+            saved.pop(private_field, None)
         saved.update({"id": iid, "supporters": 1, "age": "just now", "moderation_status": "Pending"})
         _MEM_ISSUES.append(saved)
+        _save_memory_issues()
         return saved
     connection = connect()
 
@@ -782,6 +942,7 @@ def update_issue(issue: dict[str, Any]) -> None:
         existing = next((i for i in _MEM_ISSUES if i["id"] == issue.get("id")), None)
         if existing:
             existing.update(issue)
+            _save_memory_issues()
         return
     connection = connect()
     try:
@@ -803,6 +964,7 @@ def moderate_issue(issue_id: int, status: str, reason: str, moderator: str) -> b
             existing["moderation_status"] = status
             existing["moderation_reason"] = reason
             existing["moderated_by"] = moderator
+            _save_memory_issues()
             return True
         return False
     connection = connect()
@@ -1675,6 +1837,25 @@ def create_contractor(
     phone: str,
 ) -> dict[str, Any]:
     """Insert a new contractor and return the created record."""
+    if not _DB_AVAILABLE:
+        contractor = {
+            "id": max((item["id"] for item in _MEM_CONTRACTORS), default=0) + 1,
+            "company_name": company_name,
+            "owner_name": owner_name,
+            "license_no": license_no,
+            "district": district,
+            "specializations": specializations,
+            "contact_email": contact_email,
+            "phone": phone,
+            "approval_status": "Pending",
+            "performance_score": 0,
+            "complaint_count": 0,
+            "completed_projects": 0,
+            "block_reason": None,
+            "created_at": "just now",
+        }
+        _MEM_CONTRACTORS.append(contractor)
+        return dict(contractor)
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1708,6 +1889,8 @@ def create_contractor(
 
 def load_contractors() -> list[dict[str, Any]]:
     """Return all contractors ordered by performance score descending."""
+    if not _DB_AVAILABLE:
+        return sorted((dict(item) for item in _MEM_CONTRACTORS), key=lambda item: (-item.get("performance_score", 0), -item.get("completed_projects", 0)))
     refresh_contractor_metrics()
     connection = connect()
     try:
@@ -1726,8 +1909,15 @@ def load_contractors() -> list[dict[str, Any]]:
 
 def contractor_for_user(contact_email: str) -> dict[str, Any] | None:
     """Return contractor record for a given email, or None if not found/not active."""
-    refresh_contractor_metrics()
-    connection = connect()
+    global _DB_AVAILABLE
+    if not _DB_AVAILABLE:
+        return next((dict(item) for item in _MEM_CONTRACTORS if str(item.get("contact_email", "")).casefold() == contact_email.casefold()), None)
+    try:
+        refresh_contractor_metrics()
+        connection = connect()
+    except Exception:
+        _DB_AVAILABLE = False
+        return None
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute(
@@ -1745,6 +1935,21 @@ def contractor_for_user(contact_email: str) -> dict[str, Any] | None:
 
 def load_contractor_assignments(contractor_id: int) -> list[dict[str, Any]]:
     """Return all assignments for a given contractor with issue details."""
+    if not _DB_AVAILABLE:
+        issues = {item["id"]: item for item in _MEM_ISSUES}
+        return [
+            {
+                **assignment,
+                "issue_title": issues.get(assignment["issue_id"], {}).get("title", "Civic issue"),
+                "issue_description": issues.get(assignment["issue_id"], {}).get("description", ""),
+                "district": issues.get(assignment["issue_id"], {}).get("district", "Ranchi"),
+                "block": issues.get(assignment["issue_id"], {}).get("block", ""),
+                "category": issues.get(assignment["issue_id"], {}).get("category", "General"),
+                "area": issues.get(assignment["issue_id"], {}).get("area", ""),
+            }
+            for assignment in _MEM_CONTRACTOR_ASSIGNMENTS
+            if assignment["contractor_id"] == contractor_id
+        ]
     connection = connect()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -1769,7 +1974,28 @@ def load_contractor_assignments(contractor_id: int) -> list[dict[str, Any]]:
 
 def load_all_contractor_assignments() -> list[dict[str, Any]]:
     """Return all contractor assignments with contractor and issue details (for admin)."""
-    connection = connect()
+    global _DB_AVAILABLE
+    if not _DB_AVAILABLE:
+        contractors = {item["id"]: item for item in _MEM_CONTRACTORS}
+        issues = {item["id"]: item for item in _MEM_ISSUES}
+        return [
+            {
+                **assignment,
+                "issue_title": issues.get(assignment["issue_id"], {}).get("title", "Civic issue"),
+                "district": issues.get(assignment["issue_id"], {}).get("district", "Ranchi"),
+                "category": issues.get(assignment["issue_id"], {}).get("category", "General"),
+                "company_name": contractors.get(assignment["contractor_id"], {}).get("company_name", "Contractor"),
+                "contractor_email": contractors.get(assignment["contractor_id"], {}).get("contact_email", ""),
+                "performance_score": contractors.get(assignment["contractor_id"], {}).get("performance_score", 0),
+                "contractor_status": contractors.get(assignment["contractor_id"], {}).get("approval_status", "Pending"),
+            }
+            for assignment in _MEM_CONTRACTOR_ASSIGNMENTS
+        ]
+    try:
+        connection = connect()
+    except Exception:
+        _DB_AVAILABLE = False
+        return []
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute(
@@ -1793,6 +2019,15 @@ def load_all_contractor_assignments() -> list[dict[str, Any]]:
 
 def assign_issue_to_contractor(issue_id: int, contractor_id: int, assigned_by: str) -> bool:
     """Assign an issue to a contractor. Returns True on success."""
+    if not _DB_AVAILABLE:
+        if not any(item["id"] == contractor_id for item in _MEM_CONTRACTORS):
+            return False
+        assignment = next((item for item in _MEM_CONTRACTOR_ASSIGNMENTS if item["issue_id"] == issue_id), None)
+        if assignment is None:
+            _MEM_CONTRACTOR_ASSIGNMENTS.append({"id": max((item["id"] for item in _MEM_CONTRACTOR_ASSIGNMENTS), default=0) + 1, "issue_id": issue_id, "contractor_id": contractor_id, "assigned_by": assigned_by, "status": "Assigned", "completion_note": "", "progress_image_type": "", "progress_image_data": b"", "assigned_at": "just now", "completed_at": None})
+        else:
+            assignment.update({"contractor_id": contractor_id, "assigned_by": assigned_by, "status": "Assigned", "completed_at": None})
+        return True
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1820,6 +2055,20 @@ def assign_issue_to_contractor(issue_id: int, contractor_id: int, assigned_by: s
 
 def update_contractor_assignment(assignment_id: int, status: str, note: str = "", progress_image_type: str = "", progress_image_data: bytes = b"") -> bool:
     """Update contractor assignment status and optionally set completion timestamp."""
+    if not _DB_AVAILABLE:
+        assignment = next((item for item in _MEM_CONTRACTOR_ASSIGNMENTS if item["id"] == assignment_id), None)
+        if assignment is None:
+            return False
+        assignment.update({"status": status, "completion_note": note})
+        if progress_image_type and progress_image_data:
+            assignment.update({"progress_image_type": progress_image_type, "progress_image_data": progress_image_data})
+        assignment["completed_at"] = "just now" if status == "Completed" else None
+        if status == "Completed":
+            contractor = next((item for item in _MEM_CONTRACTORS if item["id"] == assignment["contractor_id"]), None)
+            if contractor:
+                contractor["completed_projects"] = sum(1 for item in _MEM_CONTRACTOR_ASSIGNMENTS if item["contractor_id"] == contractor["id"] and item["status"] == "Completed")
+                contractor["performance_score"] = contractor["completed_projects"] * 10 - contractor.get("complaint_count", 0) * 5
+        return True
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1869,6 +2118,25 @@ def create_contractor_complaint(
     description: str,
 ) -> dict[str, Any]:
     """File a quality complaint against a contractor."""
+    if not _DB_AVAILABLE:
+        complaint = {
+            "id": len(_MEM_CONTRACTOR_COMPLAINTS) + 1,
+            "contractor_id": contractor_id,
+            "issue_id": issue_id,
+            "filed_by": filed_by,
+            "complaint_type": complaint_type,
+            "description": description,
+            "status": "Pending",
+            "reviewed_by": None,
+            "reviewed_at": None,
+            "created_at": "just now",
+        }
+        _MEM_CONTRACTOR_COMPLAINTS.append(complaint)
+        contractor = next((item for item in _MEM_CONTRACTORS if item["id"] == contractor_id), None)
+        if contractor:
+            contractor["complaint_count"] = sum(1 for item in _MEM_CONTRACTOR_COMPLAINTS if item["contractor_id"] == contractor_id and item["status"] == "Reviewed")
+            contractor["performance_score"] = contractor.get("completed_projects", 0) * 10 - contractor["complaint_count"] * 5
+        return dict(complaint)
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -1952,6 +2220,13 @@ def update_contractor_status(contractor_id: int, status: str, reason: str = "") 
     """Block or activate a contractor."""
     if status not in {"Active", "Blocked", "Pending"}:
         return False
+    if not _DB_AVAILABLE:
+        contractor = next((item for item in _MEM_CONTRACTORS if item["id"] == contractor_id), None)
+        if contractor is None:
+            return False
+        contractor["approval_status"] = status
+        contractor["block_reason"] = reason if status == "Blocked" else None
+        return True
     connection = connect()
     try:
         cursor = connection.cursor()
@@ -2456,7 +2731,32 @@ def load_university_reports(issue_id: int | None = None) -> list[dict[str, Any]]
 
 
 def load_university_assignment_responses() -> list[dict[str, Any]]:
-    connection = connect()
+    global _DB_AVAILABLE
+    if not _DB_AVAILABLE:
+        universities = {item["id"]: item for item in _MEM_UNIVERSITIES}
+        issues = {item["id"]: item for item in _MEM_ISSUES}
+        responses = []
+        for assignment in _MEM_ASSIGNMENTS.values():
+            university = universities.get(assignment.get("university_id"), {})
+            issue = issues.get(assignment.get("issue_id"), {})
+            responses.append({
+                "issue_id": assignment.get("issue_id"),
+                "university_id": assignment.get("university_id"),
+                "status": assignment.get("status", "Assigned"),
+                "response_reason": assignment.get("response_reason", ""),
+                "assigned_at": "just now",
+                "issue_title": issue.get("title", "Civic challenge"),
+                "issue_district": issue.get("district", "Ranchi"),
+                "issue_category": issue.get("category", "General"),
+                "university_name": university.get("name", "University"),
+                "university_email": university.get("contact_email", ""),
+            })
+        return responses
+    try:
+        connection = connect()
+    except Exception:
+        _DB_AVAILABLE = False
+        return load_university_assignment_responses()
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute(

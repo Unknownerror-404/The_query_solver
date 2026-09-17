@@ -123,6 +123,8 @@ def add_issue(issue: dict) -> dict:
                 match.issue["_video_type"] = issue.get("_video_type")
                 match.issue["_video_data"] = issue.get("_video_data")
             update_issue(match.issue)
+            for private_field in ("_proof_type", "_proof_data", "_video_type", "_video_data"):
+                match.issue.pop(private_field, None)
             return {"result": "duplicate", "issue": match.issue, "score": match.score}
     if match and match.decision == "possible_duplicate":
         return {"result": "possible_duplicate", "issue": match.issue, "score": match.score}

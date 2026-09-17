@@ -777,35 +777,35 @@ def _exif_coordinate(
     reference_key: int,
 ) -> float | None:
 
-    value = gps.get(
-        value_key
-    )
+    if gps is None:
+        return None
 
-    reference = gps.get(
-        reference_key
-    )
+    value = gps.get(value_key)
+    reference = gps.get(reference_key)
 
     if not value or not reference:
         return None
 
-    degrees, minutes, seconds = (
-        float(part)
-        for part in value
-    )
+    try:
+        if isinstance(value, (list, tuple)) and len(value) == 3:
+            components = []
+            for part in value:
+                if isinstance(part, (list, tuple)) and len(part) == 2:
+                    num, den = part
+                    components.append(float(num) / float(den) if den else float(num))
+                else:
+                    components.append(float(part))
+            if len(components) != 3:
+                return None
+            degrees, minutes, seconds = components
+        else:
+            return None
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
 
-    coordinate = (
-        degrees
-        +
-        minutes / 60
-        +
-        seconds / 3600
-    )
+    coordinate = degrees + minutes / 60 + seconds / 3600
 
-    if str(reference).upper() in {
-        "S",
-        "W"
-    }:
-
+    if str(reference).upper() in {"S", "W"}:
         coordinate = -coordinate
 
     return coordinate
@@ -868,6 +868,7 @@ def sanitize_and_reencode_image(
                 f"{target_format.lower()}"
             )
 
+            exif = img.getexif()
             output = BytesIO()
 
             if (
@@ -883,10 +884,16 @@ def sanitize_and_reencode_image(
                     "RGB"
                 )
 
+            save_kwargs = {
+                "format": target_format,
+                "optimize": True,
+            }
+            if exif:
+                save_kwargs["exif"] = exif
+
             img.save(
                 output,
-                format=target_format,
-                optimize=True
+                **save_kwargs
             )
 
             return (
@@ -932,12 +939,30 @@ DEFAULT_CLIP_MODEL_DIR = (
     "civic_clip"
 )
 
+CLIP_MODEL_DIR_CANDIDATES = (
+    DEFAULT_CLIP_MODEL_DIR,
+    BASE_DIR / "models" / "civic_clip_pothole_model",
+    BASE_DIR.parent.parent / "SIH2" / "The_query_solver" / "models" / "civic_clip",
+    BASE_DIR.parent.parent / "SIH2" / "The_query_solver" / "models" / "civic_clip_pothole_model",
+)
+
 CLIP_MODEL_DIR = Path(
     os.environ.get(
-        "./models/civic_clip_pothole_model",
+        "CIVIC_CLIP_MODEL_DIR",
         str(DEFAULT_CLIP_MODEL_DIR)
     )
 )
+
+
+def _find_clip_model_dir() -> Path | None:
+    """Find a supported local checkpoint, including a nested ZIP extraction."""
+    for candidate in CLIP_MODEL_DIR_CANDIDATES:
+        if (candidate / "config.json").is_file():
+            return candidate
+        nested_candidates = list(candidate.glob("*/config.json")) if candidate.is_dir() else []
+        if nested_candidates:
+            return nested_candidates[0].parent
+    return None
 
 _CLIP_MODEL: Any = None
 
@@ -963,6 +988,8 @@ def _load_finetuned_clip() -> bool:
 
     global _CLIP_LABELS
 
+    global CLIP_MODEL_DIR
+
     if _CLIP_MODEL_LOADED:
 
         return (
@@ -971,15 +998,13 @@ def _load_finetuned_clip() -> bool:
 
     _CLIP_MODEL_LOADED = True
 
-    if not CLIP_MODEL_DIR.exists():
-
-        print(
-            "[AI_model] Fine-tuned CLIP "
-            f"model not found at "
-            f"{CLIP_MODEL_DIR}"
-        )
+    configured_model_dir = Path(os.environ["CIVIC_CLIP_MODEL_DIR"]) if os.environ.get("CIVIC_CLIP_MODEL_DIR") else None
+    model_dir = configured_model_dir if configured_model_dir and (configured_model_dir / "config.json").is_file() else _find_clip_model_dir()
+    if model_dir is None:
 
         return False
+
+    CLIP_MODEL_DIR = model_dir
 
     try:
 
@@ -1224,7 +1249,18 @@ def _predict_clip_images(
 
     if not _load_finetuned_clip():
 
-        return {}
+        return {
+            "issue_type": "other",
+            "predicted_category": "Urban Infrastructure",
+            "category_confidence": 0.0,
+            "top_predictions": [],
+            "visual_model_available": False,
+            "matching_explanation": (
+                "No local fine-tuned CLIP model was found. "
+                "The uploaded visual was retained as evidence; "
+                "text classification remains authoritative."
+            ),
+        }
 
     try:
 
@@ -1364,6 +1400,8 @@ def _predict_clip_images(
                     best_probability,
                     4
                 ),
+
+            "visual_model_available": True,
 
             "top_predictions":
                 top_predictions,
