@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case Room · Civic Map</title>
+<link rel="stylesheet" href="/templates/shared.css">
+<style>
+:root{--ink:#163c38;--muted:#647873;--paper:#f4f5f1;--card:#fffdfa;--line:#dce4df;--accent:#e86038;--blue:#2d8998;--green:#19856f;--gold:#d99a27}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:radial-gradient(circle at 90% 10%,rgba(45,137,152,.1),transparent 24rem),var(--paper);font-family:Inter,Arial,sans-serif}header{padding:16px 42px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;background:rgba(255,255,255,.92);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:#fff;font:800 18px Georgia,serif}.brand-name{font-weight:800}.brand-sub{margin-top:3px;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase}.nav{display:flex;gap:8px;flex-wrap:wrap}.nav a{padding:9px 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:12px;font-weight:700;text-decoration:none}.nav a:hover,.nav a.active{background:var(--ink);color:#fff}.account{color:var(--muted);font-size:12px}main{max-width:1120px;margin:auto;padding:34px 24px 64px}.hero{padding:30px 34px;border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:0 12px 30px rgba(22,60,56,.08);position:relative;overflow:hidden}.hero:before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue))}.eyebrow{margin:0 0 7px;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase}.hero h1{margin:0 0 10px;font:500 clamp(30px,4vw,48px)/1.1 Georgia,serif}.hero p{max-width:800px;margin:0;color:var(--muted);line-height:1.6}.meta{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.pill{padding:6px 10px;border-radius:999px;background:#edf6f3;color:var(--green);font-size:11px;font-weight:800}.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;margin-top:22px;align-items:start}.panel{padding:24px;border:1px solid var(--line);border-radius:15px;background:rgba(255,253,250,.96);box-shadow:0 7px 20px rgba(22,60,56,.06)}.panel h2{margin:0 0 5px;font:500 26px Georgia,serif}.panel-intro{margin:0 0 20px;color:var(--muted);font-size:13px;line-height:1.5}.timeline{display:grid;gap:14px}.event{padding:15px 16px;border-left:4px solid var(--blue);border-radius:8px;background:#f7faf8}.event.participant{border-left-color:var(--gold)}.event-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.event strong{font-size:13px}.event small{color:var(--muted);font-size:11px}.event p{margin:8px 0 0;color:#536863;font-size:13px;line-height:1.5}.message-list{display:grid;gap:11px;margin-bottom:20px}.message{padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}.message-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:11px}.message-head strong{color:var(--ink);font-size:12px}.message p{margin:8px 0 0;font-size:13px;line-height:1.5}.empty{padding:16px;border:1px dashed var(--line);border-radius:9px;color:var(--muted);font-size:13px}label{display:block;margin-top:12px;color:var(--ink);font-size:12px;font-weight:700}textarea,select{width:100%;margin-top:6px;padding:11px;border:1px solid var(--line);border-radius:8px;background:#fff;font:13px Arial,sans-serif;color:var(--ink)}textarea{min-height:105px;resize:vertical}button{margin-top:12px;width:100%;padding:11px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font-weight:800;cursor:pointer}button:hover{background:#d94c2b}button:disabled{opacity:.65;cursor:wait}.back{display:inline-block;margin-top:18px;color:var(--accent);font-size:12px;font-weight:800;text-decoration:none}.notice{display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:12px}.notice.show{display:block}.notice.error{background:#fff0ed;color:#b33625}.notice.success{background:#eaf7ef;color:#197044}@media(max-width:800px){header{padding:14px 18px}.account{width:100%}.layout{grid-template-columns:1fr}main{padding:24px 16px 52px}.hero{padding:27px 22px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="brand-mark">C</div><div><div class="brand-name">Civic Map</div><div class="brand-sub">Shared case room</div></div></div>
+  <nav class="nav"><a class="active" href="/cases/__CASE_ID__">Case room</a><a href="/community">Community</a><a href="/">Live map</a><a href="/logout">Log out</a></nav>
+  <div class="account">Signed in as __USER__</div>
+</header>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Civic case #__CASE_ID__</p>
+    <h1>__TITLE__</h1>
+    <p>__DESCRIPTION__</p>
+    <div class="meta"><span class="pill">__STATUS__</span><span class="pill">__CATEGORY__</span><span class="pill">__DISTRICT__</span><span class="pill">__ACCESS__ access</span></div>
+  </section>
+  <div class="layout">
+    <section class="panel">
+      <h2>Case timeline</h2>
+      <p class="panel-intro">Decisions, progress updates, and accountability records for this civic problem.</p>
+      <div class="timeline">__EVENTS__</div>
+    </section>
+    <aside class="panel">
+      <h2>Case conversation</h2>
+      <p class="panel-intro">Updates are labelled by the role that posted them. Participant messages are visible only to connected case members.</p>
+      <div class="message-list">__MESSAGES__</div>
+      __COMPOSER__
+      <div id="notice" class="notice"></div>
+    </aside>
+  </div>
+  <a class="back" href="/community">← Return to community issues</a>
+</main>
+<script>
+const form=document.querySelector('#case-message-form');
+const notice=document.querySelector('#notice');
+if(form){form.addEventListener('submit',async event=>{event.preventDefault();const button=form.querySelector('button');button.disabled=true;notice.className='notice';try{const data=Object.fromEntries(new FormData(form));const response=await fetch('/api/cases/__CASE_ID__/messages',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok){notice.textContent=result.message||'The update could not be posted.';notice.className='notice error show';return}notice.textContent='Update posted. Refreshing the case room…';notice.className='notice success show';window.location.reload()}catch(error){notice.textContent='Could not reach the case communication service.';notice.className='notice error show'}finally{button.disabled=false}})}
+</script>
+</body>
+</html>

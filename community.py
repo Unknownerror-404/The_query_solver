@@ -295,6 +295,7 @@ def proposal_page(template: str, user: str, message: str = "") -> str:
     issue_markup = "".join(
         f'<article class="issue"><span class="rank">#{index} · {issue.get("supporters", 0)} supporters</span><span class="status">{issue_consideration_status(index)}</span>'
         f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'<p><a class="case-room-link" href="/cases/{issue["id"]}">Open shared case room →</a></p>'
         f'<p class="muted">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("category", ""))}</p></article>'
         for index, issue in enumerate(issues, 1)
     )
