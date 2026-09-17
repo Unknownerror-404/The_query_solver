@@ -599,7 +599,7 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
 
 
 def _issue(row: tuple[Any, ...]) -> dict[str, Any]:
-    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_type", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter", "video_id", "video_predicted_category", "video_confidence", "video_explanation")
+    keys = ("id", "title", "category", "area", "district", "block", "lat", "lng", "description", "supporters", "age", "proof_id", "proof_type", "proof_status", "proof_message", "predicted_category", "category_confidence", "priority_score", "priority_label", "matching_explanation", "moderation_status", "moderation_reason", "moderated_by", "reporter", "video_id", "video_predicted_category", "video_confidence", "video_explanation", "image_hash", "created_at")
     issue = {key: value for key, value in zip(keys, row) if value is not None}
     for coordinate in ("lat", "lng"):
         if isinstance(issue.get(coordinate), Decimal):
@@ -617,7 +617,7 @@ def load_issues() -> list[dict[str, Any]]:
     connection = connect()
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter, video_id, video_predicted_category, video_confidence, video_explanation FROM issues ORDER BY id")
+        cursor.execute("SELECT id, title, category, area, district, block, latitude, longitude, description, supporters, age, proof_id, proof_type, proof_status, proof_message, predicted_category, category_confidence, priority_score, priority_label, matching_explanation, moderation_status, moderation_reason, moderated_by, reporter, video_id, video_predicted_category, video_confidence, video_explanation, CASE WHEN proof_type LIKE 'image/%' AND proof_data IS NOT NULL THEN SHA2(proof_data, 256) ELSE NULL END AS image_hash, created_at FROM issues ORDER BY id")
         return [_issue(row) for row in cursor.fetchall()]
     finally:
         cursor.close()
@@ -693,6 +693,9 @@ def insert_issue(issue: dict[str, Any]) -> dict[str, Any]:
         connection.commit()
 
         saved = dict(issue)
+        cursor.execute("SELECT created_at FROM issues WHERE id = %s", (issue_id,))
+        created_row = cursor.fetchone()
+        saved["created_at"] = created_row[0] if created_row else datetime.now()
 
         # Don't return raw proof/video data to the application
         saved.pop("_proof_type", None)

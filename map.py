@@ -1429,7 +1429,67 @@ SAMPLE_ISSUES = [
     {"title": "Water cut, no notice", "category": "Water", "area": "Sakchi, Jamshedpur", "lat": 22.8046, "lng": 86.2029, "supporters": 42, "age": "36h ago", "description": "The neighbourhood has had no supply since yesterday morning."},
     {"title": "Streetlight outage at junction", "category": "Streetlights", "area": "Tower Chowk, Deoghar", "lat": 24.4857, "lng": 86.6947, "supporters": 12, "age": "2d ago", "description": "Three streetlights are out, making the junction difficult to cross at night."},
 ]
-PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Civic Map</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}.eyebrow{margin:0 0 5px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}.tagline{color:var(--muted);font:14px Arial,sans-serif}nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}.nav-button:hover,.nav-button.active{background:var(--ink);color:white}main{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 105px);min-height:540px}aside{padding:24px;overflow:auto;border-right:1px solid var(--line)}.stat{display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);font:13px Arial,sans-serif}.stat strong{font-size:21px}h2{font-size:18px;font-weight:500;margin:28px 0 12px}.filters{display:grid;gap:7px}button,select,input,textarea{font:14px Arial,sans-serif}button{cursor:pointer;border:1px solid var(--ink);background:transparent;padding:10px 12px;text-align:left;color:var(--ink);border-radius:8px}button:hover,button.active{background:var(--ink);color:white}.report{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}input,select,textarea{width:100%;margin:5px 0 9px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;color:var(--ink)}textarea{resize:vertical;min-height:62px}.submit{width:100%;background:var(--accent);border-color:var(--accent);color:white;text-align:center;font-weight:bold}.submit:hover{background:#d44d27}#map{width:100%;height:100%;min-height:540px}.leaflet-popup-content-wrapper{border-radius:6px}.popup h3{margin:0 0 6px;font:700 17px Georgia,serif}.popup p{margin:5px 0;font:13px Arial,sans-serif;line-height:1.4}.popup .category{color:var(--accent);text-transform:uppercase;font-weight:bold;font-size:10px;letter-spacing:1px}.popup img{width:220px;max-height:150px;object-fit:cover;margin-top:8px;border-radius:6px}.proof{font:12px Arial,sans-serif;color:var(--muted)}@media(max-width:760px){header{align-items:start;flex-direction:column;gap:5px}main{display:block;height:auto}aside{border-right:0}#map{height:58vh;min-height:420px}}</style></head><body><header><div class="brand"><div class="brand-mark">C</div><div><div class="brand-name">Civic Map</div><div class="brand-sub">Live Civic Record</div></div></div><div class="tagline">Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a></div><nav class="nav"><a class="nav-button active" href="/">Live Map</a><a class="nav-button" href="/community">Community</a><a class="nav-button" href="/proposals">Solutions</a><a class="nav-button" href="/citizen-dashboard">My Dashboard</a><a class="nav-button" href="/university-dashboard">University</a><a class="nav-button" href="/industry-dashboard">Industry</a><a class="nav-button" href="/government-dashboard">Government</a></nav></header><main><aside><div class="stat"><span>Visible voices</span><strong id="count">0</strong></div><div class="stat"><span>People supporting</span><strong id="supporters">0</strong></div><h2>Browse issues</h2><div id="filters" class="filters"></div><button id="locate" style="margin-top:18px;width:100%;text-align:center">Use my location</button><form id="report" class="report"><h2>Drop a voice</h2><label>Issue title<input name="title" required placeholder="What needs attention?"></label><label>Category<select name="category"><option>Roads</option><option>Waste</option><option>Water</option><option>Streetlights</option><option>Footpaths</option><option>Other</option></select></label><label>Details<textarea name="description" placeholder="Add useful context"></textarea></label><label>Photo proof<input name="proof_image" type="file" accept="image/jpeg,image/png,image/webp"><small>Geotagged photos receive a location verification badge.</small></label><p style="font:12px Arial,sans-serif;color:var(--muted)">Click the map first to choose the location.</p><button class="submit" type="submit">Report this issue</button></form></aside><section id="map" aria-label="Map of civic issues"></section></main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>const issues=__ISSUES__;const map=L.map('map').setView([12.9716,77.5946],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const markers=L.layerGroup().addTo(map);let selectedCategory='All';let reportLocation=null;let selectedPin=null;const colors={Roads:'#e65f38',Waste:'#657a39',Water:'#317c91',Streetlights:'#c48622',Footpaths:'#785b86',Other:'#4f6560'};function popup(issue){return `<div class="popup"><div class="category">${issue.category} · ${issue.area}</div><h3>${issue.title}</h3><p>${issue.description||''}</p><p><b>${issue.supporters||0} supporters</b> · ${issue.age||'just now'}</p>${issue.proof_id?`<img src="/proof/${issue.proof_id}" alt="Photo proof"><p class="proof">${issue.proof_status==='verified'?'✓ GPS location verified':'Photo proof · location unverified'}</p>`:''}</div>`}function render(){markers.clearLayers();const visible=issues.filter(i=>selectedCategory==='All'||i.category===selectedCategory);visible.forEach(issue=>L.circleMarker([issue.lat,issue.lng],{radius:9,color:'#fff',weight:2,fillColor:colors[issue.category]||colors.Other,fillOpacity:.92}).bindPopup(popup(issue)).addTo(markers));document.getElementById('count').textContent=visible.length;document.getElementById('supporters').textContent=visible.reduce((sum,i)=>sum+(i.supporters||0),0)}function buildFilters(){const categories=['All',...new Set(issues.map(i=>i.category))];const root=document.getElementById('filters');root.replaceChildren();categories.forEach(category=>{const button=document.createElement('button');button.textContent=category;button.className=category==='All'?'active':'';button.onclick=()=>{selectedCategory=category;root.querySelectorAll('button').forEach(b=>b.classList.remove('active'));button.classList.add('active');render()};root.appendChild(button)})}function updatePinLabel(){if(reportLocation)document.querySelector('#report p').textContent=`Pin selected: ${reportLocation.lat.toFixed(5)}, ${reportLocation.lng.toFixed(5)}`}function setReportLocation(latlng){reportLocation=latlng;if(selectedPin)map.removeLayer(selectedPin);selectedPin=L.marker(latlng,{draggable:true}).addTo(map);selectedPin.on('dragend',event=>{reportLocation=event.target.getLatLng();updatePinLabel()});updatePinLabel()}map.on('click',e=>setReportLocation(e.latlng));document.getElementById('locate').onclick=()=>{map.once('locationfound',event=>setReportLocation(event.latlng));map.once('locationerror',()=>alert('Location access was unavailable. Please allow location access or click the map to place a pin.')).locate({setView:true,maxZoom:15})};document.getElementById('report').onsubmit=async event=>{event.preventDefault();if(!reportLocation)return alert('Click the map to choose a location first.');const form=new FormData(event.target);const proofFile=form.get('proof_image');let proofImage='';if(proofFile&&proofFile.size){const bytes=new Uint8Array(await proofFile.arrayBuffer());let binary='';bytes.forEach(byte=>binary+=String.fromCharCode(byte));proofImage=btoa(binary)}const response=await fetch('/api/issues',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:form.get('title'),category:form.get('category'),description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage,proof_type:proofFile&&proofFile.type||'image/jpeg'})});const result=await response.json();if(result.result==='possible_duplicate'){alert('A similar issue is already reported nearby. Please support the existing issue from the community page.');return}if(!response.ok)return alert(result.message||'The issue could not be submitted.');if(result.result==='duplicate'){alert('This matches an existing issue and was added as support.');return}issues.push(result.issue);buildFilters();render();event.target.reset();reportLocation=null;if(selectedPin){map.removeLayer(selectedPin);selectedPin=null}alert('Your issue was added to the map.')};buildFilters();render();const districtCoords={"Bokaro":[23.6693,85.9563],"Chatra":[24.2120,84.8715],"Deoghar":[24.4826,86.6966],"Dhanbad":[23.7957,86.4304],"Dumka":[24.2676,87.2497],"East Singhbhum":[22.8046,86.2029],"Garhwa":[24.1624,83.8073],"Giridih":[24.1868,86.3050],"Godda":[24.8267,87.2132],"Gumla":[23.0448,84.5422],"Hazaribagh":[23.9925,85.3637],"Jamtara":[23.9629,86.8000],"Khunti":[23.0763,85.2787],"Koderma":[24.4678,85.5938],"Latehar":[23.7454,84.4632],"Lohardaga":[23.4377,84.6806],"Pakur":[24.6341,87.8488],"Palamu":[24.0326,84.0722],"Ramgarh":[23.6288,85.5173],"Ranchi":[23.3441,85.3096],"Sahibganj":[25.2425,87.6419],"Seraikela Kharsawan":[22.7001,85.9298],"Simdega":[22.6148,84.5074],"West Singhbhum":[22.5694,85.8115]};document.addEventListener('change',e=>{if(e.target&&e.target.name==='district'){const c=districtCoords[e.target.value];if(c)map.flyTo(c,11,{duration:1.5})}});</script></body></html>"""
+def extract_image_gps(image_bytes: bytes):
+    """Extract GPS latitude/longitude from the original uploaded image."""
+    try:
+        from io import BytesIO
+        from PIL import Image
+        with Image.open(BytesIO(image_bytes)) as image:
+            exif = image.getexif()
+            gps = exif.get_ifd(34853)
+            lat_values = gps.get(2)
+            lat_ref = gps.get(1)
+            lng_values = gps.get(4)
+            lng_ref = gps.get(3)
+            if not lat_values or not lat_ref or not lng_values or not lng_ref:
+                return None
+            def dms(values, ref):
+                d, m, sec = values
+                d = float(d)
+                m = float(m)
+                sec = float(sec)
+                value = d + m / 60.0 + sec / 3600.0
+                if str(ref).upper() in {"S", "W"}:
+                    value = -value
+                return value
+            lat = dms(lat_values, lat_ref)
+            lng = dms(lng_values, lng_ref)
+            if -90 <= lat <= 90 and -180 <= lng <= 180:
+                return {"lat": lat, "lng": lng}
+    except Exception:
+        return None
+    return None
+
+PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Civic Map</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>:root{--ink:#172b28;--muted:#667773;--paper:#f5f1e8;--card:#fffdf8;--accent:#e65f38;--line:#dedbd1;--blue:#317c91;--gold:#c48622}*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Georgia,serif;background:var(--paper);color:var(--ink)}header{padding:22px 28px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:var(--paper)}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:white;font:700 17px Arial,sans-serif;box-shadow:0 6px 18px rgba(23,43,40,.16)}.brand-name{font:700 15px Arial,sans-serif;letter-spacing:.3px}.brand-sub{margin-top:2px;color:var(--accent);font:700 8px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase}.eyebrow{margin:0 0 5px;color:var(--accent);font:700 11px Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase}.tagline{color:var(--muted);font:14px Arial,sans-serif}nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nav-button{display:inline-block;padding:9px 12px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);text-decoration:none;font:700 12px Arial,sans-serif;transition:all .2s ease}.nav-button:hover,.nav-button.active{background:var(--ink);color:white}main{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 105px);min-height:540px}aside{padding:24px;overflow:auto;border-right:1px solid var(--line)}.stat{display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);font:13px Arial,sans-serif}.stat strong{font-size:21px}h2{font-size:18px;font-weight:500;margin:28px 0 12px}.filters{display:grid;gap:7px}button,select,input,textarea{font:14px Arial,sans-serif}button{cursor:pointer;border:1px solid var(--ink);background:transparent;padding:10px 12px;text-align:left;color:var(--ink);border-radius:8px}button:hover,button.active{background:var(--ink);color:white}.report{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}input,select,textarea{width:100%;margin:5px 0 9px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;color:var(--ink)}textarea{resize:vertical;min-height:62px}.submit{width:100%;background:var(--accent);border-color:var(--accent);color:white;text-align:center;font-weight:bold}.submit:hover{background:#d44d27}#map{width:100%;height:100%;min-height:540px}.leaflet-popup-content-wrapper{border-radius:6px}.popup h3{margin:0 0 6px;font:700 17px Georgia,serif}.popup p{margin:5px 0;font:13px Arial,sans-serif;line-height:1.4}.popup .category{color:var(--accent);text-transform:uppercase;font-weight:bold;font-size:10px;letter-spacing:1px}.popup img{width:220px;max-height:150px;object-fit:cover;margin-top:8px;border-radius:6px}.proof{font:12px Arial,sans-serif;color:var(--muted)}.civic-modal-backdrop{position:fixed;inset:0;background:rgba(23,43,40,.48);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px}.civic-modal{width:min(460px,92vw);background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 70px rgba(23,43,40,.25);overflow:hidden}.civic-modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}.civic-modal-icon{width:34px;height:34px;border-radius:10px;background:var(--ink);color:white;display:grid;place-items:center;font:700 16px Arial,sans-serif}.civic-modal-title{font:700 16px Arial,sans-serif;color:var(--ink)}.civic-modal-body{padding:22px;font:14px/1.55 Arial,sans-serif;color:var(--ink)}.civic-modal-actions{padding:0 22px 20px;display:flex;justify-content:flex-end}.civic-modal-button{border:0;background:var(--accent);color:white;padding:10px 24px;border-radius:10px;font:700 13px Arial,sans-serif;cursor:pointer}.civic-modal-button:hover{background:#d44d27}@media(max-width:760px){header{align-items:start;flex-direction:column;gap:5px}main{display:block;height:auto}aside{border-right:0}#map{height:58vh;min-height:420px}}</style></head><body><header><div class="brand"><div class="brand-mark">C</div><div><div class="brand-name">Civic Map</div><div class="brand-sub">Live Civic Record</div></div></div><div class="tagline">Signed in as __USER__ · <a href="/logout" style="color:var(--muted)">Log out</a></div><nav class="nav"><a class="nav-button active" href="/">Live Map</a><a class="nav-button" href="/community">Community</a><a class="nav-button" href="/proposals">Solutions</a><a class="nav-button" href="/citizen-dashboard">My Dashboard</a><a class="nav-button" href="/university-dashboard">University</a><a class="nav-button" href="/industry-dashboard">Industry</a><a class="nav-button" href="/government-dashboard">Government</a></nav></header><main><aside><div class="stat"><span>Visible voices</span><strong id="count">0</strong></div><div class="stat"><span>People supporting</span><strong id="supporters">0</strong></div><h2>Browse issues</h2><div id="filters" class="filters"></div><button id="locate" style="margin-top:18px;width:100%;text-align:center">Use my location</button><form id="report" class="report"><h2>Drop a voice</h2><label>Issue title<input name="title" required placeholder="What needs attention?"></label><label>Category<select name="category"><option>Roads</option><option>Waste</option><option>Water</option><option>Streetlights</option><option>Footpaths</option><option>Other</option></select></label><label>Details<textarea name="description" placeholder="Add useful context"></textarea></label><label>Photo proof<input id="proof-image" name="proof_image" type="file" accept="image/jpeg,image/png,image/webp"><small>Geotagged photos automatically place the report pin on the map.</small></label><p style="font:12px Arial,sans-serif;color:var(--muted)">Click the map first to choose the location.</p><button class="submit" type="submit">Report this issue</button></form></aside><section id="map" aria-label="Map of civic issues"></section></main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>const issues=__ISSUES__;const map=L.map('map').setView([12.9716,77.5946],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const markers=L.layerGroup().addTo(map);let selectedCategory='All';let reportLocation=null;let selectedPin=null;const colors={Roads:'#e65f38',Waste:'#657a39',Water:'#317c91',Streetlights:'#c48622',Footpaths:'#785b86',Other:'#4f6560'};function popup(issue){return `<div class="popup"><div class="category">${issue.category} · ${issue.area}</div><h3>${issue.title}</h3><p>${issue.description||''}</p><p><b>${issue.supporters||0} supporters</b> · ${issue.age||'just now'}</p>${issue.proof_id?`<img src="/proof/${issue.proof_id}" alt="Photo proof"><p class="proof">${issue.proof_status==='verified'?'✓ GPS location verified':'Photo proof · location unverified'}</p>`:''}</div>`}function render(){markers.clearLayers();const visible=issues.filter(i=>selectedCategory==='All'||i.category===selectedCategory);visible.forEach(issue=>L.circleMarker([issue.lat,issue.lng],{radius:9,color:'#fff',weight:2,fillColor:colors[issue.category]||colors.Other,fillOpacity:.92}).bindPopup(popup(issue)).addTo(markers));document.getElementById('count').textContent=visible.length;document.getElementById('supporters').textContent=visible.reduce((sum,i)=>sum+(i.supporters||0),0)}function buildFilters(){const categories=['All',...new Set(issues.map(i=>i.category))];const root=document.getElementById('filters');root.replaceChildren();categories.forEach(category=>{const button=document.createElement('button');button.textContent=category;button.className=category==='All'?'active':'';button.onclick=()=>{selectedCategory=category;root.querySelectorAll('button').forEach(b=>b.classList.remove('active'));button.classList.add('active');render()};root.appendChild(button)})}function updatePinLabel(){if(reportLocation)document.querySelector('#report p').textContent=`Pin selected: ${reportLocation.lat.toFixed(5)}, ${reportLocation.lng.toFixed(5)}`}function setReportLocation(latlng){reportLocation=latlng;if(selectedPin)map.removeLayer(selectedPin);selectedPin=L.marker(latlng,{draggable:true}).addTo(map);selectedPin.on('dragend',event=>{reportLocation=event.target.getLatLng();updatePinLabel()});updatePinLabel()}map.on('click',e=>setReportLocation(e.latlng));document.getElementById('locate').onclick=()=>{map.once('locationfound',event=>setReportLocation(event.latlng));map.once('locationerror',()=>alert('Location access was unavailable. Please allow location access or click the map to place a pin.')).locate({setView:true,maxZoom:15})};
+async function applyPhotoGps(file){
+    if(!file||!file.size||!file.type.startsWith('image/')) return false;
+    try{
+        const form=new FormData();
+        form.append('photo',file);
+        const response=await fetch('/api/photo-gps',{method:'POST',body:form});
+        const result=await response.json();
+        if(!response.ok||!Number.isFinite(Number(result.lat))||!Number.isFinite(Number(result.lng))) return false;
+        const latlng=L.latLng(Number(result.lat),Number(result.lng));
+        setReportLocation(latlng);
+        map.flyTo(latlng,17,{duration:1.4});
+        const note=document.querySelector('#report p');
+        if(note) note.textContent=`📍 GPS location detected: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}. Pin placed automatically.`;
+        return true;
+    }catch(error){
+        console.warn('Could not read image GPS metadata',error);
+        return false;
+    }
+}
+document.getElementById('proof-image').addEventListener('change',async event=>{
+    const file=event.target.files&&event.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')) return;
+    const note=document.querySelector('#report p');
+    if(note) note.textContent='Reading GPS location from photo…';
+    const found=await applyPhotoGps(file);
+    if(!found && note) note.textContent='No GPS metadata found in this photo. Use a photo that contains location data.';
+});
+function showCivicAlert(message){const old=document.getElementById('civic-alert');if(old)old.remove();const backdrop=document.createElement('div');backdrop.id='civic-alert';backdrop.className='civic-modal-backdrop';backdrop.innerHTML=`<div class="civic-modal" role="dialog" aria-modal="true" aria-labelledby="civic-alert-title"><div class="civic-modal-head"><div class="civic-modal-icon">C</div><div class="civic-modal-title" id="civic-alert-title">Civic Map says</div></div><div class="civic-modal-body">${message}</div><div class="civic-modal-actions"><button class="civic-modal-button" type="button">OK</button></div></div>`;document.body.appendChild(backdrop);const close=()=>backdrop.remove();backdrop.querySelector('.civic-modal-button').onclick=close;backdrop.addEventListener('click',event=>{if(event.target===backdrop)close()});document.addEventListener('keydown',function handler(event){if(event.key==='Escape'){close();document.removeEventListener('keydown',handler)}})};document.getElementById('report').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.target);const proofFile=form.get('proof_image');if(!reportLocation){if(proofFile&&proofFile.size){const found=await applyPhotoGps(proofFile);if(!found)return alert('No GPS location was found in this photo. Click the map to choose a location first.');}else{return alert('Upload a geotagged photo or click the map to choose a location first.')}}let proofImage='';if(proofFile&&proofFile.size){const bytes=new Uint8Array(await proofFile.arrayBuffer());let binary='';bytes.forEach(byte=>binary+=String.fromCharCode(byte));proofImage=btoa(binary)}const response=await fetch('/api/issues',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:form.get('title'),category:form.get('category'),description:form.get('description'),area:'New report',lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage,proof_type:proofFile&&proofFile.type||'image/jpeg'})});const result=await response.json();if(result.result==='possible_duplicate'){alert('A similar issue is already reported nearby. Please support the existing issue from the community page.');return}if(!response.ok)return alert(result.message||'The issue could not be submitted.');if(result.result==='duplicate'){alert('This matches an existing issue and was added as support.');return}issues.push(result.issue);buildFilters();render();event.target.reset();reportLocation=null;if(selectedPin){map.removeLayer(selectedPin);selectedPin=null}alert('Your issue was added to the map.')};buildFilters();render();const districtCoords={"Bokaro":[23.6693,85.9563],"Chatra":[24.2120,84.8715],"Deoghar":[24.4826,86.6966],"Dhanbad":[23.7957,86.4304],"Dumka":[24.2676,87.2497],"East Singhbhum":[22.8046,86.2029],"Garhwa":[24.1624,83.8073],"Giridih":[24.1868,86.3050],"Godda":[24.8267,87.2132],"Gumla":[23.0448,84.5422],"Hazaribagh":[23.9925,85.3637],"Jamtara":[23.9629,86.8000],"Khunti":[23.0763,85.2787],"Koderma":[24.4678,85.5938],"Latehar":[23.7454,84.4632],"Lohardaga":[23.4377,84.6806],"Pakur":[24.6341,87.8488],"Palamu":[24.0326,84.0722],"Ramgarh":[23.6288,85.5173],"Ranchi":[23.3441,85.3096],"Sahibganj":[25.2425,87.6419],"Seraikela Kharsawan":[22.7001,85.9298],"Simdega":[22.6148,84.5074],"West Singhbhum":[22.5694,85.8115]};document.addEventListener('change',e=>{if(e.target&&e.target.name==='district'){const c=districtCoords[e.target.value];if(c)map.flyTo(c,11,{duration:1.5})}});</script></body></html>"""
 district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
 domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
 PAGE = PAGE.replace("setView([12.9716,77.5946],12)", "setView([23.3441,85.3096],7)")
@@ -1450,7 +1510,7 @@ PAGE = PAGE.replace(
     "description:form.get('description'),area:form.get('block')||form.get('district'),district:form.get('district'),block:form.get('block'),lat:reportLocation.lat,lng:reportLocation.lng,proof_image:proofImage",
 ).replace(
     "alert('Your issue was added to the map.')",
-    "alert(result.assignment?`Your issue was added and matched with ${result.assignment.university_name}.`:'Your issue was added to the map. AI will match it when a suitable university is available.')",
+    "showCivicAlert(result.assignment?`Your issue was added and matched with <b>${result.assignment.university_name}</b>.`:'Your issue was added to the map. AI will match it when a suitable university is available.')",
 )
 PAGE = PAGE.replace(
     "</style>",
@@ -2150,8 +2210,110 @@ class MapHandler(BaseHTTPRequestHandler):
         if user is None:
             self.redirect("/login")
             return
-        issues_json = json.dumps(ISSUES).replace("</", "<\\/")
+        public_issues = [{k: v for k, v in issue.items() if not str(k).startswith("_")} for issue in ISSUES]
+        issues_json = json.dumps(public_issues, default=str).replace("</", "<\\/")
         template = MAIN_MAP_PAGE_FILE.read_text(encoding="utf-8")
+
+        # Add photo-GPS auto pinning to the actual map template served by the
+        # root route.  The older PAGE constant above is not what this route
+        # serves, so the feature must be injected into this template here.
+        photo_gps_js = r"""
+
+// ---------------------------------------------------------------------------
+// Automatic photo GPS -> map pin
+// ---------------------------------------------------------------------------
+async function applyPhotoGpsFromUpload(file){
+    if(!file || !file.size || !String(file.type || '').startsWith('image/')){
+        return false;
+    }
+
+    const note = document.querySelector('#report p');
+    if(note){
+        note.textContent = 'Reading GPS location from photo…';
+    }
+
+    try{
+        const upload = new FormData();
+        upload.append('photo', file, file.name || 'photo.jpg');
+
+        const response = await fetch('/api/photo-gps', {
+            method: 'POST',
+            body: upload,
+            credentials: 'same-origin',
+            cache: 'no-store'
+        });
+
+        const result = await response.json().catch(()=>({}));
+
+        if(!response.ok ||
+           !Number.isFinite(Number(result.lat)) ||
+           !Number.isFinite(Number(result.lng))){
+            if(note){
+                note.textContent = result.message ||
+                    'No GPS metadata found in this photo.';
+            }
+            return false;
+        }
+
+        const lat = Number(result.lat);
+        const lng = Number(result.lng);
+        const latlng = L.latLng(lat, lng);
+
+        // This uses the existing report-pin function, so the coordinates
+        // submitted to /api/issues are exactly the coordinates from the photo.
+        setReportLocation(latlng);
+        map.flyTo(latlng, 17, {duration: 1.5});
+
+        if(note){
+            note.textContent =
+                `📍 Pin selected automatically — GPS location detected: ${lat.toFixed(5)}, ${lng.toFixed(5)}.`;
+        }
+
+        // GPS detection happens asynchronously after the file-change event.
+        // Trigger a form-field event so the existing progress indicator
+        // recalculates and counts the automatically selected location.
+        const titleField = document.querySelector('#report input[name="title"]');
+        if(titleField){
+            titleField.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+
+        return true;
+    }catch(error){
+        console.error('Photo GPS request failed:', error);
+        if(note){
+            note.textContent =
+                'Could not read the photo GPS. Check the server and try again.';
+        }
+        return false;
+    }
+}
+
+const photoInput = document.querySelector('#report input[name="proof_image"]');
+if(photoInput){
+    photoInput.addEventListener('change', async function(){
+        const file = this.files && this.files[0];
+        if(!file) return;
+
+        // Clear any manually selected pin so the uploaded photo becomes the
+        // single source of truth for the report location.
+        if(selectedPin){
+            map.removeLayer(selectedPin);
+            selectedPin = null;
+        }
+        reportLocation = null;
+
+        await applyPhotoGpsFromUpload(file);
+    });
+}
+"""
+
+        # The map template declares map/reportLocation/setReportLocation in
+        # its final Leaflet script. Insert the new code into that same script
+        # so its lexical variables remain accessible.
+        last_script_close = template.rfind("</script>")
+        if last_script_close != -1 and "applyPhotoGpsFromUpload" not in template:
+            template = template[:last_script_close] + photo_gps_js + template[last_script_close:]
+
         district_options = "".join(f"<option>{html.escape(district)}</option>" for district in JHARKHAND_DISTRICTS)
         domain_options = "".join(f"<option>{html.escape(domain)}</option>" for domain in JHARKHAND_DOMAINS)
         role = portal_role_for_user(user)
@@ -2179,6 +2341,25 @@ class MapHandler(BaseHTTPRequestHandler):
                 });
             </script>
             """
+
+        # Make the initial helper text describe the new automatic-photo flow.
+        template = template.replace(
+            "Click the map first to choose the location.",
+            "Upload a geotagged photo to place the pin automatically, or click the map.",
+        )
+
+        # If a citizen submits without a location, try the uploaded photo one
+        # last time. Normally the change handler has already placed the pin.
+        # This also makes the form safe if the user selects a photo and submits
+        # very quickly before the GPS request finishes.
+        template = template.replace(
+            "if(!reportLocation)return alert('Click the map first to choose the location');",
+            "if(!reportLocation){const proofFile=form.get('proof_image');if(proofFile&&proofFile.size){const found=await applyPhotoGpsFromUpload(proofFile);if(!found)return;}else{return alert('Upload a geotagged photo or choose a location on the map.')}}",
+        )
+        template = template.replace(
+            "if(!reportLocation)return alert('Click the map to choose a location first.');",
+            "if(!reportLocation){const proofFile=form.get('proof_image');if(proofFile&&proofFile.size){const found=await applyPhotoGpsFromUpload(proofFile);if(!found)return;}else{return alert('Upload a geotagged photo or choose a location on the map.')}}",
+        )
 
         template = template.replace("</head>", role_css + "</head>")
         template = template.replace("</body>", role_script + "</body>")
@@ -2960,6 +3141,39 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.send_json({"message": "Contractor status updated."})
             return
+        if path == "/api/photo-gps" or path == "/api/photo-gps/":
+            if self.session_user() is None:
+                self.send_error(401)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                raw = self.rfile.read(length)
+                content_type = self.headers.get("Content-Type", "")
+                if not content_type.startswith("multipart/form-data"):
+                    self.send_json({"message": "Photo upload is required."}, status=400)
+                    return
+                message = BytesParser(policy=policy.default).parsebytes(
+                    b"Content-Type: " + content_type.encode("utf-8") + b"\r\n\r\n" + raw
+                )
+                photo = None
+                for part in message.iter_attachments():
+                    if part.get_param("name", header="content-disposition") == "photo":
+                        photo = part.get_payload(decode=True) or b""
+                        break
+                if not photo:
+                    self.send_json({"message": "No photo was uploaded."}, status=400)
+                    return
+                if len(photo) > 25 * 1024 * 1024:
+                    self.send_json({"message": "Photo is larger than 25 MB."}, status=413)
+                    return
+                gps = extract_image_gps(photo)
+                if not gps:
+                    self.send_json({"message": "No GPS metadata found in this photo."}, status=422)
+                    return
+                self.send_json({"lat": gps["lat"], "lng": gps["lng"]})
+            except Exception:
+                self.send_json({"message": "Could not read the photo GPS metadata."}, status=400)
+            return
         if path == "/api/issues" or path == "/api/issues/" or (path.startswith("/api/issues/") and path.endswith("/upvote")):
             if self.session_user() is None:
                 self.send_error(401)
@@ -3025,11 +3239,13 @@ class MapHandler(BaseHTTPRequestHandler):
                     return
                 if proof_bytes:
                     if proof_type.startswith("image/"):
-                        proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
+                        # Verify GPS from the original uploaded bytes before image sanitization.
+                        # The sanitization step re-encodes the image and may remove EXIF metadata.
                         proof = inspect_image_proof(proof_bytes,issue["lat"],issue["lng"])
                         if proof["status"] == "mismatch":
                             self.send_json(proof,status=422)
                             return
+                        proof_bytes, proof_type = sanitize_and_reencode_image(proof_bytes, proof_type)
                         issue.update({"proof_status":proof["status"],"proof_message":proof["message"]})
                     else:
                         issue.update({"proof_status":"unverified","proof_message":"Supporting file uploaded; location verification is available for geotagged photos."})
@@ -3059,6 +3275,11 @@ class MapHandler(BaseHTTPRequestHandler):
                         "university_name": assignment["university"]["name"],
                         "score": assignment["score"],
                     }
+            if created.get("result") == "duplicate":
+                created["message"] = "This is a duplicate problem. This issue already exists."
+                # The matched issue can contain raw proof bytes; return only JSON-safe alert data.
+                self.send_json({"result": "duplicate", "message": created["message"]},status=409)
+                return
             self.send_json(created,status=201 if created["result"] == "new" else 200)
             return
         if path == "/api/proposals":

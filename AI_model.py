@@ -25,6 +25,7 @@ Expected trained model directory:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -105,16 +106,39 @@ class IssueDeduplicator:
         existing_issues: Iterable[dict[str, Any]],
     ) -> DuplicateMatch | None:
 
+        existing = list(existing_issues)
+
+        # Product rule: the same uploaded image is always the same issue.
+        # Location, category and wording are intentionally ignored for this
+        # exact-image check.
+        report_image_hash = str(
+            report.get("image_hash")
+            or image_fingerprint(report.get("_proof_data"))
+            or ""
+        ).strip().lower()
+
+        if report_image_hash:
+            for issue in existing:
+                existing_image_hash = str(
+                    issue.get("image_hash") or ""
+                ).strip().lower()
+                if existing_image_hash and existing_image_hash == report_image_hash:
+                    distance = self._distance_for(report, issue)
+                    return DuplicateMatch(
+                        issue=issue,
+                        text_score=1.0,
+                        distance_km=distance,
+                        score=1.0,
+                        decision="duplicate",
+                    )
+
         candidates = [
             issue
-
-            for issue in existing_issues
-
+            for issue in existing
             if self._same_category(
                 report,
                 issue
             )
-
             and self._distance_for(
                 report,
                 issue
@@ -361,6 +385,16 @@ class IssueDeduplicator:
             f"{issue.get('description', '')}. "
             f"{issue.get('area', '')}"
         ).strip()
+
+
+def image_fingerprint(image_bytes: bytes | bytearray | memoryview | None) -> str:
+    """Return a stable SHA-256 fingerprint for an uploaded image."""
+    if not image_bytes:
+        return ""
+    try:
+        return hashlib.sha256(bytes(image_bytes)).hexdigest()
+    except (TypeError, ValueError):
+        return ""
 
 
 # ---------------------------------------------------------------------------

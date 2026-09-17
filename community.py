@@ -51,6 +51,50 @@ def distance_km(first_lat: float, first_lng: float, second_lat: float, second_ln
     return earth_radius_km * 2 * math.asin(math.sqrt(value))
 
 
+def format_issue_age(issue: dict) -> str:
+    """Return a human-readable age calculated from the issue creation timestamp."""
+    created = issue.get("created_at")
+    if created is None:
+        return str(issue.get("age", ""))
+
+    try:
+        if hasattr(created, "tzinfo"):
+            # MySQL TIMESTAMP is normally returned as a naive datetime in the
+            # configured database timezone. Keep the comparison naive when so.
+            now = __import__("datetime").datetime.now()
+            if getattr(created, "tzinfo", None) is not None:
+                now = __import__("datetime").datetime.now(created.tzinfo)
+            seconds = max(0, int((now - created).total_seconds()))
+        else:
+            from datetime import datetime
+            text = str(created).strip().replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(text)
+            now = datetime.now(parsed.tzinfo) if parsed.tzinfo else datetime.now()
+            seconds = max(0, int((now - parsed).total_seconds()))
+    except (TypeError, ValueError, OverflowError):
+        return str(issue.get("age", ""))
+
+    if seconds < 60:
+        return "just now"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h ago"
+    days = hours // 24
+    if days < 7:
+        return f"{days}d ago"
+    weeks = days // 7
+    if weeks < 5:
+        return f"{weeks}w ago"
+    months = days // 30
+    if months < 12:
+        return f"{months}mo ago"
+    years = days // 365
+    return f"{years}y ago"
+
+
 def nearby_issues(latitude: float | None = None, longitude: float | None = None, radius_km: float = 2.0) -> list[dict]:
     with ISSUE_LOCK:
         issues = list(ISSUES)
@@ -92,9 +136,9 @@ def check_and_penalize_recurring_issues(new_issue: dict) -> None:
 
 def add_issue(issue: dict) -> dict:
     try:
-        from .AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, merge_text_and_visual_classification
+        from .AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, image_fingerprint, merge_text_and_visual_classification
     except ImportError:
-        from AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, merge_text_and_visual_classification
+        from AI_model import classify_image_problem, classify_issue, classify_video_proof, find_duplicate, image_fingerprint, merge_text_and_visual_classification
 
     classification = classify_issue(issue.get("title", ""), issue.get("description", ""), issue.get("category", ""))
     visual = None
@@ -106,6 +150,15 @@ def add_issue(issue: dict) -> dict:
     elif str(issue.get("_proof_type", "")).startswith("image/") and issue.get("_proof_data"):
         visual = classify_image_problem(issue["_proof_data"])
     issue.update(merge_text_and_visual_classification(classification, visual))
+
+    # Generate the image fingerprint BEFORE the raw proof bytes are removed.
+    # This lets duplicate detection work even when the second report uses a
+    # different location, title or description.
+    if str(issue.get("_proof_type", "")).startswith("image/") and issue.get("_proof_data"):
+        image_hash = image_fingerprint(issue.get("_proof_data"))
+        if image_hash:
+            issue["image_hash"] = image_hash
+
     if not str(issue.get("category", "")).strip():
         issue["category"] = issue.get("predicted_category") or "Urban Infrastructure"
 
@@ -367,8 +420,8 @@ def render_page(user: str, latitude: float | None = None, longitude: float | Non
         f'{proof_markup(issue)}'
         f'{contractor_progress_markup(issue["id"], contractor_assignments)}'
         f'<div class="issue-meta"><span class="supporters">{issue.get("supporters", 0)} supporters</span>'
-        f'<span class="location">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("age", ""))}</span></div>'
-        f'<div class="issue-footer"><span>{issue.get("supporters", 0)} supporters · {html.escape(issue.get("age", ""))}</span>'
+        f'<span class="location">{html.escape(issue.get("area", ""))} · {html.escape(format_issue_age(issue))}</span></div>'
+        f'<div class="issue-footer"><span>{issue.get("supporters", 0)} supporters · {html.escape(format_issue_age(issue))}</span>'
         f'<button class="upvote" data-id="{issue["id"]}" type="button">▲ Support this issue</button></div></article>'
         for index, issue in enumerate(issues, 1)
     ) or '<p class="empty">No civic issues were found in this area yet.</p>'
