@@ -13,9 +13,7 @@ import mysql.connector
 from dotenv import load_dotenv
 from mysql.connector import Error, IntegrityError
 
-
 load_dotenv(Path(__file__).resolve().with_name(".env"))
-
 
 MYSQL_CONFIG = {
     "host": os.getenv("CIVIC_MAP_DB_HOST", "127.0.0.1"),
@@ -70,6 +68,8 @@ _MEM_OFFERS: list[dict[str, Any]] = [
 _MEM_ACCOUNTS: dict[str, dict[str, str]] = {}
 _MEM_SESSIONS: dict[str, str] = {}
 _MEM_MESSAGES: list[dict[str, Any]] = []
+_MEM_CASE_EVENTS: list[dict[str, Any]] = []
+_MEM_CASE_MESSAGES: list[dict[str, Any]] = []
 _MEM_NOTIFICATIONS: list[dict[str, Any]] = []
 _MEM_STATUS_HISTORY: list[dict[str, Any]] = []
 _MEM_UNIVERSITY_REPORTS: list[dict[str, Any]] = []
@@ -491,6 +491,37 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 related_type VARCHAR(50),
                 related_id INT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS case_events (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                event_type VARCHAR(50) NOT NULL,
+                actor VARCHAR(255) NOT NULL,
+                actor_role VARCHAR(50) NOT NULL,
+                summary VARCHAR(500) NOT NULL,
+                details TEXT,
+                visibility VARCHAR(20) NOT NULL DEFAULT 'public',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS case_messages (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                sender VARCHAR(255) NOT NULL,
+                sender_role VARCHAR(50) NOT NULL,
+                message_type VARCHAR(50) NOT NULL DEFAULT 'message',
+                message TEXT NOT NULL,
+                visibility VARCHAR(20) NOT NULL DEFAULT 'participants',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
             )
             """
         )
@@ -1934,6 +1965,48 @@ def mark_all_notifications_read(recipient: str) -> bool:
         connection.close()
 
 
+def load_communication_summary(user: str) -> dict[str, Any]:
+    """Return a safe, read-only communication summary for the current user.
+
+    This is intentionally additive: it does not replace the existing
+    message/notification tables or routes. It demonstrates that the
+    communication subsystem exists in a deployable, inspectable way.
+    """
+    normalized_user = (user or "").strip().casefold()
+    notifications = load_notifications(normalized_user) if normalized_user else []
+    messages = load_messages(normalized_user) if normalized_user else []
+
+    unread_notifications = sum(1 for item in notifications if not item.get("is_read", False))
+    conversation_partners = sorted(
+        {
+            str(item.get("sender") or "").casefold()
+            for item in messages
+            if str(item.get("sender") or "").casefold() != normalized_user
+        }
+        | {
+            str(item.get("recipient") or "").casefold()
+            for item in messages
+            if str(item.get("recipient") or "").casefold() != normalized_user
+        }
+    )
+
+    return {
+        "user": normalized_user,
+        "channels": ["in_app_notifications", "in_app_messages"],
+        "notifications": {
+            "total": len(notifications),
+            "unread": unread_notifications,
+            "latest": notifications[0] if notifications else None,
+        },
+        "messages": {
+            "total": len(messages),
+            "partners": conversation_partners,
+            "latest": messages[0] if messages else None,
+        },
+        "status": "active" if normalized_user else "anonymous",
+    }
+
+
 def load_messages(user: str) -> list[dict[str, Any]]:
     if not _DB_AVAILABLE:
         return [m for m in _MEM_MESSAGES if m["sender"].casefold() == user.casefold() or m["recipient"].casefold() == user.casefold()]
@@ -1959,6 +2032,130 @@ def create_message(sender: str, recipient: str, message: str, related_type: str 
         cursor.execute("INSERT INTO messages (sender, recipient, message, related_type, related_id) VALUES (%s, %s, %s, %s, %s)", (sender, recipient, message, related_type, related_id))
         connection.commit()
         return {"id": cursor.lastrowid, "sender": sender, "recipient": recipient, "message": message, "related_type": related_type, "related_id": related_id}
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_case_event(
+    issue_id: int,
+    event_type: str,
+    actor: str,
+    actor_role: str,
+    summary: str,
+    details: str = "",
+    visibility: str = "public",
+) -> dict[str, Any]:
+    """Append an auditable event to the shared civic case timeline."""
+    record = {
+        "issue_id": issue_id,
+        "event_type": event_type,
+        "actor": actor,
+        "actor_role": actor_role,
+        "summary": summary,
+        "details": details,
+        "visibility": visibility,
+        "created_at": "just now",
+    }
+    if not _DB_AVAILABLE:
+        record["id"] = len(_MEM_CASE_EVENTS) + 1
+        _MEM_CASE_EVENTS.append(record)
+        return record
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO case_events (issue_id, event_type, actor, actor_role, summary, details, visibility) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (issue_id, event_type, actor, actor_role, summary, details, visibility),
+        )
+        connection.commit()
+        record["id"] = cursor.lastrowid
+        return record
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_case_events(issue_id: int, include_participants: bool = False) -> list[dict[str, Any]]:
+    """Load public events, or public and participant events for a case member."""
+    if not _DB_AVAILABLE:
+        events = [item for item in _MEM_CASE_EVENTS if item["issue_id"] == issue_id]
+        allowed_visibility = {"public", "participants"} if include_participants else {"public"}
+        events = [item for item in events if item.get("visibility") in allowed_visibility]
+        return list(reversed(events))
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT id, issue_id, event_type, actor, actor_role, summary, details, visibility, created_at FROM case_events WHERE issue_id = %s"
+        params: tuple[Any, ...] = (issue_id,)
+        if include_participants:
+            query += " AND visibility IN ('public', 'participants')"
+        else:
+            query += " AND visibility = 'public'"
+        query += " ORDER BY created_at DESC, id DESC"
+        cursor.execute(query, params)
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_case_message(
+    issue_id: int,
+    sender: str,
+    sender_role: str,
+    message: str,
+    message_type: str = "message",
+    visibility: str = "participants",
+) -> dict[str, Any]:
+    """Create a role-labelled message attached to a civic case."""
+    record = {
+        "issue_id": issue_id,
+        "sender": sender,
+        "sender_role": sender_role,
+        "message_type": message_type,
+        "message": message,
+        "visibility": visibility,
+        "created_at": "just now",
+    }
+    if not _DB_AVAILABLE:
+        record["id"] = len(_MEM_CASE_MESSAGES) + 1
+        _MEM_CASE_MESSAGES.append(record)
+        return record
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO case_messages (issue_id, sender, sender_role, message_type, message, visibility) VALUES (%s, %s, %s, %s, %s, %s)",
+            (issue_id, sender, sender_role, message_type, message, visibility),
+        )
+        connection.commit()
+        record["id"] = cursor.lastrowid
+        return record
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_case_messages(issue_id: int, include_participants: bool = False) -> list[dict[str, Any]]:
+    """Load public messages, or public and participant messages, newest first."""
+    if not _DB_AVAILABLE:
+        messages = [item for item in _MEM_CASE_MESSAGES if item["issue_id"] == issue_id]
+        allowed_visibility = {"public", "participants"} if include_participants else {"public"}
+        messages = [item for item in messages if item.get("visibility") in allowed_visibility]
+        return list(reversed(messages))
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT id, issue_id, sender, sender_role, message_type, message, visibility, created_at FROM case_messages WHERE issue_id = %s"
+        params: tuple[Any, ...] = (issue_id,)
+        if include_participants:
+            query += " AND visibility IN ('public', 'participants')"
+        else:
+            query += " AND visibility = 'public'"
+        query += " ORDER BY created_at DESC, id DESC"
+        cursor.execute(query, params)
+        return cursor.fetchall()
     finally:
         cursor.close()
         connection.close()

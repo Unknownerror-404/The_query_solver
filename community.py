@@ -147,8 +147,19 @@ def add_issue(issue: dict) -> dict:
         issue["proof_message"] = " ".join(
             part for part in (issue.get("proof_message", ""), visual.get("message", "")) if part
         ).strip() or visual.get("message")
+    elif str(issue.get("_proof_type", "")).startswith("video/") and issue.get("_proof_data"):
+        visual = classify_video_proof(issue["_proof_data"])
     elif str(issue.get("_proof_type", "")).startswith("image/") and issue.get("_proof_data"):
         visual = classify_image_problem(issue["_proof_data"])
+    # #region agent log
+    try:
+        import json, time
+        from pathlib import Path
+        with open(Path(__file__).resolve().parent / "debug-0d8a0a.log", "a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"sessionId":"0d8a0a","hypothesisId":"D","location":"community.py:add_issue","message":"media classification branch","data":{"proof_type":issue.get("_proof_type"),"has_proof":bool(issue.get("_proof_data")),"has_video":bool(issue.get("_video_data")),"visual_predicted":(visual or {}).get("predicted_category"),"text_predicted":classification.get("predicted_category")},"timestamp":int(time.time()*1000),"runId":"pre-fix"})+"\n")
+    except Exception:
+        pass
+    # #endregion
     issue.update(merge_text_and_visual_classification(classification, visual))
 
     # Generate the image fingerprint BEFORE the raw proof bytes are removed.
@@ -337,6 +348,7 @@ def proposal_page(template: str, user: str, message: str = "") -> str:
     issue_markup = "".join(
         f'<article class="issue"><span class="rank">#{index} · {issue.get("supporters", 0)} supporters</span><span class="status">{issue_consideration_status(index)}</span>'
         f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'<p><a class="case-room-link" href="/cases/{issue["id"]}">Open shared case room →</a></p>'
         f'<p class="muted">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("category", ""))}</p></article>'
         for index, issue in enumerate(issues, 1)
     )

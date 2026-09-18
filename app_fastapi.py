@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 BASE_DIR = Path(__file__).resolve().parent
+CASE_ROOM_FILE = BASE_DIR / "templates" / "case_room.html"
 
 try:
     from fastapi import FastAPI, Request, HTTPException, Depends, Response
@@ -27,8 +28,9 @@ from storage import (
     assign_issue, check_rate_limit, create_contractor, create_industry_partner, create_message,
     create_milestone, create_notification, create_session_record,
     create_support_offer, create_team, create_university, create_university_report, delete_session_record,
-    get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal,
-    load_contractors, load_industry_partners, load_milestones, load_teams, load_university_assignments, load_universities,
+    create_case_event, create_case_message, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal,
+    load_contractors, load_communication_summary, load_industry_partners, load_milestones, load_teams,
+    load_case_events, load_case_messages, load_partner_offers, load_university_assignments, load_universities,
     moderate_issue, review_contractor_complaint, update_assignment, update_milestone, update_offer_commitment,
     update_proposal, update_team_outcomes, update_team_status, update_university,
     update_institution_approval, update_contractor_assignment, update_contractor_status,
@@ -83,6 +85,60 @@ if FastAPI is not None:
         if not is_admin(user):
             raise HTTPException(status_code=403, detail="Admin authorization required")
         return user
+
+    def case_issue(issue_id: int) -> Optional[dict[str, Any]]:
+        return next((issue for issue in ISSUES if issue.get("id") == issue_id), None)
+
+    def case_role(user: str) -> str:
+        if is_admin(user):
+            return "government"
+        if contractor_for_user(user) is not None:
+            return "contractor"
+        if university_for_user(user) is not None:
+            return "university"
+        if industry_for_user(user) is not None:
+            return "industry"
+        return "community"
+
+    def case_access(issue_id: int, user: str, allow_public: bool = False) -> tuple[dict[str, Any], bool]:
+        issue = case_issue(issue_id)
+        if issue is None:
+            raise HTTPException(status_code=404, detail="Case not found")
+        role = case_role(user)
+        if role == "government" or str(issue.get("reporter", "")).casefold() == user.casefold():
+            return issue, True
+        if allow_public and issue.get("moderation_status", "Pending") == "Approved":
+            return issue, False
+        if allow_public and role in {"university", "industry"}:
+            return issue, False
+        if role == "university" and any(item.get("issue_id") == issue_id for item in load_university_assignments(user)):
+            return issue, True
+        if role == "industry" and any(item.get("issue_id") == issue_id for item in load_partner_offers(user)):
+            return issue, True
+        if role == "contractor" and any(item.get("issue_id") == issue_id for item in load_contractor_assignments(contractor_for_user(user)["id"])):
+            return issue, True
+        raise HTTPException(status_code=403, detail="You are not connected to this case")
+
+    def case_notification_recipients(issue_id: int, sender: str) -> set[str]:
+        """Return connected case participants who should receive an update alert."""
+        recipients = {"admin@jharkhand.gov.in"}
+        issue = case_issue(issue_id)
+        if issue and issue.get("reporter"):
+            recipients.add(str(issue["reporter"]).strip().lower())
+        for partner in load_industry_partners():
+            partner_email = str(partner.get("contact_email", "")).strip().lower()
+            if partner_email and any(item.get("issue_id") == issue_id for item in load_partner_offers(partner_email)):
+                recipients.add(partner_email)
+        for university in load_universities():
+            if any(item.get("issue_id") == issue_id and item.get("university_id") == university.get("id") for item in load_university_assignments(str(university.get("contact_email", "")))):
+                if university.get("contact_email"):
+                    recipients.add(str(university["contact_email"]).strip().lower())
+        for contractor in load_contractors():
+            contractor_email = str(contractor.get("contact_email", "")).strip().lower()
+            if contractor_email and any(item.get("issue_id") == issue_id for item in load_contractor_assignments(contractor.get("id"))):
+                recipients.add(contractor_email)
+        recipients.discard(str(sender).strip().lower())
+        return {recipient for recipient in recipients if recipient}
 
     def require_json_issue_membership(issue_id: int, user: str) -> None:
         assignment_ids = {assignment["issue_id"] for assignment in load_university_assignments(user)}
@@ -348,6 +404,58 @@ if FastAPI is not None:
             return RedirectResponse(url="/login", status_code=303)
         return HTMLResponse(content=render_page(current_user, lat, lng))
 
+    @app.get("/cases/{issue_id}", response_class=HTMLResponse)
+    async def case_room_page(issue_id: int, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        issue, participant = case_access(issue_id, user, allow_public=True)
+        events = load_case_events(issue_id, include_participants=participant)
+        messages = load_case_messages(issue_id, include_participants=participant)
+
+        event_markup = "".join(
+            f"<article class='event{' participant' if item.get('visibility') == 'participants' else ''}'>"
+            f"<div class='event-head'><strong>{html.escape(str(item.get('summary', 'Case update')))}</strong>"
+            f"<small>{html.escape(str(item.get('created_at', '')))}</small></div>"
+            f"<p>{html.escape(str(item.get('details') or ''))}</p>"
+            f"<small>{html.escape(str(item.get('actor_role', 'participant')).title())} · {html.escape(str(item.get('actor', '')))}</small></article>"
+            for item in events
+        ) or "<div class='empty'>No timeline updates have been published yet.</div>"
+        message_markup = "".join(
+            f"<article class='message'><div class='message-head'><strong>{html.escape(str(item.get('sender_role', 'participant')).title())} · {html.escape(str(item.get('sender', '')))}</strong>"
+            f"<span>{html.escape(str(item.get('created_at', '')))}</span></div><p>{html.escape(str(item.get('message', '')))}</p></article>"
+            for item in messages
+        ) or "<div class='empty'>No case messages yet.</div>"
+        composer = ""
+        if participant:
+            composer = (
+                "<form id='case-message-form'>"
+                "<label for='message-type'>Update type<select id='message-type' name='message_type'>"
+                "<option value='message'>General update</option><option value='question'>Question</option>"
+                "<option value='clarification'>Clarification</option><option value='progress'>Progress</option>"
+                "<option value='risk'>Risk or delay</option><option value='feedback'>Community feedback</option>"
+                "</select></label>"
+                "<label for='case-message'>Message<textarea id='case-message' name='message' maxlength='3000' required placeholder='Write a clear update for the people connected to this case'></textarea></label>"
+                "<button type='submit'>Post case update</button></form>"
+            )
+        else:
+            composer = "<div class='empty'>This case is publicly visible. Sign in as a connected participant to post an update.</div>"
+        template = CASE_ROOM_FILE.read_text(encoding="utf-8")
+        replacements = {
+            "__USER__": html.escape(user),
+            "__CASE_ID__": str(issue_id),
+            "__TITLE__": html.escape(str(issue.get("title", "Civic case"))),
+            "__DESCRIPTION__": html.escape(str(issue.get("description", "No description provided."))),
+            "__STATUS__": html.escape(str(issue.get("moderation_status", "Pending"))),
+            "__CATEGORY__": html.escape(str(issue.get("category", "Civic issue"))),
+            "__DISTRICT__": html.escape(str(issue.get("district", "Jharkhand"))),
+            "__ACCESS__": "participant" if participant else "public",
+            "__EVENTS__": event_markup,
+            "__MESSAGES__": message_markup,
+            "__COMPOSER__": composer,
+        }
+        for placeholder, value in replacements.items():
+            template = template.replace(placeholder, value)
+        return HTMLResponse(content=template)
+
     @app.get("/proposals", response_class=HTMLResponse)
     async def proposals(current_user: Optional[str] = Depends(get_current_user)):
         if not current_user:
@@ -425,6 +533,50 @@ if FastAPI is not None:
     async def messages_page(current_user: Optional[str] = Depends(get_current_user)):
         user = require_user(current_user)
         return HTMLResponse(content=f"<!doctype html><html><body>{render_messages(user)}<script>document.querySelector('#message-form').onsubmit=async event=>{{event.preventDefault();const response=await fetch('/api/messages',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(Object.fromEntries(new FormData(event.target)))}});if(response.ok)location.reload();else alert((await response.json()).message||'Message failed')}};</script></body></html>")
+
+    @app.get("/api/communications/summary")
+    async def communication_summary_api(current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        return JSONResponse(content=load_communication_summary(user))
+
+    @app.get("/api/cases/{issue_id}")
+    async def case_timeline_api(issue_id: int, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        issue, participant = case_access(issue_id, user, allow_public=True)
+        return {
+            "case": {
+                "id": issue_id,
+                "title": issue.get("title", ""),
+                "status": issue.get("moderation_status", "Pending"),
+                "district": issue.get("district", ""),
+                "category": issue.get("category", ""),
+            },
+            "events": load_case_events(issue_id, include_participants=participant),
+            "messages": load_case_messages(issue_id, include_participants=participant),
+            "access": "participant" if participant else "public",
+        }
+
+    @app.post("/api/cases/{issue_id}/messages")
+    async def create_case_message_api(issue_id: int, request: Request, current_user: Optional[str] = Depends(get_current_user)):
+        user = require_user(current_user)
+        issue, _ = case_access(issue_id, user)
+        try:
+            data = await request.json()
+            message = str(data.get("message", "")).strip()
+            message_type = str(data.get("message_type", "message")).strip() or "message"
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return JSONResponse(status_code=400, content={"message": "Invalid case message."})
+        if not message or len(message) > 3000:
+            return JSONResponse(status_code=400, content={"message": "A message between 1 and 3000 characters is required."})
+        allowed_types = {"message", "question", "clarification", "progress", "risk", "commitment", "complaint", "feedback"}
+        if message_type not in allowed_types:
+            return JSONResponse(status_code=400, content={"message": "Invalid case message type."})
+        role = case_role(user)
+        sent = create_case_message(issue_id, user, role, message, message_type, "participants")
+        create_case_event(issue_id, "communication", user, role, f"{role.title()} posted a case update", message, "participants")
+        for recipient in case_notification_recipients(issue_id, user):
+            create_notification(recipient, f"New case update for '{issue.get('title', 'your issue')}' from {role}.", "case_message", issue_id)
+        return JSONResponse(status_code=201, content={"message": "Case message posted.", "case_message": sent})
 
     @app.get("/proof/{proof_id}")
     async def get_proof_image(proof_id: str):
@@ -514,6 +666,14 @@ if FastAPI is not None:
             data["_video_data"] = video_bytes
         created = add_issue(data)
         if created.get("result") == "new" and created.get("issue"):
+            create_case_event(
+                created["issue"]["id"],
+                "submitted",
+                current_user,
+                "community",
+                "Community member submitted this case",
+                created["issue"].get("description", ""),
+            )
             assignment = auto_assign_issue_to_best_university(created["issue"])
             if assignment:
                 created["assignment"] = {
@@ -548,6 +708,7 @@ if FastAPI is not None:
         issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
         if issue is not None:
             issue.update({"moderation_status": decision, "moderation_reason": reason, "moderated_by": user})
+            create_case_event(issue_id, "moderation", user, "government", f"Case {decision.lower()}", reason)
             if issue.get("reporter"):
                 create_notification(issue["reporter"], f"Your issue '{issue.get('title', 'issue')}' was {decision.lower()}.", "issue", issue_id)
             if decision == "Approved":
@@ -589,6 +750,7 @@ if FastAPI is not None:
         university = next((item for item in load_universities() if item["id"] == university_id), None)
         if university and university.get("contact_email"):
             create_notification(university["contact_email"], f"A challenge was assigned to {university['name']}.", "assignment", issue_id)
+        create_case_event(issue_id, "assignment", user, "government", f"Case assigned to {university.get('name', 'a university') if university else 'a university'}")
         return JSONResponse(content={"issue_id": issue_id, "university_id": university_id, "status": "Assigned"})
 
     @app.post("/api/admin/assignment-response")
@@ -605,6 +767,7 @@ if FastAPI is not None:
             return JSONResponse(status_code=400, content={"message": "Choose a valid response and provide a reason."})
         if not update_assignment(issue_id, assignment_status, reason):
             return JSONResponse(status_code=404, content={"message": "Assignment not found."})
+        create_case_event(issue_id, "assignment_response", current_user or "", "government", f"University assignment marked {assignment_status}", reason)
         return JSONResponse(content={"issue_id": issue_id, "status": assignment_status})
 
     @app.post("/api/university/reports")
@@ -622,6 +785,7 @@ if FastAPI is not None:
         if not title or not summary:
             return JSONResponse(status_code=400, content={"message": "Title and summary are required."})
         report = create_university_report(issue_id, university["id"], current_user, title, summary, deliverables)
+        create_case_event(issue_id, "report", current_user, "university", f"University published report: {title}", summary)
         create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' submitted a project report: '{title}'", "report", issue_id)
         return JSONResponse(status_code=201, content={"message": "Report submitted successfully.", "report": report})
 
@@ -640,6 +804,7 @@ if FastAPI is not None:
         if status not in {"Accepted", "Rejected", "Needs clarification"} or not reason:
             return JSONResponse(status_code=400, content={"message": "Choose a valid response and provide a reason."})
         update_assignment(issue_id, status, reason)
+        create_case_event(issue_id, "assignment_response", current_user, "university", f"University marked assignment {status.lower()}", reason)
         create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' has {status.upper()} assignment for Issue #{issue_id}. Reason: {reason}", "assignment_response", issue_id)
         return JSONResponse(status_code=200, content={"issue_id": issue_id, "status": status})
 
@@ -662,6 +827,7 @@ if FastAPI is not None:
         if not name or not mentor or not members:
             return JSONResponse(status_code=400, content={"message": "Team name, faculty mentor, and student emails are required."})
         team = create_team(issue_id, university_id, name, mentor, members)
+        create_case_event(issue_id, "team_formed", current_user, "university", f"University formed project team: {name}")
         return JSONResponse(status_code=201, content={"message": "Project team created.", "team": team})
 
     @app.post("/api/university/team-status")
@@ -761,6 +927,7 @@ if FastAPI is not None:
         if not any(issue.get("id") == issue_id and issue.get("moderation_status", "Pending") == "Approved" for issue in ISSUES):
             return JSONResponse(status_code=400, content={"message": "Only approved issues can receive offers."})
         offer = create_support_offer(issue_id, partner["id"], support_type, details, funding_amount, resources, timeline)
+        create_case_event(issue_id, "support_offer", user, "industry", f"Industry partner offered {support_type} support", details)
         issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
         if issue and issue.get("reporter"):
             create_notification(issue["reporter"], f"Industry partner '{partner['name']}' pledged {support_type} support for your issue.", "offer", offer["id"])
@@ -1029,6 +1196,8 @@ if FastAPI is not None:
             return JSONResponse(status_code=500, content={"message": "Could not save the status update and image."})
         if not updated:
             return JSONResponse(status_code=500, content={"message": "Failed to update assignment."})
+        assignment = next(item for item in my_assignments if item["id"] == assignment_id)
+        create_case_event(assignment["issue_id"], "contractor_update", user, "contractor", f"Contractor marked work {status.lower()}", note)
         return JSONResponse(content={"message": "Assignment updated."})
 
     @app.post("/api/complaints/contractor")
