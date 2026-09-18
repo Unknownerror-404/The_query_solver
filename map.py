@@ -43,15 +43,15 @@ CONTRACTOR_ADMIN_FILE = BASE_DIR / "templates" / "contractor_admin.html"
 if __package__:
     from .login_users import authenticate, create_account, is_admin, professional_profile
     from .community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
-    from .AI_model import inspect_image_proof, sanitize_and_reencode_image
+    from .storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_case_event, create_case_message, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_case_events, load_case_messages, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
+    from .AI_model import extract_image_gps, inspect_image_proof, sanitize_and_reencode_image
     from .evidence_review import review_issue_evidence
     from .tagging import tag_issue
 else:
     from login_users import authenticate, create_account, is_admin, professional_profile
     from community import JHARKHAND_DISTRICTS, JHARKHAND_DOMAINS, ISSUES, add_issue, distance_km, nearby_issues, render_page, upvote_issue
-    from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
-    from AI_model import inspect_image_proof, sanitize_and_reencode_image
+    from storage import assign_issue, assign_issue_to_contractor, cast_proposal_vote, check_rate_limit, create_account_record, create_case_event, create_case_message, create_contractor, create_contractor_complaint, create_industry_partner, create_message, create_milestone, create_notification, create_session_record, create_support_offer, create_team, create_university, create_university_report, delete_session_record, get_contractor_progress_image, get_proof, get_video, get_proposal_visual, get_session_user, insert_proposal, load_all_contractor_assignments, load_all_partner_offers, load_assignments, load_case_events, load_case_messages, load_contractor_assignments, load_contractor_complaints, load_contractor_leaderboard, load_contractors, load_dashboard_metrics, load_industry_partners, load_milestones, load_notifications, mark_notification_read, mark_all_notifications_read, load_messages, load_partner_offers, load_proposals, load_status_history, load_teams, load_university_assignments, load_university_assignment_responses, load_university_reports, load_universities, load_user_issues, moderate_issue, recalculate_contractor_score, review_contractor_complaint, update_assignment, update_contractor_assignment, update_contractor_status, update_institution_approval, update_milestone, update_offer_commitment, update_proposal, update_team_outcomes, update_team_status, update_university, contractor_for_user as _contractor_for_user_storage
+    from AI_model import extract_image_gps, inspect_image_proof, sanitize_and_reencode_image
     from evidence_review import review_issue_evidence
     from tagging import tag_issue
 HOST = "127.0.0.1"
@@ -987,7 +987,7 @@ def render_university_dashboard(user):
         status_badge = f"<span style='padding:4px 10px;border-radius:6px;font-weight:bold;font-size:12px;background:{'#d4edda' if assignment['status']=='Accepted' else '#f8d7da' if assignment['status']=='Rejected' else '#fff3cd'};color:{'#155724' if assignment['status']=='Accepted' else '#721c24' if assignment['status']=='Rejected' else '#856404'}'>{html.escape(assignment['status'])}</span>"
         cards.append(
             f"<article>"
-            f"<h2>{html.escape(assignment['title'])}</h2>"
+            f"<h2>{html.escape(assignment['title'])}</h2><p><a href='/cases/{issue_id}'>Open shared case room</a></p>"
             f"<p>{html.escape(assignment['description'])}</p>"
             f"<p>District: <strong>{html.escape(assignment['district'])}</strong> Â· Block: <strong>{html.escape(assignment['block'])}</strong> Â· Category: <strong>{html.escape(assignment['category'])}</strong></p>"
             f"<p>Request Status: {status_badge}</p>"
@@ -1196,7 +1196,7 @@ def render_industry_dashboard(user):
             f"<div style='display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;'>"
             f"<div>"
             f"<span style='background:#fbe9e7;color:#d84315;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;text-transform:uppercase;'>{html.escape(issue.get('category', 'Civic Issue'))}</span>"
-            f"<h3 style='margin:8px 0 4px;font-size:20px;'>{html.escape(issue['title'])}</h3>"
+            f"<h3 style='margin:8px 0 4px;font-size:20px;'>{html.escape(issue['title'])}</h3><p><a href='/cases/{issue_id}'>Open shared case room</a></p>"
             f"<p style='color:#667773;font-size:13px;margin:0 0 8px;'>Location: <strong>{html.escape(issue.get('district', 'Jharkhand'))}</strong> &middot; {html.escape(str(issue.get('block', '')))} &middot; <strong style='color:#e65f38;'>{issue.get('supporters', 0)} citizen supporters</strong></p>"
             f"</div>"
             f"</div>"
@@ -1334,6 +1334,70 @@ def render_messages(user):
     messages = load_messages(user)
     history = "".join(f"<article><p><strong>{html.escape(item['sender'])}</strong> to <strong>{html.escape(item['recipient'])}</strong></p><p>{html.escape(item['message'])}</p><small>{html.escape(str(item['created_at']))}</small></article>" for item in messages) or "<p>No messages yet.</p>"
     return f"<h1>Project messages</h1>{history}<form id='message-form'><input name='recipient' placeholder='Recipient email' required><textarea name='message' placeholder='Write a project message' required></textarea><input name='related_id' type='number' placeholder='Issue or project ID'><button>Send message</button></form>"
+
+
+def case_role(user: str) -> str:
+    if is_admin(user):
+        return "government"
+    if contractor_for_user(user) is not None:
+        return "contractor"
+    if university_for_user(user) is not None:
+        return "university"
+    if industry_for_user(user) is not None:
+        return "industry"
+    return "community"
+
+
+def case_access(issue_id: int, user: str, allow_public: bool = False):
+    issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
+    if issue is None:
+        return None, False
+    if is_admin(user) or str(issue.get("reporter", "")).casefold() == user.casefold():
+        return issue, True
+    if allow_public and issue.get("moderation_status", "Pending") == "Approved":
+        return issue, False
+    assignment = load_assignments().get(issue_id)
+    university = university_for_user(user)
+    industry = industry_for_user(user)
+    contractor = contractor_for_user(user)
+    if university and assignment and assignment.get("university_id") == university.get("id"):
+        return issue, True
+    if industry and any(offer.get("issue_id") == issue_id and offer.get("partner_id") == industry.get("id") for offer in load_all_partner_offers()):
+        return issue, True
+    if contractor and any(item.get("issue_id") == issue_id and item.get("contractor_id") == contractor.get("id") for item in load_all_contractor_assignments()):
+        return issue, True
+    if case_role(user) in {"university", "industry"} and issue.get("moderation_status", "Pending") != "Approved":
+        return issue, False
+    return None, False
+
+
+def case_notification_recipients(issue_id: int, sender: str) -> set[str]:
+    issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
+    if issue is None:
+        return set()
+    recipients = {"admin@jharkhand.gov.in"}
+    if issue.get("reporter"):
+        recipients.add(str(issue["reporter"]).strip().lower())
+    assignment = load_assignments().get(issue_id)
+    if assignment:
+        university = next((item for item in load_universities() if item.get("id") == assignment.get("university_id")), None)
+        if university and university.get("contact_email"):
+            recipients.add(str(university["contact_email"]).strip().lower())
+    partner_ids = {offer.get("partner_id") for offer in load_all_partner_offers() if offer.get("issue_id") == issue_id}
+    recipients.update(str(partner.get("contact_email")).strip().lower() for partner in load_industry_partners() if partner.get("id") in partner_ids and partner.get("contact_email"))
+    recipients.update(str(item.get("contractor_email")).strip().lower() for item in load_all_contractor_assignments() if item.get("issue_id") == issue_id and item.get("contractor_email"))
+    recipients.discard(str(sender).strip().lower())
+    return recipients
+
+
+def render_case_room(user: str, issue_id: int) -> str:
+    issue, participant = case_access(issue_id, user, allow_public=True)
+    if issue is None:
+        return "<h1>Case not found or access denied.</h1>"
+    events = load_case_events(issue_id, participant)
+    messages = load_case_messages(issue_id, participant)
+    page = (BASE_DIR / "templates" / "case_room.html").read_text(encoding="utf-8")
+    return page.replace("__CASE_ID__", str(issue_id)).replace("__CASE_TITLE__", html.escape(str(issue.get("title", "Case")))).replace("__CASE_DESCRIPTION__", html.escape(str(issue.get("description", "")))).replace("__CASE_STATUS__", html.escape(str(issue.get("moderation_status", "Pending")))).replace("__CASE_CATEGORY__", html.escape(str(issue.get("category", "")))).replace("__CASE_DISTRICT__", html.escape(str(issue.get("district", "")))).replace("__ACCESS__", "participant" if participant else "read-only").replace("__EVENTS__", json.dumps(events, default=str)).replace("__MESSAGES__", json.dumps(messages, default=str)).replace("__CAN_MESSAGE__", "true" if participant else "false")
 def render_user_issues(user):
     issues = load_user_issues(user)
     if not issues:
@@ -1368,6 +1432,7 @@ def render_user_issues(user):
             f'<article class="issue-card">'
             f'<div class="issue-top"><h3 class="issue-title">{html.escape(issue["title"])}</h3>'
             f'<span class="badge {status_class}">{html.escape(mod_status)}</span></div>'
+            f'<p><a href="/cases/{issue["id"]}">Open shared case room</a></p>'
             f'<p class="issue-desc">{html.escape(issue.get("description", ""))}</p>'
             f'<div class="issue-meta">'
             f'<span class="issue-meta-item">District: <strong>{html.escape(issue.get("district", "Ranchi"))}</strong></span>'
@@ -1407,7 +1472,7 @@ def render_admin_issues():
     if not pending:
         return "<p>No pending issues.</p>" + render_admin_proposals()
     return "".join(
-        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
+        f"<article class='moderation-card'><h2>{html.escape(str(issue.get('title', 'Untitled issue')))}</h2><p><a href='/cases/{issue['id']}'>Open shared case room</a></p><p>{html.escape(str(issue.get('description', '')))}</p><p>{html.escape(str(issue.get('district', 'Ranchi')))} Â· {html.escape(str(issue.get('block', '')))} Â· {html.escape(str(issue.get('category', '')))}</p><form><input type='hidden' name='issue_id' value='{issue['id']}'><textarea name='reason' placeholder='Reason for this decision' required></textarea><button name='status' value='Approved'>Approve</button><button name='status' value='Rejected'>Reject</button></form></article>"
         for issue in pending
     ) + render_admin_proposals()
 
@@ -1707,6 +1772,22 @@ class MapHandler(BaseHTTPRequestHandler):
                 return
             self.send_payload(deliverable[1], content_type=deliverable[0])
             return
+        if path.startswith("/cases/"):
+            user = self.session_user()
+            if user is None:
+                self.redirect("/login")
+                return
+            try:
+                issue_id = int(path.split("/", 2)[2])
+            except (IndexError, ValueError):
+                self.send_error(404)
+                return
+            page = render_case_room(user, issue_id)
+            if "Case not found or access denied" in page:
+                self.send_error(403)
+                return
+            self.send_html(page)
+            return
         if path == "/community":
             if self.session_user() is None:
                 self.redirect("/login")
@@ -1929,6 +2010,54 @@ class MapHandler(BaseHTTPRequestHandler):
             self.send_json({"message": "Rate limit exceeded. Please wait a minute."}, status=429)
             return
         path = urlsplit(self.path).path
+        if path.startswith("/api/cases/") and path.endswith("/messages"):
+            user = self.session_user()
+            if user is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            try:
+                issue_id = int(path.strip("/").split("/")[2])
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                message = str(data.get("message", "")).strip()
+                message_type = str(data.get("message_type", "message")).strip()
+            except (IndexError, TypeError, ValueError, json.JSONDecodeError):
+                self.send_json({"message": "Invalid case message."}, status=400)
+                return
+            issue, participant = case_access(issue_id, user)
+            if issue is None:
+                self.send_json({"message": "You are not connected to this case."}, status=403)
+                return
+            if not participant:
+                self.send_json({"message": "Only case participants may post messages."}, status=403)
+                return
+            allowed_types = {"message", "question", "clarification", "progress", "risk", "commitment", "complaint", "feedback"}
+            if not message or len(message) > 4000 or message_type not in allowed_types:
+                self.send_json({"message": "Provide a valid message and message type."}, status=400)
+                return
+            role = case_role(user)
+            record = create_case_message(issue_id, user, role, message, message_type)
+            create_case_event(issue_id, "communication", user, role, f"{role.title()} posted a case update", message, "participants")
+            for recipient in case_notification_recipients(issue_id, user):
+                create_notification(recipient, f"New case update for '{issue.get('title', 'case')}' from {user}.", "case", issue_id)
+            self.send_json({"message": "Case message posted.", "case_message": record}, status=201)
+            return
+        if path == "/api/image-metadata":
+            if self.session_user() is None:
+                self.send_json({"message": "Authentication required."}, status=401)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                image_bytes = base64.b64decode(data.get("image", ""), validate=True)
+            except (TypeError, ValueError, json.JSONDecodeError, binascii.Error):
+                self.send_json({"message": "Invalid image data."}, status=400)
+                return
+            if len(image_bytes) > 25 * 1024 * 1024:
+                self.send_json({"message": "Image is larger than 25 MB"}, status=413)
+                return
+            self.send_json(extract_image_gps(image_bytes))
+            return
         if path == "/university/login" or path == "/university-login":
             length = int(self.headers.get("Content-Length", "0"))
             body = self.rfile.read(length).decode("utf-8")
@@ -2259,6 +2388,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 create_notification(issue.get("reporter", ""), f"Your issue '{issue.get('title', 'issue')}' was {status.lower()}.", "issue", issue_id) if issue.get("reporter") else None
                 if status == "Approved":
                     auto_assign_issue_to_best_university(issue)
+                create_case_event(issue_id, "moderation", user, "government", f"Case {status.lower()}", reason)
             self.send_json({"status": status, "issue_id": issue_id})
             return
         if path == "/api/admin/assignments":
@@ -2280,6 +2410,7 @@ class MapHandler(BaseHTTPRequestHandler):
             university = next((item for item in load_universities() if item["id"] == university_id), None)
             if university and university.get("contact_email"):
                 create_notification(university["contact_email"], f"A challenge was assigned to {university['name']}.", "assignment", issue_id)
+            create_case_event(issue_id, "university_assignment", user, "government", "Government assigned a university to this case", university.get("name", "") if university else "")
             self.send_json({"issue_id": issue_id, "university_id": university_id, "status": "Assigned"})
             return
         if path == "/api/admin/assignment-response":
@@ -2302,6 +2433,7 @@ class MapHandler(BaseHTTPRequestHandler):
             if not update_assignment(issue_id, status, reason):
                 self.send_json({"message": "Assignment not found."}, status=404)
                 return
+            create_case_event(issue_id, "assignment_decision", user, "government", f"University assignment marked {status.lower()}", reason)
             self.send_json({"issue_id": issue_id, "status": status})
             return
         if path == "/api/university/assignment-response":
@@ -2350,6 +2482,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"message": "Title and summary are required."}, status=400)
                 return
             report = create_university_report(issue_id, university["id"], user or "", title, summary, deliverables)
+            create_case_event(issue_id, "university_report", user or "", "university", f"University submitted report: {title}", summary)
             create_notification("admin@jharkhand.gov.in", f"University '{university['name']}' submitted a project report: '{title}'", "report", issue_id)
             self.send_json({"message": "Report submitted successfully.", "report": report}, status=201)
             return
@@ -2377,6 +2510,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"message": "Team name, faculty mentor, and students are required."}, status=400)
                 return
             team = create_team(issue_id, university_id, name, mentor, members)
+            create_case_event(issue_id, "team_formation", user or "", "university", f"Project team formed: {name}", mentor)
             self.send_json({"message": "Project team created.", "team": team}, status=201)
             return
         if path in {"/api/university/team-status", "/api/university/milestones", "/api/university/milestone-status", "/api/university/team-outcomes"}:
@@ -2483,6 +2617,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 self.send_json({"message": "Only approved issues can receive offers."}, status=400)
                 return
             offer = create_support_offer(issue_id, partner["id"], support_type, details, funding_amount, resources, timeline)
+            create_case_event(issue_id, "support_offer", user or "", "industry", f"Industry partner offered {support_type} support", details)
             issue = next((item for item in ISSUES if item.get("id") == issue_id), None)
             if issue and issue.get("reporter"):
                 create_notification(issue["reporter"], f"Industry partner '{partner['name']}' pledged {support_type} support for your issue.", "offer", offer["id"])
@@ -2782,6 +2917,7 @@ class MapHandler(BaseHTTPRequestHandler):
                 if video_bytes:
                     created["issue"]["video_id"] = video_id
             if created.get("result") == "new" and created.get("issue"):
+                create_case_event(created["issue"]["id"], "submitted", self.session_user() or "", case_role(self.session_user() or ""), "Community member submitted this case", created["issue"].get("description", ""))
                 assignment = auto_assign_issue_to_best_university(created["issue"])
                 if assignment:
                     created["assignment"] = {

@@ -26,6 +26,46 @@ def module_exports(path: Path) -> set[str]:
 
 
 class TestApplicationIntegrationContracts(unittest.TestCase):
+    def test_case_records_filter_participant_visibility(self):
+        from storage import create_case_event, create_case_message, load_case_events, load_case_messages
+
+        issue_id = 1
+        create_case_event(issue_id, "public", "citizen@example.com", "community", "Public event")
+        create_case_event(issue_id, "private", "admin@jharkhand.gov.in", "government", "Participant event", visibility="participants")
+        create_case_message(issue_id, "citizen@example.com", "community", "Public message", visibility="public")
+        create_case_message(issue_id, "admin@jharkhand.gov.in", "government", "Participant message")
+
+        self.assertEqual([item["summary"] for item in load_case_events(issue_id)], ["Public event"])
+        self.assertEqual(len(load_case_events(issue_id, include_participants=True)), 2)
+        self.assertEqual([item["message"] for item in load_case_messages(issue_id)], ["Public message"])
+        self.assertEqual(len(load_case_messages(issue_id, include_participants=True)), 2)
+
+    def test_case_routes_and_template_are_registered(self):
+        template = (ROOT / "templates" / "case_room.html").read_text(encoding="utf-8")
+        self.assertIn("/api/cases/__CASE_ID__/messages", template)
+        self.assertIn("__EVENTS__", template)
+        self.assertIn("__MESSAGES__", template)
+        import app_fastapi
+
+        registered = {(route.path, method) for route in app_fastapi.app.routes for method in (route.methods or set())}
+        self.assertIn(("/cases/{issue_id}", "GET"), registered)
+        self.assertIn(("/api/cases/{issue_id}", "GET"), registered)
+        self.assertIn(("/api/cases/{issue_id}/messages", "POST"), registered)
+
+    def test_case_notification_sender_is_excluded(self):
+        import app_fastapi
+
+        recipients = app_fastapi.case_notification_recipients(1, "admin@jharkhand.gov.in")
+        self.assertNotIn("admin@jharkhand.gov.in", recipients)
+
+    def test_legacy_case_routes_and_entry_links_exist(self):
+        legacy = (ROOT / "map.py").read_text(encoding="utf-8")
+        community = (ROOT / "community.py").read_text(encoding="utf-8")
+        self.assertIn('path.startswith("/cases/")', legacy)
+        self.assertIn('path.startswith("/api/cases/")', legacy)
+        self.assertIn("Open shared case room", legacy)
+        self.assertIn("Open shared case room", community)
+
     def test_fastapi_registers_core_workflow_endpoints(self):
         import app_fastapi
 

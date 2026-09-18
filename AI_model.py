@@ -670,6 +670,38 @@ def find_duplicate(
 # Image GPS verification
 # ---------------------------------------------------------------------------
 
+def extract_image_gps(image_bytes: bytes) -> dict[str, Any]:
+    """Extract GPS coordinates from an image without requiring a map pin."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return {
+            "status": "unverified",
+            "message": "Install Pillow to read image GPS metadata.",
+        }
+
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            gps = image.getexif().get_ifd(34853)
+            latitude = _exif_coordinate(gps, 2, 1)
+            longitude = _exif_coordinate(gps, 4, 3)
+            if latitude is None or longitude is None:
+                return {
+                    "status": "unverified",
+                    "message": "Image has no GPS metadata.",
+                }
+            return {
+                "status": "verified",
+                "message": "GPS metadata extracted from image.",
+                "lat": latitude,
+                "lng": longitude,
+            }
+    except (OSError, KeyError, TypeError, ValueError, ZeroDivisionError):
+        return {
+            "status": "unverified",
+            "message": "Image GPS metadata could not be read.",
+        }
+
 def inspect_image_proof(
     image_bytes: bytes,
     expected_lat: float,

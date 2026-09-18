@@ -75,6 +75,8 @@ _MEM_OFFERS: list[dict[str, Any]] = [
 _MEM_ACCOUNTS: dict[str, dict[str, str]] = {}
 _MEM_SESSIONS: dict[str, str] = {}
 _MEM_MESSAGES: list[dict[str, Any]] = []
+_MEM_CASE_EVENTS: list[dict[str, Any]] = []
+_MEM_CASE_MESSAGES: list[dict[str, Any]] = []
 _MEM_NOTIFICATIONS: list[dict[str, Any]] = []
 _MEM_STATUS_HISTORY: list[dict[str, Any]] = []
 _MEM_UNIVERSITY_REPORTS: list[dict[str, Any]] = []
@@ -712,6 +714,37 @@ def initialise(default_issues: Iterable[dict[str, Any]] = ()) -> None:
                 related_type VARCHAR(50),
                 related_id INT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS case_events (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                event_type VARCHAR(50) NOT NULL,
+                actor VARCHAR(255) NOT NULL,
+                actor_role VARCHAR(50) NOT NULL,
+                summary VARCHAR(500) NOT NULL,
+                details TEXT,
+                visibility VARCHAR(20) NOT NULL DEFAULT 'public',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS case_messages (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_id INT NOT NULL,
+                sender VARCHAR(255) NOT NULL,
+                sender_role VARCHAR(50) NOT NULL,
+                message_type VARCHAR(50) NOT NULL DEFAULT 'message',
+                message TEXT NOT NULL,
+                visibility VARCHAR(20) NOT NULL DEFAULT 'participants',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
             )
             """
         )
@@ -2481,6 +2514,110 @@ def create_message(sender: str, recipient: str, message: str, related_type: str 
         cursor.execute("INSERT INTO messages (sender, recipient, message, related_type, related_id) VALUES (%s, %s, %s, %s, %s)", (sender, recipient, message, related_type, related_id))
         connection.commit()
         return {"id": cursor.lastrowid, "sender": sender, "recipient": recipient, "message": message, "related_type": related_type, "related_id": related_id}
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_case_event(
+    issue_id: int,
+    event_type: str,
+    actor: str,
+    actor_role: str,
+    summary: str,
+    details: str = "",
+    visibility: str = "public",
+) -> dict[str, Any]:
+    event = {
+        "issue_id": int(issue_id),
+        "event_type": str(event_type)[:50],
+        "actor": str(actor)[:255],
+        "actor_role": str(actor_role)[:50],
+        "summary": str(summary)[:500],
+        "details": str(details),
+        "visibility": visibility if visibility in {"public", "participants"} else "public",
+    }
+    if not _DB_AVAILABLE:
+        event = {"id": len(_MEM_CASE_EVENTS) + 1, **event, "created_at": "just now"}
+        _MEM_CASE_EVENTS.append(event)
+        return event
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO case_events (issue_id, event_type, actor, actor_role, summary, details, visibility) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (event["issue_id"], event["event_type"], event["actor"], event["actor_role"], event["summary"], event["details"], event["visibility"]),
+        )
+        connection.commit()
+        event["id"] = cursor.lastrowid
+        return event
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_case_events(issue_id: int, include_participants: bool = False) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        allowed = {"public", "participants"} if include_participants else {"public"}
+        return [event for event in _MEM_CASE_EVENTS if event["issue_id"] == issue_id and event["visibility"] in allowed]
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        visibility = ("public", "participants") if include_participants else ("public",)
+        placeholders = ", ".join(["%s"] * len(visibility))
+        cursor.execute(f"SELECT id, issue_id, event_type, actor, actor_role, summary, details, visibility, created_at FROM case_events WHERE issue_id = %s AND visibility IN ({placeholders}) ORDER BY created_at, id", (issue_id, *visibility))
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def create_case_message(
+    issue_id: int,
+    sender: str,
+    sender_role: str,
+    message: str,
+    message_type: str = "message",
+    visibility: str = "participants",
+) -> dict[str, Any]:
+    record = {
+        "issue_id": int(issue_id),
+        "sender": str(sender)[:255],
+        "sender_role": str(sender_role)[:50],
+        "message_type": str(message_type)[:50],
+        "message": str(message),
+        "visibility": visibility if visibility in {"public", "participants"} else "participants",
+    }
+    if not _DB_AVAILABLE:
+        record = {"id": len(_MEM_CASE_MESSAGES) + 1, **record, "created_at": "just now"}
+        _MEM_CASE_MESSAGES.append(record)
+        return record
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO case_messages (issue_id, sender, sender_role, message_type, message, visibility) VALUES (%s, %s, %s, %s, %s, %s)",
+            (record["issue_id"], record["sender"], record["sender_role"], record["message_type"], record["message"], record["visibility"]),
+        )
+        connection.commit()
+        record["id"] = cursor.lastrowid
+        return record
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def load_case_messages(issue_id: int, include_participants: bool = False) -> list[dict[str, Any]]:
+    if not _DB_AVAILABLE:
+        allowed = {"public", "participants"} if include_participants else {"public"}
+        return [message for message in _MEM_CASE_MESSAGES if message["issue_id"] == issue_id and message["visibility"] in allowed]
+    connection = connect()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        visibility = ("public", "participants") if include_participants else ("public",)
+        placeholders = ", ".join(["%s"] * len(visibility))
+        cursor.execute(f"SELECT id, issue_id, sender, sender_role, message_type, message, visibility, created_at FROM case_messages WHERE issue_id = %s AND visibility IN ({placeholders}) ORDER BY created_at, id", (issue_id, *visibility))
+        return cursor.fetchall()
     finally:
         cursor.close()
         connection.close()

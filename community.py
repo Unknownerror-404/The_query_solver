@@ -285,7 +285,7 @@ def proposal_page(template: str, user: str, message: str = "") -> str:
     issues = top_issues()
     issue_markup = "".join(
         f'<article class="issue"><span class="rank">#{index} · {issue.get("supporters", 0)} supporters</span><span class="status">{issue_consideration_status(index)}</span>'
-        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p><p><a href="/cases/{issue["id"]}">Open shared case room</a></p>'
         f'<p class="muted">{html.escape(issue.get("area", ""))} · {html.escape(issue.get("category", ""))}</p></article>'
         for index, issue in enumerate(issues, 1)
     )
@@ -364,7 +364,7 @@ def render_page(user: str, latitude: float | None = None, longitude: float | Non
         f'<div class="issue-top"><span class="issue-rank">Civic issue #{index}</span>'
         f'<span class="issue-category">{html.escape(issue.get("category", "Community"))}</span></div>'
         f'<div class="meta">{html.escape(issue.get("category", "Community"))} · {html.escape(issue.get("area", ""))}</div>'
-        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p>'
+        f'<h2>{html.escape(issue["title"])}</h2><p>{html.escape(issue.get("description", ""))}</p><p><a href="/cases/{issue["id"]}">Open shared case room</a></p>'
         f'{public_report_markup(issue["id"], reports)}'
         f'{proof_markup(issue)}'
         f'{contractor_progress_markup(issue["id"], contractor_assignments)}'

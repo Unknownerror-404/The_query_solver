@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Case room | Civic Map</title>
+  <link rel="stylesheet" href="/templates/shared.css">
+  <style>
+    body{margin:0;background:#f4f0e7;color:#122f2f;font-family:Inter,Segoe UI,sans-serif}
+    main{max-width:1050px;margin:0 auto;padding:34px 20px 60px}
+    .case-header,.case-panel{background:#fff;border:1px solid #e0ded5;border-radius:14px;padding:24px;box-shadow:0 12px 32px -18px rgba(18,47,47,.2)}
+    .case-header{border-top:4px solid #e8582e}.eyebrow{color:#e8582e;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}.case-header h1{margin:8px 0;font:700 30px Georgia,serif}.muted{color:#5c7370;line-height:1.6}.meta{display:flex;gap:10px;flex-wrap:wrap;color:#5c7370;font-size:13px}.pill{padding:5px 10px;border-radius:999px;background:#eef8f9;color:#287e8f;font-weight:700}.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.case-panel h2{margin-top:0;font:700 20px Georgia,serif}.timeline-item,.message-item{border-left:3px solid #287e8f;padding:0 0 16px 14px;margin:0 0 16px}.timeline-item.participant,.message-item.participant{border-color:#e8582e}.item-title{font-weight:700}.item-meta{font-size:11px;color:#5c7370;margin-top:4px}.item-details{font-size:13px;line-height:1.5;color:#405b57;margin:6px 0 0}.composer{margin-top:20px;padding-top:18px;border-top:1px solid #e0ded5}.composer[hidden]{display:none}.composer select,.composer textarea,.composer button{width:100%;box-sizing:border-box;margin:6px 0;padding:10px;border:1px solid #c5ccc7;border-radius:8px;font:14px Inter,Segoe UI,sans-serif}.composer textarea{min-height:110px;resize:vertical}.composer button{background:#e8582e;border-color:#e8582e;color:#fff;font-weight:700;cursor:pointer}.readonly{padding:12px;background:#fff7f3;border:1px solid #f3c9bb;border-radius:8px;color:#805040;font-size:13px}@media(max-width:760px){.layout{grid-template-columns:1fr}.case-header h1{font-size:25px}}
+  </style>
+</head>
+<body>
+<main>
+  <section class="case-header">
+    <p class="eyebrow">Shared civic case</p>
+    <h1>__CASE_TITLE__</h1>
+    <p class="muted">__CASE_DESCRIPTION__</p>
+    <div class="meta"><span class="pill">__CASE_STATUS__</span><span>__CASE_CATEGORY__</span><span>__CASE_DISTRICT__</span><span>Access: __ACCESS__</span></div>
+  </section>
+  <div class="layout">
+    <section class="case-panel"><h2>Case timeline</h2><div id="timeline"></div></section>
+    <section class="case-panel"><h2>Case conversation</h2><div id="messages"></div><p id="readonly" class="readonly" hidden>Connected institutions can view this case while it awaits government moderation. Messaging becomes available after participation is established.</p><form id="composer" class="composer" hidden><select name="message_type"><option value="message">Message</option><option value="question">Question</option><option value="clarification">Clarification</option><option value="progress">Progress</option><option value="risk">Risk</option><option value="commitment">Commitment</option><option value="complaint">Complaint</option><option value="feedback">Feedback</option></select><textarea name="message" maxlength="4000" placeholder="Write a case update" required></textarea><button type="submit">Post case update</button></form></section>
+  </div>
+</main>
+<script>
+const events=__EVENTS__,messages=__MESSAGES__,canMessage=__CAN_MESSAGE__;
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.getElementById('timeline').innerHTML=events.length?events.map(item=>`<article class="timeline-item ${item.visibility==='participants'?'participant':''}"><div class="item-title">${esc(item.summary)}</div><div class="item-meta">${esc(item.actor_role)} · ${esc(item.actor)} · ${esc(item.created_at)}</div>${item.details?`<p class="item-details">${esc(item.details)}</p>`:''}</article>`).join(''):'<p class="muted">No timeline activity yet.</p>';
+document.getElementById('messages').innerHTML=messages.length?messages.map(item=>`<article class="message-item ${item.visibility==='participants'?'participant':''}"><div class="item-title">${esc(item.sender_role)} · ${esc(item.message_type)}</div><div class="item-meta">${esc(item.sender)} · ${esc(item.created_at)}</div><p class="item-details">${esc(item.message)}</p></article>`).join(''):'<p class="muted">No messages yet.</p>';
+const composer=document.getElementById('composer');composer.hidden=!canMessage;document.getElementById('readonly').hidden=canMessage;
+composer.addEventListener('submit',async event=>{event.preventDefault();const response=await fetch('/api/cases/__CASE_ID__/messages',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(composer)))});if(response.ok)location.reload();else alert((await response.json()).message||'Case message failed')});
+</script>
+</body>
+</html>
